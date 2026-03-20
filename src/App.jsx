@@ -58,6 +58,10 @@ const App = () => {
   const [editingIndex, setEditingIndex] = useState(null);
   const [editBuffer, setEditBuffer] = useState({ id: '', name: '', category: '' });
 
+  // 新增模式狀態
+  const [isAdding, setIsAdding] = useState(false);
+  const [addBuffer, setAddBuffer] = useState({ id: '', name: '', category: CATEGORIES[0] });
+
   const [formData, setFormData] = useState({
     template: '',
     subject: '',
@@ -80,7 +84,29 @@ const App = () => {
   };
 
   // --- 表單庫維護功能 ---
+  
+  // 開始新增
+  const startAdd = () => {
+    setIsAdding(true);
+    setEditingIndex(null); // 關閉其他編輯
+    setAddBuffer({ id: '', name: '', category: CATEGORIES[0] });
+  };
+
+  // 儲存新增
+  const saveAdd = () => {
+    if (!addBuffer.id || !addBuffer.name) return;
+    setForms([{ ...addBuffer, desc: '' }, ...forms]);
+    setIsAdding(false);
+  };
+
+  // 取消新增
+  const cancelAdd = () => {
+    setIsAdding(false);
+  };
+
+  // 開始編輯
   const startEdit = (index, form) => {
+    setIsAdding(false); // 關閉新增模式
     setEditingIndex(index);
     setEditBuffer({ id: form.id, name: form.name, category: form.category });
   };
@@ -425,8 +451,11 @@ const App = () => {
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="font-bold text-lg text-slate-700">公文表單類型</h3>
-              <button className="flex items-center gap-2 bg-[#1677FF] text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-blue-100 active:scale-95 transition-all">
-                <Plus size={18} /> 新增類型
+              <button 
+                onClick={startAdd}
+                className="flex items-center gap-2 bg-[#1677FF] text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-blue-100 active:scale-95 transition-all hover:bg-blue-700"
+              >
+                <Plus size={18} /> 新增表單
               </button>
             </div>
             <table className="w-full text-left">
@@ -439,12 +468,62 @@ const App = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-sm font-medium text-slate-600">
+                {/* 新增列 */}
+                {isAdding && (
+                  <tr className="bg-blue-50/50 animate-in fade-in duration-300">
+                    <td className="px-8 py-5">
+                      <input 
+                        className="w-24 border border-blue-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                        placeholder="ID"
+                        value={addBuffer.id}
+                        onChange={(e) => setAddBuffer({...addBuffer, id: e.target.value})}
+                      />
+                    </td>
+                    <td className="px-6 py-5">
+                      <input 
+                        className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 font-bold bg-white"
+                        placeholder="名稱"
+                        value={addBuffer.name}
+                        onChange={(e) => setAddBuffer({...addBuffer, name: e.target.value})}
+                      />
+                    </td>
+                    <td className="px-6 py-5">
+                      <select 
+                        className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                        value={addBuffer.category}
+                        onChange={(e) => setAddBuffer({...addBuffer, category: e.target.value})}
+                      >
+                        {CATEGORIES.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-8 py-5 text-right space-x-2">
+                      <button 
+                        onClick={saveAdd}
+                        className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-all"
+                        title="確認新增"
+                      >
+                        <Check size={18} />
+                      </button>
+                      <button 
+                        onClick={cancelAdd}
+                        className="p-2 text-slate-400 hover:bg-slate-200 rounded-lg transition-all"
+                        title="取消"
+                      >
+                        <X size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                )}
+
+                {/* 資料列表 */}
                 {forms.map((form, index) => (
                   <tr key={form.id + index} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-8 py-5">
                       {editingIndex === index ? (
                         <input 
-                          className="w-24 border border-blue-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-24 border border-blue-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                           value={editBuffer.id}
                           onChange={(e) => setEditBuffer({...editBuffer, id: e.target.value})}
                         />
@@ -455,7 +534,7 @@ const App = () => {
                     <td className="px-6 py-5">
                       {editingIndex === index ? (
                         <input 
-                          className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 font-bold"
+                          className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 font-bold bg-white"
                           value={editBuffer.name}
                           onChange={(e) => setEditBuffer({...editBuffer, name: e.target.value})}
                         />
