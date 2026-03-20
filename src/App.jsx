@@ -40,16 +40,23 @@ const App = () => {
   // --- 狀態管理 ---
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1); // 步驟管理 (1, 2, 3)
-  const [otType, setOtType] = useState('事前'); // 加班類別：事前/事後
+  const [currentStep, setCurrentStep] = useState(1); 
+  const [otType, setOtType] = useState('事前'); 
 
-  // --- 表單資料庫 (維護用) ---
-  const [forms] = useState([
-    { id: 'HR-01', category: '人事類', name: '特別休假申請單', desc: '年度休假申請', status: '啟用' },
-    { id: 'HR-02', category: '人事類', name: '加班申請單', desc: '加班紀錄與補休', status: '啟用' },
-    { id: 'FIN-01', category: '財務類', name: '專案採購簽呈', desc: '重大採購核銷', status: '啟用' },
-    { id: 'ADM-01', category: '行政類', name: '辦公設備領用單', desc: '設備領用與歸還', status: '啟用' },
+  // --- 選項定義 ---
+  const CATEGORIES = ["財務類", "行政類", "銷售類", "產品類", "差勤類", "系統類"];
+
+  // --- 表單資料庫狀態 ---
+  const [forms, setForms] = useState([
+    { id: 'HR-01', category: '差勤類', name: '特別休假申請單', desc: '年度休假申請' },
+    { id: 'HR-02', category: '差勤類', name: '加班申請單', desc: '加班紀錄與補休' },
+    { id: 'FIN-01', category: '財務類', name: '專案採購簽呈', desc: '重大採購核銷' },
+    { id: 'ADM-01', category: '行政類', name: '辦公設備領用單', desc: '設備領用與歸還' },
   ]);
+
+  // 編輯模式狀態
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editBuffer, setEditBuffer] = useState({ id: '', name: '', category: '' });
 
   const [formData, setFormData] = useState({
     template: '',
@@ -72,10 +79,36 @@ const App = () => {
     setIsModalOpen(!isModalOpen);
   };
 
+  // --- 表單庫維護功能 ---
+  const startEdit = (index, form) => {
+    setEditingIndex(index);
+    setEditBuffer({ id: form.id, name: form.name, category: form.category });
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+  };
+
+  const saveEdit = (index) => {
+    const newForms = [...forms];
+    newForms[index] = { 
+      ...newForms[index], 
+      id: editBuffer.id, 
+      name: editBuffer.name,
+      category: editBuffer.category 
+    };
+    setForms(newForms);
+    setEditingIndex(null);
+  };
+
+  const deleteForm = (index) => {
+    const newForms = forms.filter((_, i) => i !== index);
+    setForms(newForms);
+  };
+
   // --- 步驟二：加班申請單模板組件 ---
   const OvertimeFormTemplate = () => (
     <div className="border border-slate-300 rounded shadow-sm bg-white overflow-hidden animate-in fade-in duration-500">
-      {/* 模擬編輯器工具列 */}
       <div className="bg-slate-100 border-b border-slate-300 p-2 flex items-center gap-2 flex-wrap">
         <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>字型</option></select>
         <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>大小</option></select>
@@ -91,7 +124,6 @@ const App = () => {
         <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><List size={14} /></button>
       </div>
 
-      {/* 表格內容區 */}
       <div className="p-8 font-serif">
         <div className="text-center mb-6">
           <h3 className="text-xl font-bold tracking-[0.2em]">** 加 班 工 時 申 請 單 - {otType === '事前' ? '事 前 申 請' : '事 後 申 請'} **</h3>
@@ -101,16 +133,15 @@ const App = () => {
           <tbody>
             <tr className="bg-slate-50">
               <td className="border border-slate-400 p-3 text-center font-bold w-1/6 leading-relaxed">員 工<br/>編 號</td>
-              <td className="border border-slate-400 p-3 text-center font-bold w-1/4 leading-relaxed">姓 名</td>
-              <td className="border border-slate-400 p-3 text-center font-bold w-1/3 leading-relaxed">事 由</td>
-              <td className="border border-slate-400 p-3 text-center font-bold w-1/6 leading-relaxed">加班<br/>類別</td>
+              <td className="border border-slate-400 p-3 text-center font-bold w-1/4">姓 名</td>
+              <td className="border border-slate-400 p-3 text-center font-bold w-1/3">事 由</td>
+              <td className="border border-slate-400 p-3 text-center font-bold w-1/6">加班<br/>類別</td>
             </tr>
             <tr>
               <td className="border border-slate-400 p-3"><input type="text" className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入編號"/></td>
               <td className="border border-slate-400 p-3"><input type="text" className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入姓名"/></td>
               <td className="border border-slate-400 p-3"><textarea className="w-full border border-slate-300 p-1 rounded h-16 resize-none outline-none focus:border-blue-500 transition-colors" placeholder="請輸入加班原因..."></textarea></td>
               <td className="border border-slate-400 p-3 text-center align-middle">
-                {/* 加班類別選擇 BAR */}
                 <div className="inline-flex bg-slate-100 p-1 rounded-md border border-slate-200 shadow-inner">
                   <button 
                     onClick={() => setOtType('事前')}
@@ -242,7 +273,6 @@ const App = () => {
       case 2:
         return (
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-10">
-            {/* 第二步的主旨編輯區 */}
             <div className="flex items-center gap-2 mb-4 bg-blue-50/50 p-4 rounded-lg border border-blue-100 shadow-inner group transition-all hover:bg-blue-50">
                <span className="font-bold text-slate-700 whitespace-nowrap">簽呈主旨：</span>
                <input 
@@ -266,7 +296,6 @@ const App = () => {
               </div>
             </div>
 
-            {/* 根據選擇的範本決定載入的表格內容 */}
             {formData.template === 'HR-02' ? (
               <OvertimeFormTemplate />
             ) : (
@@ -299,10 +328,6 @@ const App = () => {
                     <div>
                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">速別</p>
                       <span className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-xs font-bold border border-red-100">{formData.priority}</span>
-                    </div>
-                    <div>
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">機密等級</p>
-                      <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-xs font-bold border border-amber-100">{formData.security}</span>
                     </div>
                   </div>
                 </div>
@@ -399,9 +424,9 @@ const App = () => {
         return (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-bold text-lg text-slate-700">公文表單資料庫維護中心</h3>
+              <h3 className="font-bold text-lg text-slate-700">公文表單類型</h3>
               <button className="flex items-center gap-2 bg-[#1677FF] text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-blue-100 active:scale-95 transition-all">
-                <Plus size={18} /> 新增表單範本
+                <Plus size={18} /> 新增類型
               </button>
             </div>
             <table className="w-full text-left">
@@ -410,24 +435,81 @@ const App = () => {
                   <th className="px-8 py-5">代碼</th>
                   <th className="px-6 py-5">範本名稱</th>
                   <th className="px-6 py-5">類別</th>
-                  <th className="px-6 py-5">狀態</th>
                   <th className="px-8 py-5 text-right">管理操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-sm font-medium text-slate-600">
-                {forms.map(form => (
-                  <tr key={form.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
-                    <td className="px-8 py-5 font-mono text-gray-400 text-xs">{form.id}</td>
-                    <td className="px-6 py-5 font-bold text-slate-800">{form.name}</td>
-                    <td className="px-6 py-5">{form.category}</td>
+                {forms.map((form, index) => (
+                  <tr key={form.id + index} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-8 py-5">
+                      {editingIndex === index ? (
+                        <input 
+                          className="w-24 border border-blue-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500"
+                          value={editBuffer.id}
+                          onChange={(e) => setEditBuffer({...editBuffer, id: e.target.value})}
+                        />
+                      ) : (
+                        <span className="font-mono text-gray-400 text-xs">{form.id}</span>
+                      )}
+                    </td>
                     <td className="px-6 py-5">
-                      <span className="text-green-600 font-black text-[10px] bg-green-50 px-2 py-1 rounded-full border border-green-100">
-                        {form.status}
-                      </span>
+                      {editingIndex === index ? (
+                        <input 
+                          className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 font-bold"
+                          value={editBuffer.name}
+                          onChange={(e) => setEditBuffer({...editBuffer, name: e.target.value})}
+                        />
+                      ) : (
+                        <span className="font-bold text-slate-800">{form.name}</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-5">
+                      {editingIndex === index ? (
+                        <select 
+                          className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                          value={editBuffer.category}
+                          onChange={(e) => setEditBuffer({...editBuffer, category: e.target.value})}
+                        >
+                          {CATEGORIES.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span>{form.category}</span>
+                      )}
                     </td>
                     <td className="px-8 py-5 text-right space-x-2">
-                      <button className="p-2 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"><Edit3 size={18} /></button>
-                      <button className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={18} /></button>
+                      {editingIndex === index ? (
+                        <>
+                          <button 
+                            onClick={() => saveEdit(index)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                          >
+                            <Check size={18} />
+                          </button>
+                          <button 
+                            onClick={cancelEdit}
+                            className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"
+                          >
+                            <X size={18} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button 
+                            onClick={() => startEdit(index, form)}
+                            className="p-2 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                          >
+                            <Edit3 size={18} />
+                          </button>
+                          <button 
+                            onClick={() => deleteForm(index)}
+                            className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
