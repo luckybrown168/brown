@@ -264,30 +264,30 @@ const App = () => {
             </tbody>
           </table>
 
-          {/* 備註區域：設定字體為新細明體並改為紅色 */}
+          {/* 備註區域：設定字體為新細明體、紅色，且 A-E 縮排 2 個字元 */}
           <div 
-            className="text-[11px] leading-relaxed text-red-600 max-w-full" 
+            className="text-[13px] leading-relaxed text-red-600 max-w-full" 
             style={{ fontFamily: '"PMingLiU", "新細明體", serif' }}
           >
-            <div className="font-bold mb-2 text-[13px]">備註 ：</div>
+            <div className="font-bold mb-2 text-[14px]">備註 ：</div>
             <div className="space-y-1.5">
-              <div className="flex gap-1">
+              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
                 <span className="font-bold shrink-0">A.</span>
                 <span>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</span>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
                 <span className="font-bold shrink-0">B.</span>
                 <span>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</span>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
                 <span className="font-bold shrink-0">C.</span>
                 <span>加班類別: 1.一般上班日 2.國定假日 3.休息日 4.出差加班</span>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
                 <span className="font-bold shrink-0">D.</span>
                 <span>此加班工時將依比率換算為補休時數或薪資。</span>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
                 <span className="font-bold shrink-0">E.</span>
                 <span>每月加班時數上限不得超過46小時。</span>
               </div>
