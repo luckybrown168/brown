@@ -141,6 +141,7 @@ const App = () => {
 
     return (
       <div className="border border-slate-300 rounded shadow-sm bg-white overflow-hidden animate-in fade-in duration-500">
+        {/* 模擬編輯器工具列 */}
         <div className="bg-slate-100 border-b border-slate-300 p-2 flex items-center gap-2 flex-wrap">
           <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>字型</option></select>
           <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>大小</option></select>
@@ -156,17 +157,18 @@ const App = () => {
           <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><List size={14} /></button>
         </div>
 
+        {/* 表格內容區 */}
         <div className="p-8 font-serif">
           <div className="text-center mb-6">
             <h3 className="text-xl font-bold tracking-[0.2em]">** 加 班 工 時 申 請 單 - {otType === '事前' ? '事 前 申 請' : '事 後 申 請'} **</h3>
           </div>
 
-          <table className="w-full border-collapse border border-slate-400 text-sm">
+          <table className="w-full border-collapse border border-slate-400 text-sm mb-6">
             <tbody>
               <tr className="bg-slate-50">
                 <td className="border border-slate-400 p-3 text-center font-bold w-1/6 leading-relaxed">員 工<br/>編 號</td>
-                <td className="border border-slate-400 p-3 text-center font-bold w-1/4">姓 名</td>
-                <td className="border border-slate-400 p-3 text-center font-bold w-1/3">事 由</td>
+                <td className="border border-slate-400 p-3 text-center font-bold w-1/4 leading-relaxed">姓 名</td>
+                <td className="border border-slate-400 p-3 text-center font-bold w-1/3 leading-relaxed">事 由</td>
                 <td className="border border-slate-400 p-3 text-center font-bold w-1/6">加班<br/>類別</td>
               </tr>
               <tr>
@@ -261,6 +263,36 @@ const App = () => {
               </tr>
             </tbody>
           </table>
+
+          {/* 備註區域：設定字體為新細明體並改為紅色 */}
+          <div 
+            className="text-[11px] leading-relaxed text-red-600 max-w-full" 
+            style={{ fontFamily: '"PMingLiU", "新細明體", serif' }}
+          >
+            <div className="font-bold mb-2 text-[13px]">備註 ：</div>
+            <div className="space-y-1.5">
+              <div className="flex gap-1">
+                <span className="font-bold shrink-0">A.</span>
+                <span>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</span>
+              </div>
+              <div className="flex gap-1">
+                <span className="font-bold shrink-0">B.</span>
+                <span>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</span>
+              </div>
+              <div className="flex gap-1">
+                <span className="font-bold shrink-0">C.</span>
+                <span>加班類別: 1.一般上班日 2.國定假日 3.休息日 4.出差加班</span>
+              </div>
+              <div className="flex gap-1">
+                <span className="font-bold shrink-0">D.</span>
+                <span>此加班工時將依比率換算為補休時數或薪資。</span>
+              </div>
+              <div className="flex gap-1">
+                <span className="font-bold shrink-0">E.</span>
+                <span>每月加班時數上限不得超過46小時。</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
