@@ -36,7 +36,8 @@ import {
   Home,
   FileCheck2,
   UserCheck,
-  Play
+  Play,
+  Sliders
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -222,7 +223,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onSubmit }) => {
   );
 };
 
-// --- 組件：提交成功後的公文總結頁面 ---
+// --- 組件：公文總結頁面 ---
 const SubmissionSummary = ({ schema, values, onReset }) => {
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500">
@@ -310,73 +311,24 @@ const App = () => {
   // --- 狀態管理 ---
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [selectedFieldId, setSelectedFieldId] = useState(null);
 
-  // --- No-Code 渲染引擎核心狀態 ---
+  // --- No-Code 渲染引擎核心狀態 (全域維護) ---
   const [myFormSchema, setMyFormSchema] = useState({
     title: "差勤加班智慧表單",
     fields: [
-      { 
-        id: "category", 
-        label: "選擇類別", 
-        type: "select", 
-        options: ["行政類", "銷售類", "差勤類", "系統類"], 
-        width: "w-full" 
-      },
-      { 
-        id: "leave_type", 
-        label: "假單類別", 
-        type: "select", 
-        options: ["特休", "事假", "病假", "喪假", "加班"], 
-        dependsOn: "category", 
-        showIf: "差勤類", 
-        width: "w-full" 
-      },
-      { 
-        id: "ot_type", 
-        label: "加班類型", 
-        type: "select", 
-        options: ["事前", "事後"], 
-        dependsOn: "leave_type", 
-        showIf: "加班", 
-        width: "w-full" 
-      },
-      { 
-        id: "ot_start_time", 
-        label: "加班開始日期時間", 
-        type: "datetime", 
-        dependsOn: "ot_type", 
-        showIf: ["事前", "事後"], 
-        width: "w-full" 
-      },
-      { 
-        id: "ot_end_time", 
-        label: "加班結束日期時間", 
-        type: "datetime", 
-        dependsOn: "ot_type", 
-        showIf: ["事前", "事後"], 
-        width: "w-full" 
-      },
-      { 
-        id: "ot_reason", 
-        label: "加班事由", 
-        type: "text", 
-        dependsOn: "ot_type", 
-        showIf: ["事前", "事後"], 
-        width: "w-full" 
-      },
-      { 
-        id: "submit_btn", 
-        label: "提交簽核表單", 
-        type: "button", 
-        width: "w-full" 
-      }
+      { id: "category", label: "選擇類別", type: "select", options: ["行政類", "銷售類", "差勤類", "系統類"], width: "w-full" },
+      { id: "leave_type", label: "假單類別", type: "select", options: ["特休", "事假", "病假", "喪假", "加班"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
+      { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "leave_type", showIf: "加班", width: "w-full" },
+      { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      { id: "submit_btn", label: "提交簽核表單", type: "button", width: "w-full" }
     ]
   });
 
   const [formValues, setFormValues] = useState({});
-  const [selectedFieldId, setSelectedFieldId] = useState(null);
 
   const handleInputChange = (id, value) => {
     setFormValues(prev => ({ ...prev, [id]: value }));
@@ -401,7 +353,7 @@ const App = () => {
   ];
 
   const toggleModal = () => {
-    if (!isModalOpen) setCurrentStep(1);
+    if (!isModalOpen) resetForm();
     setIsModalOpen(!isModalOpen);
   };
 
@@ -440,37 +392,8 @@ const App = () => {
         );
       case 'inbox':
         return (
-          <div className="h-full flex gap-8 animate-in fade-in duration-500">
-            <div className={`w-1/3 flex flex-col gap-6 transition-opacity duration-500 ${isSubmitted ? 'opacity-30 pointer-events-none' : ''}`}>
-              <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm flex flex-col">
-                <div className="flex items-center gap-3 mb-6 text-[#1677FF]">
-                  <Box className="w-6 h-6" />
-                  <span className="font-black text-xl">智慧引擎邏輯配置</span>
-                </div>
-                <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2">
-                  {myFormSchema.fields.map((field) => (
-                    <div 
-                      key={field.id}
-                      onClick={() => setSelectedFieldId(field.id)}
-                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col group ${selectedFieldId === field.id ? 'border-blue-500 bg-blue-50/30' : 'border-slate-100 hover:border-blue-200 bg-white'}`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-bold text-slate-700">{field.label}</p>
-                        <span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-400 uppercase">{field.type}</span>
-                      </div>
-                      {field.dependsOn && (
-                        <div className="flex items-center gap-1 text-[10px] text-[#1677FF] font-bold">
-                          <ArrowRight size={10} />
-                          連動自: {field.dependsOn}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
+          <div className="h-full flex justify-center animate-in fade-in duration-500">
+            <div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
               {!isSubmitted ? (
                 <>
                   <div className="absolute top-8 left-12 flex items-center gap-3">
@@ -504,9 +427,81 @@ const App = () => {
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-in slide-in-from-bottom-4">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="font-bold text-lg text-slate-700">公文表單類型庫</h3>
-              <button type="button" className="flex items-center gap-2 bg-[#1677FF] text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-lg"><Plus size={18} /> 新增表單</button>
+              <button type="button" className="flex items-center gap-2 bg-[#1677FF] text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-blue-100 active:scale-95"><Plus size={18} /> 新增表單</button>
             </div>
             <div className="p-10 text-center text-slate-300 italic">資料庫內容載入中...</div>
+          </div>
+        );
+      case 'settings':
+        return (
+          <div className="h-full flex gap-8 animate-in fade-in duration-500">
+            {/* 智慧引擎邏輯配置面板 (現在顯示於系統設定中) */}
+            <div className="w-1/3 flex flex-col gap-6">
+              <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm flex flex-col">
+                <div className="flex items-center gap-3 mb-6 text-[#1677FF]">
+                  <Box className="w-6 h-6" />
+                  <span className="font-black text-xl">智慧引擎邏輯配置</span>
+                </div>
+                <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2">
+                  {myFormSchema.fields.map((field) => (
+                    <div 
+                      key={field.id}
+                      onClick={() => setSelectedFieldId(field.id)}
+                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col group ${selectedFieldId === field.id ? 'border-blue-500 bg-blue-50/30' : 'border-slate-100 hover:border-blue-200 bg-white'}`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-bold text-slate-700">{field.label}</p>
+                        <span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-400 uppercase">{field.type}</span>
+                      </div>
+                      {field.dependsOn && (
+                        <div className="flex items-center gap-1 text-[10px] text-[#1677FF] font-bold">
+                          <ArrowRight size={10} />
+                          連動自: {field.dependsOn}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 屬性細節 */}
+            <div className="flex-1 bg-slate-900 rounded-[3rem] p-12 text-white shadow-2xl overflow-y-auto">
+               <div className="flex items-center gap-3 mb-10">
+                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center"><Sliders size={20}/></div>
+                  <div>
+                    <h3 className="font-black text-xl">引擎屬性編輯</h3>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Engine Property Tuning</p>
+                  </div>
+               </div>
+
+               {selectedFieldId ? (
+                 <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                    <div>
+                      <label className="text-xs font-black text-slate-500 uppercase mb-3 block">欄位名稱 (Label)</label>
+                      <input 
+                        value={myFormSchema.fields.find(f => f.id === selectedFieldId)?.label}
+                        onChange={(e) => {
+                          const newFields = myFormSchema.fields.map(f => f.id === selectedFieldId ? {...f, label: e.target.value} : f);
+                          setMyFormSchema({...myFormSchema, fields: newFields});
+                        }}
+                        className="w-full bg-slate-800 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      />
+                    </div>
+                    <div className="bg-blue-600/10 p-6 rounded-[2rem] border border-blue-500/20">
+                      <p className="text-xs font-black text-blue-400 uppercase mb-2">條件連動詳細 (JSON Schema)</p>
+                      <pre className="text-[10px] text-slate-400 font-mono leading-relaxed bg-black/20 p-4 rounded-xl">
+                        {JSON.stringify(myFormSchema.fields.find(f => f.id === selectedFieldId), null, 2)}
+                      </pre>
+                    </div>
+                 </div>
+               ) : (
+                 <div className="h-64 flex flex-col items-center justify-center text-slate-600 italic gap-4">
+                    <MousePointer2 size={40} className="opacity-20" />
+                    請點擊左側元件清單進行邏輯調整
+                 </div>
+               )}
+            </div>
           </div>
         );
       default: return null;
@@ -522,7 +517,6 @@ const App = () => {
             { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
             { id: 'database', label: '表單庫維護', icon: Database },
             { id: 'inbox', label: '智慧建單', icon: MousePointer2 },
-            { id: 'analytics', label: '效能分析', icon: BarChart3 },
             { id: 'settings', label: '系統設定', icon: Settings },
           ].map((item) => (
             <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'}`}><div className="flex items-center gap-3"><item.icon size={20} /><span>{item.label}</span></div></button>
