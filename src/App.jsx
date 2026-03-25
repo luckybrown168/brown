@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -12,512 +12,177 @@ import {
   Clock, 
   AlertCircle, 
   CheckCircle2, 
-  MoreVertical,
-  ChevronRight,
-  ChevronLeft,
   X,
   Save, 
   Check, 
-  ShieldAlert,
   Calendar,
   Database,
   Trash2,
   Edit3,
-  Bold,
-  Italic,
-  Underline,
   Type,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  List,
   Paperclip,
-  Users,
-  ArrowRight
+  ArrowRight,
+  ChevronRight,
+  ChevronLeft,
+  GripVertical,
+  MousePointer2,
+  ListOrdered,
+  Settings2,
+  Eye,
+  Box
 } from 'lucide-react';
+
+// --- 全域設計規範 (Design Tokens) ---
+const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", serif' };
 
 const App = () => {
   // --- 狀態管理 ---
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1); 
-  const [otType, setOtType] = useState('事前'); 
+  const [currentStep, setCurrentStep] = useState(1);
 
-  // --- 選項定義 ---
-  const CATEGORIES = ["財務類", "行政類", "銷售類", "產品類", "差勤類", "系統類"];
-  
-  // 統一字體樣式：新細明體
-  const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", serif' };
-
-  // 輔助函式：產生數字陣列
-  const range = (start, end) => Array.from({ length: end - start + 1 }, (_, i) => start + i);
-
-  // --- 表單資料庫狀態 ---
-  const [forms, setForms] = useState([
-    { id: 'HR-01', category: '差勤類', name: '特別休假申請單', desc: '年度休假申請' },
-    { id: 'HR-02', category: '差勤類', name: '加班申請單', desc: '加班紀錄與補休' },
-    { id: 'FIN-01', category: '財務類', name: '專案採購簽呈', desc: '重大採購核銷' },
-    { id: 'ADM-01', category: '行政類', name: '辦公設備領用單', desc: '設備領用與歸還' },
-  ]);
-
-  // 編輯模式狀態
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [editBuffer, setEditBuffer] = useState({ id: '', name: '', category: '' });
-
-  // 新增模式狀態
-  const [isAdding, setIsAdding] = useState(false);
-  const [addBuffer, setAddBuffer] = useState({ id: '', name: '', category: CATEGORIES[0] });
-
-  const [formData, setFormData] = useState({
-    template: '',
-    subject: '',
-    priority: '普通件',
-    deadline: '',
-    security: '普通'
+  // --- No-Code 渲染引擎核心狀態 (Schema) ---
+  const [myFormSchema, setMyFormSchema] = useState({
+    title: "差勤加班智慧表單",
+    fields: [
+      { 
+        id: "category", 
+        label: "選擇類別", 
+        type: "select", 
+        options: ["行政類", "銷售類", "差勤類", "系統類"], 
+        width: "w-full" 
+      },
+      { 
+        id: "leave_type", 
+        label: "假單類別", 
+        type: "select", 
+        options: ["特休", "事假", "病假", "喪假", "加班"], 
+        dependsOn: "category", 
+        showIf: "差勤類", 
+        width: "w-full" 
+      },
+      { 
+        id: "ot_type", 
+        label: "加班類型", 
+        type: "select", 
+        options: ["事前", "事後"], 
+        dependsOn: "leave_type", 
+        showIf: "加班", 
+        width: "w-full" 
+      },
+      { 
+        id: "ot_reason", 
+        label: "加班事由", 
+        type: "text", 
+        dependsOn: "ot_type", 
+        showIf: ["事前", "事後"], // 只要選了類型就開啟
+        width: "w-full" 
+      },
+      { 
+        id: "submit_btn", 
+        label: "提交表單", 
+        type: "button", 
+        width: "w-full" 
+      }
+    ]
   });
+
+  // 表單輸入值追蹤
+  const [formValues, setFormValues] = useState({});
+  const [selectedFieldId, setSelectedFieldId] = useState(null);
+
+  // --- 模擬統計數據 ---
+  const STATS = [
+    { label: '待辦公文', value: 12, color: 'text-blue-600', bg: 'bg-blue-50', icon: Clock },
+    { label: '處理中', value: 5, color: 'text-green-600', bg: 'bg-green-50', icon: FileText },
+    { label: '表單庫數量', value: 4, color: 'text-amber-600', bg: 'bg-amber-50', icon: Database },
+    { label: '本月已結案', value: 48, color: 'text-gray-600', bg: 'bg-gray-100', icon: CheckCircle2 },
+  ];
+
+  // --- 核心組件：智慧渲染引擎 ---
+  const SmartFormEngine = ({ schema }) => {
+    const handleInputChange = (id, value) => {
+      setFormValues(prev => {
+        const newState = { ...prev, [id]: value };
+        // 簡單的邏輯優化：如果父項改變，清除所有子項的值
+        return newState;
+      });
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white border border-slate-300 rounded-xl p-8 shadow-sm font-serif">
+          <h3 className="text-xl font-bold mb-8 text-center tracking-widest text-slate-800">** {schema.title.split('').join(' ')} **</h3>
+          
+          <div className="space-y-6">
+            {schema.fields.map(field => {
+              // 實作階層連動邏輯
+              if (field.dependsOn) {
+                const parentValue = formValues[field.dependsOn];
+                const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
+                if (!showConditions.includes(parentValue)) return null;
+              }
+
+              return (
+                <div key={field.id} className={`${field.width} animate-in fade-in slide-in-from-top-2 duration-300`}>
+                  {field.type !== "button" && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-1.5 bg-[#1677FF] rounded-full"></div>
+                      <label className="text-sm font-bold text-slate-700 underline decoration-slate-200 underline-offset-4">{field.label}：</label>
+                    </div>
+                  )}
+
+                  {field.type === "select" && (
+                    <select 
+                      style={mingLiUStyle}
+                      value={formValues[field.id] || ""}
+                      onChange={(e) => handleInputChange(field.id, e.target.value)}
+                      className="w-full border border-slate-400 p-2 rounded text-sm outline-none focus:border-blue-500 bg-white shadow-sm"
+                    >
+                      <option value="">-- 請選擇 --</option>
+                      {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  )}
+
+                  {(field.type === "text" || field.type === "number") && (
+                    <input 
+                      type={field.type}
+                      style={mingLiUStyle}
+                      placeholder={`請輸入${field.label}`}
+                      value={formValues[field.id] || ""}
+                      onChange={(e) => handleInputChange(field.id, e.target.value)}
+                      className="w-full border border-slate-400 p-2 rounded text-sm outline-none focus:border-blue-500 shadow-sm"
+                    />
+                  )}
+
+                  {field.type === "button" && (
+                    <button 
+                      className="w-full mt-4 bg-[#1677FF] text-white py-3 rounded-xl font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Send size={18} /> {field.label}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 企業風格備註區 */}
+          <div className="mt-10 border-t border-dashed border-slate-200 pt-6 leading-relaxed text-red-600" style={mingLiUStyle}>
+            <div className="font-bold mb-2 text-[14px]">智慧表單備註 ：</div>
+            <div className="space-y-1.5 text-[13px]">
+              <div className="flex gap-1" style={{ paddingLeft: '2em' }}><span className="font-bold">A.</span><span>此表單採用四層連動架構：類別 {'->'} 假單 {'->'} 類型 {'->'} 事由。</span></div>
+              <div className="flex gap-1" style={{ paddingLeft: '2em' }}><span className="font-bold">B.</span><span>「加班」項目須明確區分事前申請或事後補辦。</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const toggleModal = () => {
     if (!isModalOpen) setCurrentStep(1);
     setIsModalOpen(!isModalOpen);
-  };
-
-  // --- 表單庫維護功能 ---
-  
-  const startAdd = () => {
-    setIsAdding(true);
-    setEditingIndex(null);
-    setAddBuffer({ id: '', name: '', category: CATEGORIES[0] });
-  };
-
-  const saveAdd = () => {
-    if (!addBuffer.id || !addBuffer.name) return;
-    setForms([{ ...addBuffer, desc: '' }, ...forms]);
-    setIsAdding(false);
-  };
-
-  const cancelAdd = () => {
-    setIsAdding(false);
-  };
-
-  const startEdit = (index, form) => {
-    setIsAdding(false);
-    setEditingIndex(index);
-    setEditBuffer({ id: form.id, name: form.name, category: form.category });
-  };
-
-  const cancelEdit = () => {
-    setEditingIndex(null);
-  };
-
-  const saveEdit = (index) => {
-    const newForms = [...forms];
-    newForms[index] = { 
-      ...newForms[index], 
-      id: editBuffer.id, 
-      name: editBuffer.name,
-      category: editBuffer.category 
-    };
-    setForms(newForms);
-    setEditingIndex(null);
-  };
-
-  const deleteForm = (index) => {
-    const newForms = forms.filter((_, i) => i !== index);
-    setForms(newForms);
-  };
-
-  // --- 步驟二：加班申請單模板組件 ---
-  const OvertimeFormTemplate = () => {
-    const years = range(2026, 2030);
-    const months = range(1, 12);
-    const days = range(1, 31);
-    const hours = range(0, 23);
-    const minutes = [0, 30];
-    
-    // 檔案選取相關
-    const fileInputRef = useRef(null);
-    const [selectedFileName, setSelectedFileName] = useState("無附件");
-
-    const handleFileChange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        setSelectedFileName(file.name);
-      }
-    };
-
-    const triggerFilePicker = () => {
-      fileInputRef.current.click();
-    };
-
-    return (
-      <>
-        {/* 主要表格與備註框架 (白色方框) */}
-        <div className="border border-slate-300 rounded shadow-sm bg-white overflow-hidden animate-in fade-in duration-500">
-          <div className="p-8 font-serif">
-            <div className="text-center mb-6">
-              <h3 className="text-xl font-bold tracking-[0.2em]">** 加 班 工 時 申 請 單 - {otType === '事前' ? '事 前 申 請' : '事 後 申 請'} **</h3>
-            </div>
-
-            <table className="w-full border-collapse border border-slate-400 text-sm mb-6">
-              <tbody>
-                <tr className="bg-slate-50">
-                  <td className="border border-slate-400 p-3 text-center font-bold w-1/6 leading-relaxed">員 工<br/>編 號</td>
-                  <td className="border border-slate-400 p-3 text-center font-bold w-1/4 leading-relaxed">姓 名</td>
-                  <td className="border border-slate-400 p-3 text-center font-bold w-1/3 leading-relaxed">事 由</td>
-                  <td className="border border-slate-400 p-3 text-center font-bold w-1/6">加班<br/>類別</td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-400 p-3">
-                    <input type="text" style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入編號"/>
-                  </td>
-                  <td className="border border-slate-400 p-3">
-                    <input type="text" style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入姓名"/>
-                  </td>
-                  <td className="border border-slate-400 p-3">
-                    <textarea style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded h-16 resize-none outline-none focus:border-blue-500 transition-colors" placeholder="請輸入加班原因..."></textarea>
-                  </td>
-                  <td className="border border-slate-400 p-3 text-center align-middle">
-                    <div className="inline-flex bg-slate-100 p-1 rounded-md border border-slate-200 shadow-inner">
-                      <button 
-                        onClick={() => setOtType('事前')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事前' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
-                        事前
-                      </button>
-                      <button 
-                        onClick={() => setOtType('事後')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事後' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
-                        事後
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">實際加班<br/>起訖時間</td>
-                  <td colSpan="3" className="border border-slate-400 p-3">
-                    <div className="flex items-center gap-2 flex-wrap text-xs">
-                      <span>自</span>
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                      </select>年
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {months.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>月
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {days.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>日
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {hours.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>時
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
-                      </select>分起
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap text-xs mt-3">
-                      <span>至</span>
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                      </select>年
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {months.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>月
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {days.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>日
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {hours.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>時
-                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                        {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
-                      </select>分止
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">工時數</td>
-                  <td colSpan="3" className="border border-slate-400 p-3 text-xs">
-                    共計 
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
-                      {range(0, 30).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select> 日 
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
-                      {range(0, 23).map(h => <option key={h} value={h}>{h}</option>)}
-                    </select> 時
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
-                      {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
-                    </select> 分
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold text-red-600 whitespace-nowrap">選項 *</td>
-                  <td colSpan="3" className="border border-slate-400 p-3 text-xs">
-                    <label className="inline-flex items-center gap-2 mr-6 cursor-pointer hover:text-blue-600 group">
-                      <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
-                      <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">換補休</span>
-                    </label>
-                    <label className="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 group">
-                      <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
-                      <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">計薪</span>
-                    </label>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* 備註區域 */}
-            <div 
-              className="leading-relaxed text-red-600 max-w-full" 
-              style={mingLiUStyle}
-            >
-              <div className="font-bold mb-2 text-[14px]">備註 ：</div>
-              <div className="space-y-1.5 text-[13px]">
-                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                  <span className="font-bold shrink-0">A.</span>
-                  <span>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</span>
-                </div>
-                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                  <span className="font-bold shrink-0">B.</span>
-                  <span>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</span>
-                </div>
-                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                  <span className="font-bold shrink-0">C.</span>
-                  <span>加班類別: 1.一般上班日 2.國定假日 3.休息日 4.出差加班</span>
-                </div>
-                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                  <span className="font-bold shrink-0">D.</span>
-                  <span>此加班工時將依比率換算為補休時數或薪資。</span>
-                </div>
-                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                  <span className="font-bold shrink-0">E.</span>
-                  <span>每月加班時數上限不得超過46小時。</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* --- 框架外的功能區域 (意見、附件、引用) --- */}
-        <div className="mt-6 space-y-4 animate-in fade-in duration-500">
-          {/* 意見 */}
-          <div className="flex items-start gap-2">
-            <div className="flex items-center gap-1 mt-1 shrink-0">
-              <div className="w-2 h-2 bg-[#4A6FB5] rounded-full"></div>
-              <span className="text-sm font-bold text-slate-700">意見：</span>
-            </div>
-            <textarea 
-              style={mingLiUStyle}
-              className="flex-1 border border-slate-400 rounded p-2 h-16 outline-none focus:border-blue-500 transition-colors resize-none"
-            ></textarea>
-          </div>
-
-          {/* 附加檔案 */}
-          <div className="flex items-stretch border border-slate-300 rounded overflow-hidden">
-            <div 
-              onClick={triggerFilePicker}
-              className="bg-slate-50 px-3 py-2 border-r border-slate-300 flex items-center gap-2 shrink-0 cursor-pointer hover:bg-slate-100 transition-colors"
-            >
-              <div className="w-2 h-2 bg-[#4A6FB5] rounded-full"></div>
-              <span className="text-sm font-bold text-blue-700 underline">附加檔案：</span>
-            </div>
-            <div className="px-3 py-2 flex-1 bg-white flex items-center">
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                className="hidden" 
-              />
-              <span style={mingLiUStyle} className={`text-sm ${selectedFileName === "無附件" ? "text-slate-300 italic" : "text-slate-700 font-bold"}`}>
-                {selectedFileName}
-              </span>
-            </div>
-          </div>
-
-          {/* 引用已結案簽文 */}
-          <div className="flex items-stretch border border-slate-300 rounded overflow-hidden">
-            <div className="bg-slate-50 px-3 py-2 border-r border-slate-300 flex items-center gap-2 shrink-0">
-              <div className="w-2 h-2 bg-[#4A6FB5] rounded-full"></div>
-              <span className="text-sm font-bold text-blue-700 underline cursor-pointer">引用已結案簽文：</span>
-            </div>
-            <div className="px-3 py-2 flex-1 bg-white flex items-center">
-              <span style={mingLiUStyle} className="text-sm text-slate-300 italic">無</span>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  };
-
-  // --- 統計數據與頁面渲染邏輯 ---
-  const STATS = [
-    { label: '待辦公文', value: 12, color: 'text-blue-600', bg: 'bg-blue-50', icon: Clock },
-    { label: '處理中', value: 5, color: 'text-green-600', bg: 'bg-green-50', icon: FileText },
-    { label: '表單庫數量', value: forms.length, color: 'text-amber-600', bg: 'bg-amber-50', icon: Database },
-    { label: '本月已結案', value: 48, color: 'text-gray-600', bg: 'bg-gray-100', icon: CheckCircle2 },
-  ];
-
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-8 max-w-4xl animate-in fade-in duration-300">
-            <div className="grid grid-cols-12 gap-6 items-center">
-              <label className="col-span-3 text-right font-bold text-slate-700">請選擇表單範本</label>
-              <div className="col-span-9">
-                <select 
-                  value={formData.template}
-                  onChange={(e) => setFormData({...formData, template: e.target.value})}
-                  style={mingLiUStyle}
-                  className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none transition-all cursor-pointer font-bold text-slate-600"
-                >
-                  <option value="">-- 請選擇表單範本 (來自資料庫) --</option>
-                  {forms.map(f => (
-                    <option key={f.id} value={f.id}>{f.category} - {f.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-12 gap-6 items-start">
-              <label className="col-span-3 text-right font-bold text-slate-700 mt-3">簽呈主旨</label>
-              <div className="col-span-9">
-                <textarea 
-                  rows="2"
-                  value={formData.subject}
-                  onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                  style={mingLiUStyle}
-                  placeholder="請輸入明確的主旨內容..."
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none transition-all resize-none font-bold text-slate-700"
-                ></textarea>
-              </div>
-            </div>
-            <div className="grid grid-cols-12 gap-8">
-              <div className="col-span-6 grid grid-cols-12 gap-4 items-center">
-                <label className="col-span-5 text-right font-bold text-slate-700">處理速別</label>
-                <div className="col-span-7 flex p-1 bg-slate-100 rounded-lg">
-                  {['普通件', '速件', '最速件'].map((p) => (
-                    <button 
-                      key={p}
-                      onClick={() => setFormData({...formData, priority: p})}
-                      className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${
-                        formData.priority === p ? 'bg-white text-[#1677FF] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="col-span-6 grid grid-cols-12 gap-4 items-center">
-                <label className="col-span-4 text-right font-bold text-slate-700">簽核期限</label>
-                <div className="col-span-8 relative">
-                  <input 
-                    type="date"
-                    value={formData.deadline}
-                    onChange={(e) => setFormData({...formData, deadline: e.target.value})}
-                    style={mingLiUStyle}
-                    className="w-full h-11 pl-4 pr-10 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none font-bold text-slate-700"
-                  />
-                  <Calendar size={18} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      case 2:
-        return (
-          <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-10">
-            <div className="flex items-center gap-2 mb-4 bg-blue-50/50 p-4 rounded-lg border border-blue-100 shadow-inner group transition-all hover:bg-blue-50">
-               <span className="font-bold text-slate-700 whitespace-nowrap">簽呈主旨：</span>
-               <input 
-                 type="text"
-                 value={formData.subject}
-                 onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                 style={mingLiUStyle}
-                 placeholder="（請輸入主旨）"
-                 className="flex-1 bg-transparent text-[#1677FF] font-black text-lg underline decoration-2 underline-offset-4 outline-none border-none focus:ring-0 placeholder:text-blue-200"
-               />
-               <Edit3 size={16} className="text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-bold text-slate-500 flex items-center gap-2">
-                <Type size={16} className="text-slate-400" /> 請填寫簽呈內容，並選擇附加檔案：
-              </p>
-              {/* "上傳附件" 按鈕已依要求移除 */}
-            </div>
-
-            {formData.template === 'HR-02' ? (
-              <OvertimeFormTemplate />
-            ) : (
-               <div className="h-64 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-2xl italic text-sm gap-3">
-                 <Database size={40} className="opacity-20" />
-                 請回上一步選擇「人事類 - 加班申請單」以加載對應表格
-               </div>
-            )}
-          </div>
-        );
-      case 3:
-        return (
-          <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
-            <div className="bg-slate-50 p-8 rounded-2xl border border-slate-200">
-              <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-200 pb-4">
-                <CheckCircle2 className="text-green-500" size={24} /> 最終發布確認
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-10">
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">公文主旨</p>
-                    <p className="text-lg font-bold text-[#1677FF]">{formData.subject}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">對應範本</p>
-                    <p className="text-sm font-bold text-slate-700">{forms.find(f => f.id === formData.template)?.name || '未選取'}</p>
-                  </div>
-                  <div className="flex gap-10">
-                    <div>
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">速別</p>
-                      <span className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-xs font-bold border border-red-100">{formData.priority}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">預計簽核路徑</p>
-                  <div className="space-y-4">
-                    {[
-                      { role: '申請人', name: '資深設計師 Felix', status: '當前' },
-                      { role: '部門主管', name: '張部長', status: '待處理' },
-                      { role: '人事單位', name: '李組長', status: '待處理' },
-                      { role: '決策層', name: '王總經理', status: '最終核定' }
-                    ].map((step, i, arr) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-slate-100 text-slate-400'}`}>
-                          {i + 1}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs font-bold text-slate-700 leading-none mb-1">{step.role}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">{step.name}</p>
-                        </div>
-                        {i < arr.length - 1 && <ArrowRight size={14} className="text-slate-200" />}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-10 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-3">
-                 <AlertCircle className="text-amber-500 mt-0.5" size={18} />
-                 <p className="text-xs text-amber-700 leading-relaxed font-bold">
-                   請注意：一旦送出簽核，公文內容將被鎖定為唯讀狀態。若需修改內容，請在點擊下方「送出簽核」按鈕前，使用「上一步」功能返回編輯。
-                 </p>
-              </div>
-            </div>
-          </div>
-        );
-      default:
-        return null;
-    }
   };
 
   const renderMainContent = () => {
@@ -527,367 +192,103 @@ const App = () => {
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {STATS.map((stat, idx) => {
-                const Icon = stat.icon;
+                const IconComp = stat.icon;
                 return (
-                  <div key={idx} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
+                  <div key={idx} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
                     <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-sm text-gray-400 mb-1 font-bold">{stat.label}</p>
-                        <h3 className={`text-3xl font-black ${stat.color}`}>{stat.value}</h3>
-                      </div>
-                      <div className={`p-3 rounded-lg ${stat.bg} ${stat.color}`}>
-                        <Icon size={24} />
-                      </div>
+                      <div><p className="text-sm text-gray-400 mb-1 font-bold">{stat.label}</p><h3 className={`text-3xl font-black ${stat.color}`}>{stat.value}</h3></div>
+                      <div className={`p-3 rounded-lg ${stat.bg} ${stat.color}`}><IconComp size={24} /></div>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="grid grid-cols-3 gap-6">
-              <div className="col-span-2 bg-white p-8 rounded-xl border border-gray-100 shadow-sm h-72 flex items-center justify-center text-gray-300 font-medium italic border-dashed border-2">
-                [ 系統動態加載中，暫無即時訊息 ]
-              </div>
-              <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                <h3 className="font-bold text-lg mb-6 flex items-center gap-2 border-b border-slate-50 pb-4">
-                  <PlusCircle size={20} className="text-[#1677FF]" /> 快速發起範本
-                </h3>
-                <div className="space-y-3">
-                  {forms.slice(0, 4).map((f) => (
-                    <button 
-                      key={f.id} 
-                      onClick={() => {
-                        setFormData({...formData, template: f.id, subject: `【發起】${f.name}`});
-                        toggleModal();
-                      }}
-                      className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-all group"
+          </div>
+        );
+      case 'inbox':
+        return (
+          <div className="h-full flex gap-8 animate-in fade-in duration-500">
+            {/* 左側：階層邏輯視圖 */}
+            <div className="w-1/3 flex flex-col gap-6">
+              <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm flex flex-col">
+                <div className="flex items-center gap-3 mb-6 text-[#1677FF]">
+                  <Box className="w-6 h-6" />
+                  <span className="font-black text-xl">智慧引擎邏輯配置</span>
+                </div>
+                
+                <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2">
+                  {myFormSchema.fields.map((field) => (
+                    <div 
+                      key={field.id}
+                      onClick={() => setSelectedFieldId(field.id)}
+                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col group ${selectedFieldId === field.id ? 'border-blue-500 bg-blue-50/30' : 'border-slate-100 hover:border-blue-200 bg-white'}`}
                     >
-                      <span className="text-sm font-bold text-slate-600 group-hover:text-[#1677FF]">{f.name}</span>
-                      <ChevronRight size={16} className="text-gray-300 group-hover:text-[#1677FF] transform group-hover:translate-x-1 transition-transform" />
-                    </button>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-bold text-slate-700">{field.label}</p>
+                        <span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-400 uppercase">{field.type}</span>
+                      </div>
+                      {field.dependsOn && (
+                        <div className="flex items-center gap-1 text-[10px] text-[#1677FF] font-bold">
+                          <ArrowRight size={10} />
+                          連動自: {field.dependsOn} (值為 {Array.isArray(field.showIf) ? field.showIf.join('/') : field.showIf})
+                        </div>
+                      )}
+                    </div>
                   ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 右側：渲染引擎即時輸出 */}
+            <div className="flex-1 bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
+              <div className="absolute top-8 left-12 flex items-center gap-3">
+                <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#1677FF]"><Eye size={20} /></div>
+                <div>
+                  <h3 className="font-black text-slate-800 text-lg">智慧引擎輸出預覽</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Multi-Level Logic Render</p>
+                </div>
+              </div>
+              
+              <div className="mt-16">
+                <SmartFormEngine schema={myFormSchema} />
+              </div>
+
+              <div className="mt-8 flex justify-center">
+                <div className="px-6 py-2 bg-white border shadow-sm rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                  請測試連動：差勤類 {'->'} 加班 {'->'} 事前/事後
                 </div>
               </div>
             </div>
           </div>
         );
-      case 'database':
-        return (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-bold text-lg text-slate-700">公文表單類型</h3>
-              <button 
-                onClick={startAdd}
-                className="flex items-center gap-2 bg-[#1677FF] text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-blue-100 active:scale-95 transition-all hover:bg-blue-700"
-              >
-                <Plus size={18} /> 新增表單
-              </button>
-            </div>
-            <table className="w-full text-left">
-              <thead className="bg-white text-[10px] text-gray-400 font-black uppercase tracking-widest border-b border-gray-100">
-                <tr>
-                  <th className="px-8 py-5">代碼</th>
-                  <th className="px-6 py-5">範本名稱</th>
-                  <th className="px-6 py-5">類別</th>
-                  <th className="px-8 py-5 text-right">管理操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 text-sm font-medium text-slate-600">
-                {/* 新增列 */}
-                {isAdding && (
-                  <tr className="bg-blue-50/50 animate-in fade-in duration-300">
-                    <td className="px-8 py-5">
-                      <input 
-                        style={mingLiUStyle}
-                        className="w-24 border border-blue-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                        placeholder="ID"
-                        value={addBuffer.id}
-                        onChange={(e) => setAddBuffer({...addBuffer, id: e.target.value})}
-                      />
-                    </td>
-                    <td className="px-6 py-5">
-                      <input 
-                        style={mingLiUStyle}
-                        className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 font-bold bg-white"
-                        placeholder="名稱"
-                        value={addBuffer.name}
-                        onChange={(e) => setAddBuffer({...addBuffer, name: e.target.value})}
-                      />
-                    </td>
-                    <td className="px-6 py-5">
-                      <select 
-                        style={mingLiUStyle}
-                        className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                        value={addBuffer.category}
-                        onChange={(e) => setAddBuffer({...addBuffer, category: e.target.value})}
-                      >
-                        {CATEGORIES.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-8 py-5 text-right space-x-2">
-                      <button 
-                        onClick={saveAdd}
-                        className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-all"
-                        title="確認新增"
-                      >
-                        <Check size={18} />
-                      </button>
-                      <button 
-                        onClick={cancelAdd}
-                        className="p-2 text-slate-400 hover:bg-slate-200 rounded-lg transition-all"
-                        title="取消"
-                      >
-                        <X size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                )}
-
-                {forms.map((form, index) => (
-                  <tr key={form.id + index} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-8 py-5">
-                      {editingIndex === index ? (
-                        <input 
-                          style={mingLiUStyle}
-                          className="w-24 border border-blue-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                          value={editBuffer.id}
-                          onChange={(e) => setEditBuffer({...editBuffer, id: e.target.value})}
-                        />
-                      ) : (
-                        <span className="font-mono text-gray-400 text-xs">{form.id}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-5">
-                      {editingIndex === index ? (
-                        <input 
-                          style={mingLiUStyle}
-                          className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 font-bold bg-white"
-                          value={editBuffer.name}
-                          onChange={(e) => setEditBuffer({...editBuffer, name: e.target.value})}
-                        />
-                      ) : (
-                        <span className="font-bold text-slate-800">{form.name}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-5">
-                      {editingIndex === index ? (
-                        <select 
-                          style={mingLiUStyle}
-                          className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                          value={editBuffer.category}
-                          onChange={(e) => setEditBuffer({...editBuffer, category: e.target.value})}
-                        >
-                          {CATEGORIES.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span>{form.category}</span>
-                      )}
-                    </td>
-                    <td className="px-8 py-5 text-right space-x-2">
-                      {editingIndex === index ? (
-                        <>
-                          <button 
-                            onClick={() => saveEdit(index)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                          >
-                            <Check size={18} />
-                          </button>
-                          <button 
-                            onClick={cancelEdit}
-                            className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"
-                          >
-                            <X size={18} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button 
-                            onClick={() => startEdit(index, form)}
-                            className="p-2 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                          >
-                            <Edit3 size={18} />
-                          </button>
-                          <button 
-                            onClick={() => deleteForm(index)}
-                            className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      default:
-        return null;
+      default: return null;
     }
   };
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626] font-sans">
-      
-      {/* 側邊導航欄 Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-[2px_0_12px_rgba(0,0,0,0.02)] z-20">
-        <div className="p-8 flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl shadow-blue-100">
-            <FileText className="text-white w-6 h-6" />
-          </div>
-          <span className="font-black text-2xl tracking-tighter text-slate-800 italic">先啟資訊</span>
-        </div>
-        
+        <div className="p-8 flex items-center gap-3"><div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl shadow-blue-100"><FileText className="text-white w-6 h-6" /></div><span className="font-black text-2xl tracking-tighter text-slate-800 italic">先啟資訊</span></div>
         <nav className="flex-1 px-4 space-y-1 mt-6">
           {[
-            { id: 'dashboard', label: '控制台首頁', icon: LayoutDashboard },
+            { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
             { id: 'database', label: '表單庫維護', icon: Database },
-            { id: 'inbox', label: '收件匣', icon: Bell },
+            { id: 'inbox', label: '智慧建單', icon: MousePointer2 },
             { id: 'analytics', label: '效能分析', icon: BarChart3 },
             { id: 'settings', label: '系統設定', icon: Settings },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${
-                  activeTab === item.id ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon size={20} />
-                  <span>{item.label}</span>
-                </div>
-              </button>
-            );
-          })}
+          ].map((item) => (
+            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'}`}><div className="flex items-center gap-3"><item.icon size={20} /><span>{item.label}</span></div></button>
+          ))}
         </nav>
-
-        <div className="p-6 border-t border-gray-50">
-          <button 
-            onClick={toggleModal}
-            className="w-full flex items-center justify-center gap-2 bg-[#1677FF] hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-sm transition-all shadow-2xl shadow-blue-200 active:scale-95"
-          >
-            <PlusCircle size={20} />
-            <span>發起新公文</span>
-          </button>
-        </div>
+        <div className="p-6 border-t border-gray-50"><button onClick={toggleModal} className="w-full flex items-center justify-center gap-2 bg-[#1677FF] hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-sm transition-all shadow-2xl shadow-blue-200 active:scale-95"><PlusCircle size={20} /><span>發起新公文</span></button></div>
       </aside>
-
-      {/* 主要內容區 Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 shadow-sm z-10">
-          <div className="relative w-[450px] group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1677FF] transition-colors" size={20} />
-            <input 
-              type="text" 
-              placeholder="搜尋簽呈主旨、文號或發文人員..."
-              className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:bg-white focus:border-blue-300 outline-none transition-all font-bold shadow-inner"
-            />
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="p-3 text-slate-400 hover:bg-slate-100 rounded-full cursor-pointer transition-colors relative">
-               <Bell size={22} />
-               <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm"></span>
-            </div>
-            <div className="flex items-center gap-4 pl-6 border-l border-gray-100">
-              <div className="text-right">
-                <p className="text-xs font-black text-slate-800">資深設計師</p>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">IT Management Dept.</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden ring-1 ring-slate-100 transform hover:scale-105 transition-transform cursor-pointer">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" />
-              </div>
-            </div>
-          </div>
+          <div className="relative w-[450px] group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1677FF] transition-colors" size={20} /><input type="text" placeholder="搜尋簽呈主旨..." className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:bg-white focus:border-blue-300 outline-none transition-all font-bold shadow-inner" /></div>
+          <div className="flex items-center gap-6"><div className="p-3 text-slate-400 hover:bg-slate-100 rounded-full cursor-pointer relative"><Bell size={22} /><span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm"></span></div><div className="flex items-center gap-4 pl-6 border-l border-gray-100"><div className="text-right"><p className="text-xs font-black text-slate-800">資深設計師</p><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">IT Management Dept.</p></div><div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden ring-1 ring-slate-100 transform hover:scale-105 transition-transform cursor-pointer"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" /></div></div></div>
         </header>
-
-        <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC]">
-          {renderMainContent()}
-        </div>
-
-        {/* --- 整合後的彈出視窗 (Modal Overlay) --- */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-center justify-center animate-in fade-in duration-300">
-            <div className="bg-white rounded-[2rem] shadow-[0_32px_128px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col w-[1000px] border border-white/20 transform animate-in zoom-in-95 duration-200">
-              
-              <div className="h-[90px] w-full border-b border-slate-100 flex items-center justify-between px-12 bg-white/50">
-                <div className="flex items-center gap-4">
-                   <div className="h-12 w-12 bg-blue-50 text-[#1677FF] rounded-2xl flex items-center justify-center shadow-inner">
-                      <PlusCircle size={28} />
-                   </div>
-                   <div>
-                     <span className="text-2xl font-black text-slate-800 tracking-tighter block leading-none">發起新公文</span>
-                     <span className="text-[10px] text-blue-500 font-black uppercase tracking-widest mt-2 inline-block bg-blue-50 px-2 py-0.5 rounded">Process Step: {currentStep}</span>
-                   </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button className="flex items-center gap-2 px-5 py-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl font-bold transition-all">
-                    <Save size={18} /> 暫存
-                  </button>
-                  <div className="w-px h-8 bg-slate-100 mx-2"></div>
-                  <button 
-                    disabled={currentStep === 1}
-                    onClick={() => setCurrentStep(prev => prev - 1)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all border-2 ${currentStep === 1 ? 'border-transparent text-slate-300 cursor-not-allowed' : 'border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-slate-200'}`}
-                  >
-                    <ChevronLeft size={18} /> 上一步
-                  </button>
-                  {currentStep < 3 ? (
-                    <button 
-                      onClick={() => setCurrentStep(prev => prev + 1)}
-                      className="flex items-center gap-2 px-8 py-2.5 bg-blue-50 text-[#1677FF] hover:bg-blue-100 rounded-xl font-black transition-all border-2 border-blue-200 shadow-lg shadow-blue-50"
-                    >
-                      下一步 <ChevronRight size={18} />
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={toggleModal}
-                      className="flex items-center gap-2 px-10 py-2.5 bg-[#1677FF] hover:bg-blue-700 text-white rounded-xl font-black transition-all shadow-2xl shadow-blue-200 active:scale-95"
-                    >
-                      <Check size={20} /> 送出簽核
-                    </button>
-                  )}
-                  <button onClick={toggleModal} className="ml-6 text-slate-300 hover:text-red-500 transition-all p-2 hover:bg-red-50 rounded-full">
-                    <X size={32} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="h-[580px] w-full overflow-y-auto p-12 bg-white relative scrollbar-hide">
-                
-                <div className="absolute top-12 right-16 flex items-center gap-3 bg-slate-50/50 p-2 rounded-full border border-slate-100">
-                  {[1, 2, 3].map((step) => (
-                    <div key={step} className="flex items-center">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all ${currentStep === step ? 'bg-[#1677FF] text-white shadow-xl ring-4 ring-blue-50 scale-110' : currentStep > step ? 'bg-green-500 text-white shadow-md' : 'bg-white text-slate-300'}`}>
-                        {currentStep > step ? <CheckCircle2 size={20} /> : step}
-                      </div>
-                      {step < 3 && <div className={`w-14 h-1 mx-2 rounded-full ${currentStep > step ? 'bg-green-500' : 'bg-slate-200'}`}></div>}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mb-12 border-l-[8px] border-[#1677FF] pl-8 py-2">
-                  <h2 className="text-3xl font-black text-slate-800 tracking-tight uppercase">
-                    {currentStep === 1 ? '簽呈基礎參數設定' : currentStep === 2 ? '簽呈詳細內容核校' : '最終發布確認'}
-                  </h2>
-                  <p className="text-slate-400 mt-2 flex items-center gap-2 font-bold text-lg">
-                    <AlertCircle size={20} className="text-[#1677FF]" />
-                    {currentStep === 1 ? '請指定公文範本與簽核權限屬性' : currentStep === 2 ? '請編輯下方動態加載的表單內容' : '請確認所有資訊無誤後送出簽核'}
-                  </p>
-                </div>
-
-                {renderStepContent()}
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC]">{renderMainContent()}</div>
       </main>
     </div>
   );
