@@ -45,6 +45,9 @@ const App = () => {
 
   // --- 選項定義 ---
   const CATEGORIES = ["財務類", "行政類", "銷售類", "產品類", "差勤類", "系統類"];
+  
+  // 輔助函式：產生數字陣列
+  const range = (start, end) => Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
   // --- 表單資料庫狀態 ---
   const [forms, setForms] = useState([
@@ -85,28 +88,24 @@ const App = () => {
 
   // --- 表單庫維護功能 ---
   
-  // 開始新增
   const startAdd = () => {
     setIsAdding(true);
-    setEditingIndex(null); // 關閉其他編輯
+    setEditingIndex(null);
     setAddBuffer({ id: '', name: '', category: CATEGORIES[0] });
   };
 
-  // 儲存新增
   const saveAdd = () => {
     if (!addBuffer.id || !addBuffer.name) return;
     setForms([{ ...addBuffer, desc: '' }, ...forms]);
     setIsAdding(false);
   };
 
-  // 取消新增
   const cancelAdd = () => {
     setIsAdding(false);
   };
 
-  // 開始編輯
   const startEdit = (index, form) => {
-    setIsAdding(false); // 關閉新增模式
+    setIsAdding(false);
     setEditingIndex(index);
     setEditBuffer({ id: form.id, name: form.name, category: form.category });
   };
@@ -133,104 +132,139 @@ const App = () => {
   };
 
   // --- 步驟二：加班申請單模板組件 ---
-  const OvertimeFormTemplate = () => (
-    <div className="border border-slate-300 rounded shadow-sm bg-white overflow-hidden animate-in fade-in duration-500">
-      <div className="bg-slate-100 border-b border-slate-300 p-2 flex items-center gap-2 flex-wrap">
-        <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>字型</option></select>
-        <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>大小</option></select>
-        <div className="w-px h-4 bg-slate-300 mx-1"></div>
-        <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><Bold size={14} /></button>
-        <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><Italic size={14} /></button>
-        <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><Underline size={14} /></button>
-        <div className="w-px h-4 bg-slate-300 mx-1"></div>
-        <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><AlignLeft size={14} /></button>
-        <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><AlignCenter size={14} /></button>
-        <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><AlignRight size={14} /></button>
-        <div className="w-px h-4 bg-slate-300 mx-1"></div>
-        <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><List size={14} /></button>
-      </div>
+  const OvertimeFormTemplate = () => {
+    const years = range(2024, 2026);
+    const months = range(1, 12);
+    const days = range(1, 31);
+    const hours = range(0, 23);
+    const minutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 
-      <div className="p-8 font-serif">
-        <div className="text-center mb-6">
-          <h3 className="text-xl font-bold tracking-[0.2em]">** 加 班 工 時 申 請 單 - {otType === '事前' ? '事 前 申 請' : '事 後 申 請'} **</h3>
+    return (
+      <div className="border border-slate-300 rounded shadow-sm bg-white overflow-hidden animate-in fade-in duration-500">
+        <div className="bg-slate-100 border-b border-slate-300 p-2 flex items-center gap-2 flex-wrap">
+          <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>字型</option></select>
+          <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>大小</option></select>
+          <div className="w-px h-4 bg-slate-300 mx-1"></div>
+          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><Bold size={14} /></button>
+          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><Italic size={14} /></button>
+          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><Underline size={14} /></button>
+          <div className="w-px h-4 bg-slate-300 mx-1"></div>
+          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><AlignLeft size={14} /></button>
+          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><AlignCenter size={14} /></button>
+          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><AlignRight size={14} /></button>
+          <div className="w-px h-4 bg-slate-300 mx-1"></div>
+          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><List size={14} /></button>
         </div>
 
-        <table className="w-full border-collapse border border-slate-400 text-sm">
-          <tbody>
-            <tr className="bg-slate-50">
-              <td className="border border-slate-400 p-3 text-center font-bold w-1/6 leading-relaxed">員 工<br/>編 號</td>
-              <td className="border border-slate-400 p-3 text-center font-bold w-1/4">姓 名</td>
-              <td className="border border-slate-400 p-3 text-center font-bold w-1/3">事 由</td>
-              <td className="border border-slate-400 p-3 text-center font-bold w-1/6">加班<br/>類別</td>
-            </tr>
-            <tr>
-              <td className="border border-slate-400 p-3"><input type="text" className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入編號"/></td>
-              <td className="border border-slate-400 p-3"><input type="text" className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入姓名"/></td>
-              <td className="border border-slate-400 p-3"><textarea className="w-full border border-slate-300 p-1 rounded h-16 resize-none outline-none focus:border-blue-500 transition-colors" placeholder="請輸入加班原因..."></textarea></td>
-              <td className="border border-slate-400 p-3 text-center align-middle">
-                <div className="inline-flex bg-slate-100 p-1 rounded-md border border-slate-200 shadow-inner">
-                  <button 
-                    onClick={() => setOtType('事前')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事前' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    事前
-                  </button>
-                  <button 
-                    onClick={() => setOtType('事後')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事後' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    事後
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">實際加班<br/>起訖時間</td>
-              <td colSpan="3" className="border border-slate-400 p-3">
-                <div className="flex items-center gap-2 flex-wrap text-xs">
-                  <span>自</span>
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>2024</option></select>年
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>1</option></select>月
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>1</option></select>日
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>1</option></select>時
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>0</option></select>分起
-                </div>
-                <div className="flex items-center gap-2 flex-wrap text-xs mt-3">
-                  <span>至</span>
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>2024</option></select>年
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>1</option></select>月
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>1</option></select>日
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>1</option></select>時
-                  <select className="border border-slate-300 rounded px-1 outline-none"><option>0</option></select>分止
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">工時數</td>
-              <td colSpan="3" className="border border-slate-400 p-3 text-xs">
-                共計 <select className="border border-slate-300 rounded px-1 mx-1 outline-none"><option>0</option></select> 日 
-                <select className="border border-slate-300 rounded px-1 mx-1 outline-none"><option>0</option></select> 時
-                <select className="border border-slate-300 rounded px-1 mx-1 outline-none"><option>0</option></select> 分
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold text-red-600 whitespace-nowrap">選項 *</td>
-              <td colSpan="3" className="border border-slate-400 p-3 text-xs">
-                <label className="inline-flex items-center gap-2 mr-6 cursor-pointer hover:text-blue-600 group">
-                  <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
-                  <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">換補休</span>
-                </label>
-                <label className="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 group">
-                  <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
-                  <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">計薪</span>
-                </label>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="p-8 font-serif">
+          <div className="text-center mb-6">
+            <h3 className="text-xl font-bold tracking-[0.2em]">** 加 班 工 時 申 請 單 - {otType === '事前' ? '事 前 申 請' : '事 後 申 請'} **</h3>
+          </div>
+
+          <table className="w-full border-collapse border border-slate-400 text-sm">
+            <tbody>
+              <tr className="bg-slate-50">
+                <td className="border border-slate-400 p-3 text-center font-bold w-1/6 leading-relaxed">員 工<br/>編 號</td>
+                <td className="border border-slate-400 p-3 text-center font-bold w-1/4">姓 名</td>
+                <td className="border border-slate-400 p-3 text-center font-bold w-1/3">事 由</td>
+                <td className="border border-slate-400 p-3 text-center font-bold w-1/6">加班<br/>類別</td>
+              </tr>
+              <tr>
+                <td className="border border-slate-400 p-3"><input type="text" className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入編號"/></td>
+                <td className="border border-slate-400 p-3"><input type="text" className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入姓名"/></td>
+                <td className="border border-slate-400 p-3"><textarea className="w-full border border-slate-300 p-1 rounded h-16 resize-none outline-none focus:border-blue-500 transition-colors" placeholder="請輸入加班原因..."></textarea></td>
+                <td className="border border-slate-400 p-3 text-center align-middle">
+                  <div className="inline-flex bg-slate-100 p-1 rounded-md border border-slate-200 shadow-inner">
+                    <button 
+                      onClick={() => setOtType('事前')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事前' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      事前
+                    </button>
+                    <button 
+                      onClick={() => setOtType('事後')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事後' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      事後
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">實際加班<br/>起訖時間</td>
+                <td colSpan="3" className="border border-slate-400 p-3">
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <span>自</span>
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>年
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {months.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>月
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {days.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>日
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {hours.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>時
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
+                    </select>分起
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap text-xs mt-3">
+                    <span>至</span>
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>年
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {months.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>月
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {days.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>日
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {hours.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>時
+                    <select className="border border-slate-300 rounded px-1 outline-none">
+                      {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
+                    </select>分止
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">工時數</td>
+                <td colSpan="3" className="border border-slate-400 p-3 text-xs">
+                  共計 
+                  <select className="border border-slate-300 rounded px-1 mx-1 outline-none">
+                    {range(0, 30).map(d => <option key={d} value={d}>{d}</option>)}
+                  </select> 日 
+                  <select className="border border-slate-300 rounded px-1 mx-1 outline-none">
+                    {range(0, 23).map(h => <option key={h} value={h}>{h}</option>)}
+                  </select> 時
+                  <select className="border border-slate-300 rounded px-1 mx-1 outline-none">
+                    {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
+                  </select> 分
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold text-red-600 whitespace-nowrap">選項 *</td>
+                <td colSpan="3" className="border border-slate-400 p-3 text-xs">
+                  <label className="inline-flex items-center gap-2 mr-6 cursor-pointer hover:text-blue-600 group">
+                    <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
+                    <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">換補休</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 group">
+                    <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
+                    <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">計薪</span>
+                  </label>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -468,7 +502,6 @@ const App = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-sm font-medium text-slate-600">
-                {/* 新增列 */}
                 {isAdding && (
                   <tr className="bg-blue-50/50 animate-in fade-in duration-300">
                     <td className="px-8 py-5">
@@ -517,7 +550,6 @@ const App = () => {
                   </tr>
                 )}
 
-                {/* 資料列表 */}
                 {forms.map((form, index) => (
                   <tr key={form.id + index} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-8 py-5">
@@ -687,7 +719,6 @@ const App = () => {
           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-center justify-center animate-in fade-in duration-300">
             <div className="bg-white rounded-[2rem] shadow-[0_32px_128px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col w-[1000px] border border-white/20 transform animate-in zoom-in-95 duration-200">
               
-              {/* Header: 1000 * 80 */}
               <div className="h-[90px] w-full border-b border-slate-100 flex items-center justify-between px-12 bg-white/50">
                 <div className="flex items-center gap-4">
                    <div className="h-12 w-12 bg-blue-50 text-[#1677FF] rounded-2xl flex items-center justify-center shadow-inner">
@@ -732,10 +763,8 @@ const App = () => {
                 </div>
               </div>
 
-              {/* Content: 1000 * 550 */}
               <div className="h-[580px] w-full overflow-y-auto p-12 bg-white relative scrollbar-hide">
                 
-                {/* 步驟流程指示器 */}
                 <div className="absolute top-12 right-16 flex items-center gap-3 bg-slate-50/50 p-2 rounded-full border border-slate-100">
                   {[1, 2, 3].map((step) => (
                     <div key={step} className="flex items-center">
