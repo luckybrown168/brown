@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -16,8 +16,8 @@ import {
   ChevronRight,
   ChevronLeft,
   X,
-  Save,
-  Check,
+  Save, 
+  Check, 
   ShieldAlert,
   Calendar,
   Database,
@@ -76,14 +76,6 @@ const App = () => {
     security: '普通'
   });
 
-  // --- 模擬統計數據 ---
-  const STATS = [
-    { label: '待辦公文', value: 12, color: 'text-blue-600', bg: 'bg-blue-50', icon: Clock },
-    { label: '處理中', value: 5, color: 'text-green-600', bg: 'bg-green-50', icon: FileText },
-    { label: '表單庫數量', value: forms.length, color: 'text-amber-600', bg: 'bg-amber-50', icon: Database },
-    { label: '本月已結案', value: 48, color: 'text-gray-600', bg: 'bg-gray-100', icon: CheckCircle2 },
-  ];
-
   const toggleModal = () => {
     if (!isModalOpen) setCurrentStep(1);
     setIsModalOpen(!isModalOpen);
@@ -136,159 +128,233 @@ const App = () => {
 
   // --- 步驟二：加班申請單模板組件 ---
   const OvertimeFormTemplate = () => {
-    const years = range(2024, 2026);
+    const years = range(2026, 2030);
     const months = range(1, 12);
     const days = range(1, 31);
     const hours = range(0, 23);
-    const minutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+    const minutes = [0, 30];
+    
+    // 檔案選取相關
+    const fileInputRef = useRef(null);
+    const [selectedFileName, setSelectedFileName] = useState("無附件");
+
+    const handleFileChange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        setSelectedFileName(file.name);
+      }
+    };
+
+    const triggerFilePicker = () => {
+      fileInputRef.current.click();
+    };
 
     return (
-      <div className="border border-slate-300 rounded shadow-sm bg-white overflow-hidden animate-in fade-in duration-500">
-        <div className="p-8 font-serif">
-          <div className="text-center mb-6">
-            <h3 className="text-xl font-bold tracking-[0.2em]">** 加 班 工 時 申 請 單 - {otType === '事前' ? '事 前 申 請' : '事 後 申 請'} **</h3>
-          </div>
+      <>
+        {/* 主要表格與備註框架 (白色方框) */}
+        <div className="border border-slate-300 rounded shadow-sm bg-white overflow-hidden animate-in fade-in duration-500">
+          <div className="p-8 font-serif">
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold tracking-[0.2em]">** 加 班 工 時 申 請 單 - {otType === '事前' ? '事 前 申 請' : '事 後 申 請'} **</h3>
+            </div>
 
-          <table className="w-full border-collapse border border-slate-400 text-sm mb-6">
-            <tbody>
-              <tr className="bg-slate-50">
-                <td className="border border-slate-400 p-3 text-center font-bold w-1/6 leading-relaxed">員 工<br/>編 號</td>
-                <td className="border border-slate-400 p-3 text-center font-bold w-1/4 leading-relaxed">姓 名</td>
-                <td className="border border-slate-400 p-3 text-center font-bold w-1/3 leading-relaxed">事 由</td>
-                <td className="border border-slate-400 p-3 text-center font-bold w-1/6">加班<br/>類別</td>
-              </tr>
-              <tr>
-                <td className="border border-slate-400 p-3">
-                  <input type="text" style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入編號"/>
-                </td>
-                <td className="border border-slate-400 p-3">
-                  <input type="text" style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入姓名"/>
-                </td>
-                <td className="border border-slate-400 p-3">
-                  <textarea style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded h-16 resize-none outline-none focus:border-blue-500 transition-colors" placeholder="請輸入加班原因..."></textarea>
-                </td>
-                <td className="border border-slate-400 p-3 text-center align-middle">
-                  <div className="inline-flex bg-slate-100 p-1 rounded-md border border-slate-200 shadow-inner">
-                    <button 
-                      onClick={() => setOtType('事前')}
-                      className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事前' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                      事前
-                    </button>
-                    <button 
-                      onClick={() => setOtType('事後')}
-                      className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事後' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                      事後
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">實際加班<br/>起訖時間</td>
-                <td colSpan="3" className="border border-slate-400 p-3">
-                  <div className="flex items-center gap-2 flex-wrap text-xs">
-                    <span>自</span>
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                      {years.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>年
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                      {months.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>月
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                      {days.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>日
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                      {hours.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>時
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+            <table className="w-full border-collapse border border-slate-400 text-sm mb-6">
+              <tbody>
+                <tr className="bg-slate-50">
+                  <td className="border border-slate-400 p-3 text-center font-bold w-1/6 leading-relaxed">員 工<br/>編 號</td>
+                  <td className="border border-slate-400 p-3 text-center font-bold w-1/4 leading-relaxed">姓 名</td>
+                  <td className="border border-slate-400 p-3 text-center font-bold w-1/3 leading-relaxed">事 由</td>
+                  <td className="border border-slate-400 p-3 text-center font-bold w-1/6">加班<br/>類別</td>
+                </tr>
+                <tr>
+                  <td className="border border-slate-400 p-3">
+                    <input type="text" style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入編號"/>
+                  </td>
+                  <td className="border border-slate-400 p-3">
+                    <input type="text" style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入姓名"/>
+                  </td>
+                  <td className="border border-slate-400 p-3">
+                    <textarea style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded h-16 resize-none outline-none focus:border-blue-500 transition-colors" placeholder="請輸入加班原因..."></textarea>
+                  </td>
+                  <td className="border border-slate-400 p-3 text-center align-middle">
+                    <div className="inline-flex bg-slate-100 p-1 rounded-md border border-slate-200 shadow-inner">
+                      <button 
+                        onClick={() => setOtType('事前')}
+                        className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事前' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        事前
+                      </button>
+                      <button 
+                        onClick={() => setOtType('事後')}
+                        className={`px-3 py-1.5 text-xs font-bold rounded transition-all duration-200 ${otType === '事後' ? 'bg-[#1677FF] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        事後
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">實際加班<br/>起訖時間</td>
+                  <td colSpan="3" className="border border-slate-400 p-3">
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                      <span>自</span>
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>年
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {months.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>月
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {days.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>日
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {hours.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>時
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
+                      </select>分起
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap text-xs mt-3">
+                      <span>至</span>
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>年
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {months.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>月
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {days.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>日
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {hours.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>時
+                      <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
+                        {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
+                      </select>分止
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">工時數</td>
+                  <td colSpan="3" className="border border-slate-400 p-3 text-xs">
+                    共計 
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
+                      {range(0, 30).map(d => <option key={d} value={d}>{d}</option>)}
+                    </select> 日 
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
+                      {range(0, 23).map(h => <option key={h} value={h}>{h}</option>)}
+                    </select> 時
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
                       {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
-                    </select>分起
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap text-xs mt-3">
-                    <span>至</span>
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                      {years.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>年
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                      {months.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>月
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                      {days.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>日
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                      {hours.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>時
-                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
-                      {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
-                    </select>分止
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">工時數</td>
-                <td colSpan="3" className="border border-slate-400 p-3 text-xs">
-                  共計 
-                  <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
-                    {range(0, 30).map(d => <option key={d} value={d}>{d}</option>)}
-                  </select> 日 
-                  <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
-                    {range(0, 23).map(h => <option key={h} value={h}>{h}</option>)}
-                  </select> 時
-                  <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
-                    {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
-                  </select> 分
-                </td>
-              </tr>
-              <tr>
-                <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold text-red-600 whitespace-nowrap">選項 *</td>
-                <td colSpan="3" className="border border-slate-400 p-3 text-xs">
-                  <label className="inline-flex items-center gap-2 mr-6 cursor-pointer hover:text-blue-600 group">
-                    <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
-                    <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">換補休</span>
-                  </label>
-                  <label className="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 group">
-                    <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
-                    <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">計薪</span>
-                  </label>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                    </select> 分
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold text-red-600 whitespace-nowrap">選項 *</td>
+                  <td colSpan="3" className="border border-slate-400 p-3 text-xs">
+                    <label className="inline-flex items-center gap-2 mr-6 cursor-pointer hover:text-blue-600 group">
+                      <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
+                      <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">換補休</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 group">
+                      <input type="radio" name="ot_option" className="form-radio text-[#1677FF] focus:ring-[#1677FF]" /> 
+                      <span className="group-hover:font-bold transition-all underline decoration-dotted underline-offset-4">計薪</span>
+                    </label>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-          {/* 備註區域 */}
-          <div 
-            className="leading-relaxed text-red-600 max-w-full" 
-            style={mingLiUStyle}
-          >
-            <div className="font-bold mb-2 text-[14px]">備註 ：</div>
-            <div className="space-y-1.5 text-[13px]">
-              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                <span className="font-bold shrink-0">A.</span>
-                <span>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</span>
-              </div>
-              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                <span className="font-bold shrink-0">B.</span>
-                <span>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</span>
-              </div>
-              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                <span className="font-bold shrink-0">C.</span>
-                <span>加班類別: 1.一般上班日 2.國定假日 3.休息日 4.出差加班</span>
-              </div>
-              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                <span className="font-bold shrink-0">D.</span>
-                <span>此加班工時將依比率換算為補休時數或薪資。</span>
-              </div>
-              <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
-                <span className="font-bold shrink-0">E.</span>
-                <span>每月加班時數上限不得超過46小時。</span>
+            {/* 備註區域 */}
+            <div 
+              className="leading-relaxed text-red-600 max-w-full" 
+              style={mingLiUStyle}
+            >
+              <div className="font-bold mb-2 text-[14px]">備註 ：</div>
+              <div className="space-y-1.5 text-[13px]">
+                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
+                  <span className="font-bold shrink-0">A.</span>
+                  <span>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</span>
+                </div>
+                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
+                  <span className="font-bold shrink-0">B.</span>
+                  <span>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</span>
+                </div>
+                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
+                  <span className="font-bold shrink-0">C.</span>
+                  <span>加班類別: 1.一般上班日 2.國定假日 3.休息日 4.出差加班</span>
+                </div>
+                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
+                  <span className="font-bold shrink-0">D.</span>
+                  <span>此加班工時將依比率換算為補休時數或薪資。</span>
+                </div>
+                <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
+                  <span className="font-bold shrink-0">E.</span>
+                  <span>每月加班時數上限不得超過46小時。</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+
+        {/* --- 框架外的功能區域 (意見、附件、引用) --- */}
+        <div className="mt-6 space-y-4 animate-in fade-in duration-500">
+          {/* 意見 */}
+          <div className="flex items-start gap-2">
+            <div className="flex items-center gap-1 mt-1 shrink-0">
+              <div className="w-2 h-2 bg-[#4A6FB5] rounded-full"></div>
+              <span className="text-sm font-bold text-slate-700">意見：</span>
+            </div>
+            <textarea 
+              style={mingLiUStyle}
+              className="flex-1 border border-slate-400 rounded p-2 h-16 outline-none focus:border-blue-500 transition-colors resize-none"
+            ></textarea>
+          </div>
+
+          {/* 附加檔案 */}
+          <div className="flex items-stretch border border-slate-300 rounded overflow-hidden">
+            <div 
+              onClick={triggerFilePicker}
+              className="bg-slate-50 px-3 py-2 border-r border-slate-300 flex items-center gap-2 shrink-0 cursor-pointer hover:bg-slate-100 transition-colors"
+            >
+              <div className="w-2 h-2 bg-[#4A6FB5] rounded-full"></div>
+              <span className="text-sm font-bold text-blue-700 underline">附加檔案：</span>
+            </div>
+            <div className="px-3 py-2 flex-1 bg-white flex items-center">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+              />
+              <span style={mingLiUStyle} className={`text-sm ${selectedFileName === "無附件" ? "text-slate-300 italic" : "text-slate-700 font-bold"}`}>
+                {selectedFileName}
+              </span>
+            </div>
+          </div>
+
+          {/* 引用已結案簽文 */}
+          <div className="flex items-stretch border border-slate-300 rounded overflow-hidden">
+            <div className="bg-slate-50 px-3 py-2 border-r border-slate-300 flex items-center gap-2 shrink-0">
+              <div className="w-2 h-2 bg-[#4A6FB5] rounded-full"></div>
+              <span className="text-sm font-bold text-blue-700 underline cursor-pointer">引用已結案簽文：</span>
+            </div>
+            <div className="px-3 py-2 flex-1 bg-white flex items-center">
+              <span style={mingLiUStyle} className="text-sm text-slate-300 italic">無</span>
+            </div>
+          </div>
+        </div>
+      </>
     );
   };
+
+  // --- 統計數據與頁面渲染邏輯 (保持不變) ---
+  const STATS = [
+    { label: '待辦公文', value: 12, color: 'text-blue-600', bg: 'bg-blue-50', icon: Clock },
+    { label: '處理中', value: 5, color: 'text-green-600', bg: 'bg-green-50', icon: FileText },
+    { label: '表單庫數量', value: forms.length, color: 'text-amber-600', bg: 'bg-amber-50', icon: Database },
+    { label: '本月已結案', value: 48, color: 'text-gray-600', bg: 'bg-gray-100', icon: CheckCircle2 },
+  ];
 
   const renderStepContent = () => {
     switch (currentStep) {
