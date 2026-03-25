@@ -46,6 +46,9 @@ const App = () => {
   // --- 選項定義 ---
   const CATEGORIES = ["財務類", "行政類", "銷售類", "產品類", "差勤類", "系統類"];
   
+  // 統一字體樣式：新細明體
+  const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", serif' };
+
   // 輔助函式：產生數字陣列
   const range = (start, end) => Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
@@ -141,23 +144,6 @@ const App = () => {
 
     return (
       <div className="border border-slate-300 rounded shadow-sm bg-white overflow-hidden animate-in fade-in duration-500">
-        {/* 模擬編輯器工具列 */}
-        <div className="bg-slate-100 border-b border-slate-300 p-2 flex items-center gap-2 flex-wrap">
-          <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>字型</option></select>
-          <select className="text-xs border border-slate-300 rounded px-1 h-6 outline-none bg-white"><option>大小</option></select>
-          <div className="w-px h-4 bg-slate-300 mx-1"></div>
-          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><Bold size={14} /></button>
-          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><Italic size={14} /></button>
-          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><Underline size={14} /></button>
-          <div className="w-px h-4 bg-slate-300 mx-1"></div>
-          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><AlignLeft size={14} /></button>
-          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><AlignCenter size={14} /></button>
-          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><AlignRight size={14} /></button>
-          <div className="w-px h-4 bg-slate-300 mx-1"></div>
-          <button className="p-1 hover:bg-slate-200 rounded text-slate-600"><List size={14} /></button>
-        </div>
-
-        {/* 表格內容區 */}
         <div className="p-8 font-serif">
           <div className="text-center mb-6">
             <h3 className="text-xl font-bold tracking-[0.2em]">** 加 班 工 時 申 請 單 - {otType === '事前' ? '事 前 申 請' : '事 後 申 請'} **</h3>
@@ -172,9 +158,15 @@ const App = () => {
                 <td className="border border-slate-400 p-3 text-center font-bold w-1/6">加班<br/>類別</td>
               </tr>
               <tr>
-                <td className="border border-slate-400 p-3"><input type="text" className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入編號"/></td>
-                <td className="border border-slate-400 p-3"><input type="text" className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入姓名"/></td>
-                <td className="border border-slate-400 p-3"><textarea className="w-full border border-slate-300 p-1 rounded h-16 resize-none outline-none focus:border-blue-500 transition-colors" placeholder="請輸入加班原因..."></textarea></td>
+                <td className="border border-slate-400 p-3">
+                  <input type="text" style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入編號"/>
+                </td>
+                <td className="border border-slate-400 p-3">
+                  <input type="text" style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded text-center outline-none focus:border-blue-500 transition-colors" placeholder="輸入姓名"/>
+                </td>
+                <td className="border border-slate-400 p-3">
+                  <textarea style={mingLiUStyle} className="w-full border border-slate-300 p-1 rounded h-16 resize-none outline-none focus:border-blue-500 transition-colors" placeholder="請輸入加班原因..."></textarea>
+                </td>
                 <td className="border border-slate-400 p-3 text-center align-middle">
                   <div className="inline-flex bg-slate-100 p-1 rounded-md border border-slate-200 shadow-inner">
                     <button 
@@ -197,37 +189,37 @@ const App = () => {
                 <td colSpan="3" className="border border-slate-400 p-3">
                   <div className="flex items-center gap-2 flex-wrap text-xs">
                     <span>自</span>
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>年
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>月
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {days.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>日
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {hours.map(h => <option key={h} value={h}>{h}</option>)}
                     </select>時
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
                     </select>分起
                   </div>
                   <div className="flex items-center gap-2 flex-wrap text-xs mt-3">
                     <span>至</span>
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>年
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>月
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {days.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>日
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {hours.map(h => <option key={h} value={h}>{h}</option>)}
                     </select>時
-                    <select className="border border-slate-300 rounded px-1 outline-none">
+                    <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 outline-none">
                       {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
                     </select>分止
                   </div>
@@ -237,13 +229,13 @@ const App = () => {
                 <td className="border border-slate-400 p-3 bg-slate-50 text-center font-bold">工時數</td>
                 <td colSpan="3" className="border border-slate-400 p-3 text-xs">
                   共計 
-                  <select className="border border-slate-300 rounded px-1 mx-1 outline-none">
+                  <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
                     {range(0, 30).map(d => <option key={d} value={d}>{d}</option>)}
                   </select> 日 
-                  <select className="border border-slate-300 rounded px-1 mx-1 outline-none">
+                  <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
                     {range(0, 23).map(h => <option key={h} value={h}>{h}</option>)}
                   </select> 時
-                  <select className="border border-slate-300 rounded px-1 mx-1 outline-none">
+                  <select style={mingLiUStyle} className="border border-slate-300 rounded px-1 mx-1 outline-none">
                     {minutes.map(m => <option key={m} value={m}>{String(m).padStart(2, '0')}</option>)}
                   </select> 分
                 </td>
@@ -264,13 +256,13 @@ const App = () => {
             </tbody>
           </table>
 
-          {/* 備註區域：設定字體為新細明體、紅色，且 A-E 縮排 2 個字元 */}
+          {/* 備註區域 */}
           <div 
-            className="text-[13px] leading-relaxed text-red-600 max-w-full" 
-            style={{ fontFamily: '"PMingLiU", "新細明體", serif' }}
+            className="leading-relaxed text-red-600 max-w-full" 
+            style={mingLiUStyle}
           >
             <div className="font-bold mb-2 text-[14px]">備註 ：</div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 text-[13px]">
               <div className="flex gap-1" style={{ paddingLeft: '2em' }}>
                 <span className="font-bold shrink-0">A.</span>
                 <span>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</span>
@@ -309,6 +301,7 @@ const App = () => {
                 <select 
                   value={formData.template}
                   onChange={(e) => setFormData({...formData, template: e.target.value})}
+                  style={mingLiUStyle}
                   className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none transition-all cursor-pointer font-bold text-slate-600"
                 >
                   <option value="">-- 請選擇表單範本 (來自資料庫) --</option>
@@ -325,6 +318,7 @@ const App = () => {
                   rows="2"
                   value={formData.subject}
                   onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                  style={mingLiUStyle}
                   placeholder="請輸入明確的主旨內容..."
                   className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none transition-all resize-none font-bold text-slate-700"
                 ></textarea>
@@ -354,6 +348,7 @@ const App = () => {
                     type="date"
                     value={formData.deadline}
                     onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                    style={mingLiUStyle}
                     className="w-full h-11 pl-4 pr-10 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none font-bold text-slate-700"
                   />
                   <Calendar size={18} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
@@ -371,6 +366,7 @@ const App = () => {
                  type="text"
                  value={formData.subject}
                  onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                 style={mingLiUStyle}
                  placeholder="（請輸入主旨）"
                  className="flex-1 bg-transparent text-[#1677FF] font-black text-lg underline decoration-2 underline-offset-4 outline-none border-none focus:ring-0 placeholder:text-blue-200"
                />
@@ -379,7 +375,7 @@ const App = () => {
             
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-bold text-slate-500 flex items-center gap-2">
-                <Type size={16} className="text-slate-400" /> 請填寫下列表格內容：
+                <Type size={16} className="text-slate-400" /> 請填寫簽呈內容，並選擇附加檔案：
               </p>
               <div className="flex items-center gap-3">
                 <button className="flex items-center gap-1 text-[#1677FF] text-xs font-bold hover:underline bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
@@ -534,10 +530,12 @@ const App = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-sm font-medium text-slate-600">
+                {/* 新增列 */}
                 {isAdding && (
                   <tr className="bg-blue-50/50 animate-in fade-in duration-300">
                     <td className="px-8 py-5">
                       <input 
+                        style={mingLiUStyle}
                         className="w-24 border border-blue-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                         placeholder="ID"
                         value={addBuffer.id}
@@ -546,6 +544,7 @@ const App = () => {
                     </td>
                     <td className="px-6 py-5">
                       <input 
+                        style={mingLiUStyle}
                         className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 font-bold bg-white"
                         placeholder="名稱"
                         value={addBuffer.name}
@@ -554,6 +553,7 @@ const App = () => {
                     </td>
                     <td className="px-6 py-5">
                       <select 
+                        style={mingLiUStyle}
                         className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                         value={addBuffer.category}
                         onChange={(e) => setAddBuffer({...addBuffer, category: e.target.value})}
@@ -587,6 +587,7 @@ const App = () => {
                     <td className="px-8 py-5">
                       {editingIndex === index ? (
                         <input 
+                          style={mingLiUStyle}
                           className="w-24 border border-blue-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                           value={editBuffer.id}
                           onChange={(e) => setEditBuffer({...editBuffer, id: e.target.value})}
@@ -598,6 +599,7 @@ const App = () => {
                     <td className="px-6 py-5">
                       {editingIndex === index ? (
                         <input 
+                          style={mingLiUStyle}
                           className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 font-bold bg-white"
                           value={editBuffer.name}
                           onChange={(e) => setEditBuffer({...editBuffer, name: e.target.value})}
@@ -609,6 +611,7 @@ const App = () => {
                     <td className="px-6 py-5">
                       {editingIndex === index ? (
                         <select 
+                          style={mingLiUStyle}
                           className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                           value={editBuffer.category}
                           onChange={(e) => setEditBuffer({...editBuffer, category: e.target.value})}
