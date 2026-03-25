@@ -348,7 +348,7 @@ const App = () => {
     );
   };
 
-  // --- 統計數據與頁面渲染邏輯 (保持不變) ---
+  // --- 統計數據與頁面渲染邏輯 ---
   const STATS = [
     { label: '待辦公文', value: 12, color: 'text-blue-600', bg: 'bg-blue-50', icon: Clock },
     { label: '處理中', value: 5, color: 'text-green-600', bg: 'bg-green-50', icon: FileText },
@@ -443,11 +443,7 @@ const App = () => {
               <p className="text-sm font-bold text-slate-500 flex items-center gap-2">
                 <Type size={16} className="text-slate-400" /> 請填寫簽呈內容，並選擇附加檔案：
               </p>
-              <div className="flex items-center gap-3">
-                <button className="flex items-center gap-1 text-[#1677FF] text-xs font-bold hover:underline bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
-                  <Paperclip size={14} /> 上傳附件
-                </button>
-              </div>
+              {/* "上傳附件" 按鈕已依要求移除 */}
             </div>
 
             {formData.template === 'HR-02' ? (
