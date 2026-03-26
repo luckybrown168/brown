@@ -44,7 +44,8 @@ import {
   ClipboardList,
   Activity,
   Layers,
-  Briefcase
+  Briefcase,
+  Timer
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -144,6 +145,69 @@ const DateTimePicker = ({ id, label, value, onChange }) => {
   );
 };
 
+// --- 新增組件：工時數選擇器 (日/時/分) ---
+const DurationPicker = ({ id, value, onChange }) => {
+  const [d, setD] = useState('0');
+  const [h, setH] = useState('0');
+  const [m, setM] = useState('00');
+
+  useEffect(() => {
+    if (value) {
+      const match = value.match(/(\d+)\s*日\s*(\d+)\s*時\s*(\d+)\s*分/);
+      if (match) {
+        setD(match[1]);
+        setH(match[2]);
+        setM(match[3]);
+      }
+    }
+  }, [value]);
+
+  const updateDuration = (newD, newH, newM) => {
+    const formatted = `${newD} 日 ${newH} 時 ${newM} 分`;
+    onChange(id, formatted);
+  };
+
+  return (
+    <div className="flex items-center gap-4 bg-slate-50 p-4 border border-slate-200 rounded-xl">
+      <div className="flex items-center gap-2">
+        <select 
+          style={mingLiUStyle}
+          value={d}
+          onChange={(e) => { setD(e.target.value); updateDuration(e.target.value, h, m); }}
+          className="border border-slate-300 rounded px-2 py-1 text-sm bg-white outline-none focus:border-blue-500"
+        >
+          {Array.from({length: 32}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}
+        </select>
+        <span className="text-sm font-bold text-slate-600">日</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <select 
+          style={mingLiUStyle}
+          value={h}
+          onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value, m); }}
+          className="border border-slate-300 rounded px-2 py-1 text-sm bg-white outline-none focus:border-blue-500"
+        >
+          {Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}
+        </select>
+        <span className="text-sm font-bold text-slate-600">時</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <select 
+          style={mingLiUStyle}
+          value={m}
+          onChange={(e) => { setM(e.target.value); updateDuration(d, h, e.target.value); }}
+          className="border border-slate-300 rounded px-2 py-1 text-sm bg-white outline-none focus:border-blue-500"
+        >
+          <option value="00">00</option>
+          <option value="30">30</option>
+        </select>
+        <span className="text-sm font-bold text-slate-600">分</span>
+      </div>
+      <div className="ml-auto text-[#1677FF] opacity-30"><Timer size={20} /></div>
+    </div>
+  );
+};
+
 // --- 核心組件：智慧渲染引擎 ---
 const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
   return (
@@ -206,6 +270,14 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
                   />
                 )}
 
+                {field.type === "duration" && (
+                  <DurationPicker 
+                    id={field.id}
+                    value={formValues[field.id]}
+                    onChange={onInputChange}
+                  />
+                )}
+
                 {field.type === "button" && (
                   <div className="w-full px-0 mt-4">
                     <button 
@@ -227,7 +299,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
           <div className="font-bold mb-2 text-[14px]">智慧表單備註 ：</div>
           <div className="space-y-1.5 text-[13px]">
             <div className="flex gap-1" style={{ paddingLeft: '2em' }}><span className="font-bold">A.</span><span>時間欄位：選擇日期與小時/分鐘為預選，必須點擊「上午/下午」按鈕方完成確認。</span></div>
-            <div className="flex gap-1" style={{ paddingLeft: '2em' }}><span className="font-bold">B.</span><span>此流程設計旨在降低誤觸風險並強化公文簽核之嚴謹性。</span></div>
+            <div className="flex gap-1" style={{ paddingLeft: '2em' }}><span className="font-bold">B.</span><span>工時數：請根據加班起訖時間選取正確的日、時、分長度。</span></div>
           </div>
         </div>
       </div>
@@ -410,6 +482,10 @@ const App = () => {
       { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      
+      // 新增：工時數欄位 (日、時、分下拉選單)
+      { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
@@ -422,15 +498,12 @@ const App = () => {
     setFormValues(prev => {
       const nextValues = { ...prev, [id]: value };
       
-      // 遞迴清除所有依賴於 id 的子欄位數值
       const cleanupChildren = (parentId) => {
         myFormSchema.fields.forEach(field => {
           if (field.dependsOn === parentId) {
-            // 如果子欄位不再滿足顯示條件，則清除其數值
             const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
             if (!showConditions.includes(nextValues[parentId])) {
               delete nextValues[field.id];
-              // 繼續往下遞迴清除孫欄位
               cleanupChildren(field.id);
             }
           }
@@ -683,7 +756,7 @@ const App = () => {
               <Layers className="text-white w-6 h-6" />
             </div>
             {!isSidebarCollapsed && (
-              <span className="font-black text-xl tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2" style={mingLiUStyle}>先啟智慧表單</span>
+              <span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2 whitespace-nowrap" style={mingLiUStyle}>先啟智慧表單</span>
             )}
           </div>
           <button 
@@ -696,9 +769,9 @@ const App = () => {
         
         <nav className="flex-1 px-4 space-y-1 mt-6">
           {[
-            { id: 'dashboard', label: '系統首頁', icon: LayoutDashboard },
+            { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
             { id: 'inbox', label: '智慧建單', icon: MousePointer2 },
-            { id: 'settings', label: '系統設定', icon: Settings },
+            { id: 'settings', label: '表單維護', icon: Settings },
           ].map((item) => (
             <button 
               key={item.id} 
