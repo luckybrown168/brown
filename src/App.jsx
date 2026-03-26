@@ -548,7 +548,7 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
   );
 };
 
-// --- 新增組件：通用清單檢視器 ---
+// --- 組件：通用清單檢視器 ---
 const ListView = ({ title, icon: Icon, type, color }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -579,28 +579,14 @@ const ListView = ({ title, icon: Icon, type, color }) => {
                </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-               {[1, 2, 3].map((_, i) => (
-                 <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-8 py-5">
-                       <p className="text-[10px] font-bold text-blue-600 mb-1">EF-20260326-{100+i}</p>
-                       <p className="text-sm font-bold text-slate-700">範例智慧表單項目 {i+1}</p>
-                    </td>
-                    <td className="px-6 py-5 text-sm text-slate-500 font-bold">2026-03-26</td>
-                    <td className="px-6 py-5">
-                       <span className={`px-3 py-1 rounded-full text-[10px] font-black ${type === 'rejected' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-600'}`}>
-                         {type === 'completed' ? '已結案' : type === 'draft' ? '草稿' : '處理中'}
-                       </span>
-                    </td>
-                    <td className="px-8 py-5 text-right">
-                       <button className="p-2 text-slate-300 group-hover:text-blue-600 transition-all"><ChevronRight size={20} /></button>
-                    </td>
-                 </tr>
-               ))}
+               <tr className="hover:bg-slate-50/50 transition-colors">
+                  <td colSpan="4" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>
+                     <Inbox size={48} className="mx-auto mb-4 opacity-10" />
+                     目前尚無任何 {title} 資料
+                  </td>
+               </tr>
             </tbody>
          </table>
-         <div className="p-10 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>
-            --- 僅顯示最近 3 筆範例資料 ---
-         </div>
       </div>
     </div>
   );
@@ -678,13 +664,13 @@ const App = () => {
     setIsPreviewing(false);
   };
 
-  // --- 模擬統計數據 (加入導航目標) ---
+  // --- 統計數據配置 (數值已歸零) ---
   const STATS = [
-    { id: 'inbox_stat', label: '收件匣', value: 8, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
-    { id: 'pending_stat', label: '流程中案件', value: 14, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
-    { id: 'completed_stat', label: '已結案', value: 32, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck2, targetTab: 'completed_list' },
-    { id: 'draft_stat', label: '草稿匣', value: 4, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
-    { id: 'rejected_stat', label: '退件/抽單', value: 2, color: 'text-red-600', bg: 'bg-red-600', icon: FileX2, targetTab: 'rejected' },
+    { id: 'inbox_stat', label: '收件匣', value: 0, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
+    { id: 'pending_stat', label: '流程中案件', value: 0, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
+    { id: 'completed_stat', label: '已結案', value: 0, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck2, targetTab: 'completed_list' },
+    { id: 'draft_stat', label: '草稿匣', value: 0, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
+    { id: 'rejected_stat', label: '退件/抽單', value: 0, color: 'text-red-600', bg: 'bg-red-600', icon: FileX2, targetTab: 'rejected' },
     { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash2, targetTab: 'trash' },
   ];
 
@@ -707,7 +693,7 @@ const App = () => {
                </div>
             </div>
 
-            {/* 統計數據網格 (加入點擊功能) */}
+            {/* 統計數據網格 */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               {STATS.map((stat, idx) => (
                 <div 
@@ -873,14 +859,12 @@ const App = () => {
           {[
             { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
             { id: 'inbox', label: '智慧建單', icon: MousePointer2 },
-            { id: 'rejected', label: '退件/抽單', icon: FileX2 },
-            { id: 'trash', label: '垃圾桶', icon: Trash2 },
             { id: 'settings', label: '表單維護', icon: Settings },
           ].map((item) => (
             <button 
               key={item.id} 
               onClick={() => setActiveTab(item.id)} 
-              className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} 
+              className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (['rejected', 'trash'].includes(activeTab) && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} 
               style={mingLiUStyle}
             >
               <item.icon size={20} className="shrink-0" />
