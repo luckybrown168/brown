@@ -51,7 +51,8 @@ import {
   FileX2,
   FileSearch,
   Filter,
-  MoreVertical
+  MoreVertical,
+  Info
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -263,6 +264,95 @@ const LeaveDurationPicker = ({ id, value, onChange }) => {
   );
 };
 
+// --- 請假規章備註區塊 ---
+const LeaveNoticeBlock = () => (
+  <div className="bg-amber-50/40 border border-amber-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
+    <div className="flex items-center gap-2 mb-4 text-amber-800 border-b border-amber-200 pb-2">
+      <Info size={18} />
+      <span className="font-black text-base">請假規章與簽核流程說明</span>
+    </div>
+    
+    <div className="space-y-4 text-[13px] text-slate-700 leading-relaxed">
+      <div>
+        <div className="font-black text-amber-900 mb-1 flex items-center gap-1.5">
+          <div className="w-1 h-3 bg-amber-500 rounded-full"></div> 簽核流程：
+        </div>
+        <div className="pl-3 border-l-2 border-amber-100 ml-0.5">
+          申請人 → 經副理 (請假天數3日(含)以下) → 協理 (請假天數5日(含)以下) → 總經理 (請假天數5日以上) → 交辦 (財務行政部)。<br />
+          <span className="text-red-600 font-bold underline">單位主管一天(含)以上由總經理核定。</span>
+        </div>
+      </div>
+
+      <div>
+        <div className="font-black text-amber-900 mb-1 flex items-center gap-1.5">
+          <div className="w-1 h-3 bg-amber-500 rounded-full"></div> 一般規範：
+        </div>
+        <div className="pl-3 text-slate-600">連續日期之請假單不可分開簽核，並均須檢附相關證明文件或說明事項：</div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 pl-3">
+        {[
+          { title: "婚假", content: "以日為單位，可分次或連續實施，於結婚之日前10日起三個月內休完。檢附結婚證明。" },
+          { title: "喪假", content: "以日為單位，可分次或連續實施。檢附訃文。" },
+          { title: "普通傷病假", content: "以日或時為單位，請假日數超過一日以上，檢附健保醫院或公立醫院或公司特約醫院診斷證明(附醫囑建議休息天數)。" },
+          { title: "事假", content: "以日或時為單位。" },
+          { title: "分娩假", content: "以日為單位。檢附診斷證明或出生證明。" },
+          { title: "陪產假", content: "以日為單位，於配偶分娩之當日及其前後合計十五日期間內，擇其中之五日請假。檢附診斷證明或出生證明。" },
+          { title: "產檢假", content: "以半日或小時為單位，一經選定不得更改。檢附診斷證明或媽媽手冊。" }
+        ].map((item, idx) => (
+          <div key={idx} className="flex gap-2">
+            <span className="font-black text-slate-800 shrink-0">{idx + 1}. {item.title}：</span>
+            <span>{item.content}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-2 border-t border-amber-100 font-bold text-slate-500 italic">
+        ※ 給假天數均依勞基法辦理。
+      </div>
+    </div>
+  </div>
+);
+
+// --- 新增：加班規章備註區塊 ---
+const OvertimeNoticeBlock = () => (
+  <div className="bg-blue-50/40 border border-blue-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
+    <div className="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-200 pb-2">
+      <Info size={18} />
+      <span className="font-black text-base">加班申請規則與備註</span>
+    </div>
+    
+    <div className="space-y-3 text-[13px] text-slate-700 leading-relaxed">
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">A.</span>
+        <div>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</div>
+      </div>
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">B.</span>
+        <div>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</div>
+      </div>
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">C.</span>
+        <div>
+          <span className="font-black">加班類別：</span>
+          <span className="ml-2 px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">1. 一般上班日</span>
+          <span className="ml-1 px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">2. 國定假日</span>
+          <span className="ml-1 px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">3. 休息日</span>
+          <span className="ml-1 px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">4. 出差加班</span>
+        </div>
+      </div>
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">D.</span>
+        <div>此加班工時將依比率換算為補休時數或薪資。</div>
+      </div>
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">E.</span>
+        <div className="text-red-600 font-bold underline">每月加班時數上限不得超過46小時。</div>
+      </div>
+    </div>
+  </div>
+);
+
 // --- 核心組件：智慧渲染引擎 ---
 const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
   return (
@@ -286,7 +376,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
 
             return (
               <div key={field.id} className={`${field.width} px-2 animate-in fade-in slide-in-from-top-2 duration-300`}>
-                {field.type !== "button" && (
+                {field.type !== "button" && field.type !== "notice" && field.type !== "ot_notice" && (
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-1.5 h-1.5 bg-[#1677FF] rounded-full"></div>
                     <label className="text-sm font-bold text-slate-700 underline decoration-slate-200 underline-offset-4" style={mingLiUStyle}>{field.label}：</label>
@@ -367,6 +457,9 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
                   </div>
                 )}
 
+                {field.type === "notice" && <LeaveNoticeBlock />}
+                {field.type === "ot_notice" && <OvertimeNoticeBlock />}
+
                 {field.type === "button" && (
                   <div className="w-full px-0 mt-4">
                     <button 
@@ -421,7 +514,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
           </div>
 
           <div className="flex flex-wrap -mx-2 gap-y-6">
-             {schema.fields.filter(f => f.type !== 'button').map(field => {
+             {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
                 if (field.dependsOn) {
                   const parentValue = values[field.dependsOn];
                   const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
@@ -477,7 +570,7 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
         </div>
 
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
-          {schema.fields.filter(f => f.type !== 'button').map(field => {
+          {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
              if (field.dependsOn) {
                const parentValue = values[field.dependsOn];
                const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
@@ -609,7 +702,13 @@ const App = () => {
     fields: [
       { id: "form_subject", label: "單據主旨", type: "text", width: "w-full" },
       { id: "employee_id", label: "員工編號", type: "text", width: "w-1/2" },
-      { id: "department", label: "單位", type: "text", width: "w-1/2" },
+      { 
+        id: "department", 
+        label: "單位", 
+        type: "select", 
+        options: ["工程組", "系統組", "客服組", "產品組", "營業組", "財務行政部"], 
+        width: "w-1/2" 
+      },
       { id: "category", label: "選擇類別", type: "select", options: ["行政類", "銷售類", "差勤類", "系統類"], width: "w-full" },
       { id: "leave_type", label: "假單類別", type: "select", options: [...LEAVE_TYPES, "加班"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
       { id: "agent", label: "代理人", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
@@ -618,11 +717,17 @@ const App = () => {
       { id: "leave_total", label: "共計", type: "leave_duration", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_reason", label: "請假事由", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_attachment", label: "附加檔案", type: "file", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
+      { id: "leave_rules_notice", type: "notice", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
+      
       { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      
+      // 新增：加班備註訊息 (連動加班選項)
+      { id: "ot_rules_notice", type: "ot_notice", dependsOn: "leave_type", showIf: "加班", width: "w-full" },
+      
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
   });
@@ -664,7 +769,6 @@ const App = () => {
     setIsPreviewing(false);
   };
 
-  // --- 統計數據配置 (數值已歸零) ---
   const STATS = [
     { id: 'inbox_stat', label: '收件匣', value: 0, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
     { id: 'pending_stat', label: '流程中案件', value: 0, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
@@ -679,7 +783,6 @@ const App = () => {
       case 'dashboard':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
-            {/* 歡迎看板 */}
             <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
                <div className="relative z-10">
@@ -693,7 +796,6 @@ const App = () => {
                </div>
             </div>
 
-            {/* 統計數據網格 */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               {STATS.map((stat, idx) => (
                 <div 
