@@ -45,7 +45,13 @@ import {
   Activity,
   Layers,
   Briefcase,
-  Timer
+  Timer,
+  UploadCloud,
+  Inbox,
+  FileX2,
+  FileSearch,
+  Filter,
+  MoreVertical
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -145,7 +151,7 @@ const DateTimePicker = ({ id, label, value, onChange }) => {
   );
 };
 
-// --- 新增組件：工時數選擇器 (日/時/分) ---
+// --- 組件：工時數選擇器 (日/時/分) ---
 const DurationPicker = ({ id, value, onChange }) => {
   const [d, setD] = useState('0');
   const [h, setH] = useState('0');
@@ -204,6 +210,55 @@ const DurationPicker = ({ id, value, onChange }) => {
         <span className="text-sm font-bold text-slate-600">分</span>
       </div>
       <div className="ml-auto text-[#1677FF] opacity-30"><Timer size={20} /></div>
+    </div>
+  );
+};
+
+// --- 組件：共計時數選擇器 (日/時) ---
+const LeaveDurationPicker = ({ id, value, onChange }) => {
+  const [d, setD] = useState('0');
+  const [h, setH] = useState('0');
+
+  useEffect(() => {
+    if (value) {
+      const match = value.match(/(\d+)\s*日\s*(\d+)\s*時/);
+      if (match) {
+        setD(match[1]);
+        setH(match[2]);
+      }
+    }
+  }, [value]);
+
+  const updateDuration = (newD, newH) => {
+    const formatted = `${newD} 日 ${newH} 時`;
+    onChange(id, formatted);
+  };
+
+  return (
+    <div className="flex items-center gap-4 bg-blue-50/30 p-4 border border-blue-100 rounded-xl">
+      <div className="flex items-center gap-2">
+        <select 
+          style={mingLiUStyle}
+          value={d}
+          onChange={(e) => { setD(e.target.value); updateDuration(e.target.value, h); }}
+          className="border border-slate-300 rounded px-2 py-1 text-sm bg-white outline-none focus:border-blue-500"
+        >
+          {Array.from({length: 32}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}
+        </select>
+        <span className="text-sm font-bold text-slate-600">日</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <select 
+          style={mingLiUStyle}
+          value={h}
+          onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value); }}
+          className="border border-slate-300 rounded px-2 py-1 text-sm bg-white outline-none focus:border-blue-500"
+        >
+          {Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}
+        </select>
+        <span className="text-sm font-bold text-slate-600">時</span>
+      </div>
+      <div className="ml-auto text-blue-600 opacity-30"><ClipboardList size={20} /></div>
     </div>
   );
 };
@@ -278,6 +333,40 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
                   />
                 )}
 
+                {field.type === "leave_duration" && (
+                  <LeaveDurationPicker 
+                    id={field.id}
+                    value={formValues[field.id]}
+                    onChange={onInputChange}
+                  />
+                )}
+
+                {field.type === "file" && (
+                  <div className="relative group">
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      id={`file-${field.id}`}
+                      onChange={(e) => onInputChange(field.id, e.target.files[0]?.name || "")}
+                    />
+                    <label 
+                      htmlFor={`file-${field.id}`}
+                      className="flex items-center gap-3 w-full border-2 border-dashed border-slate-300 p-4 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-all group"
+                    >
+                      <div className="w-10 h-10 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                        <Paperclip size={20} />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-bold text-slate-600 truncate" style={mingLiUStyle}>
+                          {formValues[field.id] || "點擊或拖曳檔案至此處上傳"}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">支援 PDF, JPG, PNG (最大 5MB)</p>
+                      </div>
+                      <UploadCloud className="text-slate-200 group-hover:text-blue-300 transition-colors" size={24} />
+                    </label>
+                  </div>
+                )}
+
                 {field.type === "button" && (
                   <div className="w-full px-0 mt-4">
                     <button 
@@ -299,7 +388,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
           <div className="font-bold mb-2 text-[14px]">智慧表單備註 ：</div>
           <div className="space-y-1.5 text-[13px]">
             <div className="flex gap-1" style={{ paddingLeft: '2em' }}><span className="font-bold">A.</span><span>時間欄位：選擇日期與小時/分鐘為預選，必須點擊「上午/下午」按鈕方完成確認。</span></div>
-            <div className="flex gap-1" style={{ paddingLeft: '2em' }}><span className="font-bold">B.</span><span>工時數：請根據加班起訖時間選取正確的日、時、分長度。</span></div>
+            <div className="flex gap-1" style={{ paddingLeft: '2em' }}><span className="font-bold">B.</span><span>此流程設計旨在降低誤觸風險並強化資料提交之嚴謹性。</span></div>
           </div>
         </div>
       </div>
@@ -340,9 +429,11 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
                 }
                 return (
                   <div key={field.id} className={`${field.width} px-2`}>
-                    <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 h-full">
+                    <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 h-full flex flex-col justify-center">
                       <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest" style={mingLiUStyle}>{field.label}</p>
-                      <p className="text-base font-bold text-slate-700" style={mingLiUStyle}>{values[field.id] || '( 未填寫 )'}</p>
+                      <p className="text-base font-bold text-slate-700" style={mingLiUStyle}>
+                        {field.type === 'file' ? (values[field.id] ? `📎 ${values[field.id]}` : '( 未上傳檔案 )') : (values[field.id] || '( 未填寫 )')}
+                      </p>
                     </div>
                   </div>
                 );
@@ -395,7 +486,9 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
              return (
                <div key={field.id} className={`${field.width} px-2`}>
                  <p className="text-[10px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
-                 <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{values[field.id] || '( 未填寫 )'}</p>
+                 <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>
+                   {field.type === 'file' ? (values[field.id] ? `📎 ${values[field.id]}` : '( 無附加檔案 )') : (values[field.id] || '( 未填寫 )')}
+                 </p>
                </div>
              );
           })}
@@ -455,6 +548,64 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
   );
 };
 
+// --- 新增組件：通用清單檢視器 ---
+const ListView = ({ title, icon: Icon, type, color }) => {
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className={`w-12 h-12 ${color} rounded-2xl flex items-center justify-center shadow-inner text-white`}>
+            <Icon size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>{title}</h2>
+            <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>系統正在處理您的 {title} 項目</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+           <button className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 transition-all"><Filter size={18} /></button>
+           <button className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 transition-all"><Search size={18} /></button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+         <table className="w-full text-left" style={mingLiUStyle}>
+            <thead className="bg-slate-50/50 border-b border-slate-100">
+               <tr>
+                  <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">單號 / 主旨</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">申請日期</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">目前狀態</th>
+                  <th className="px-8 py-4 text-right"></th>
+               </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+               {[1, 2, 3].map((_, i) => (
+                 <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-8 py-5">
+                       <p className="text-[10px] font-bold text-blue-600 mb-1">EF-20260326-{100+i}</p>
+                       <p className="text-sm font-bold text-slate-700">範例智慧表單項目 {i+1}</p>
+                    </td>
+                    <td className="px-6 py-5 text-sm text-slate-500 font-bold">2026-03-26</td>
+                    <td className="px-6 py-5">
+                       <span className={`px-3 py-1 rounded-full text-[10px] font-black ${type === 'rejected' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-600'}`}>
+                         {type === 'completed' ? '已結案' : type === 'draft' ? '草稿' : '處理中'}
+                       </span>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                       <button className="p-2 text-slate-300 group-hover:text-blue-600 transition-all"><ChevronRight size={20} /></button>
+                    </td>
+                 </tr>
+               ))}
+            </tbody>
+         </table>
+         <div className="p-10 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>
+            --- 僅顯示最近 3 筆範例資料 ---
+         </div>
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   // --- 狀態管理 ---
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -478,14 +629,13 @@ const App = () => {
       { id: "agent", label: "代理人", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_start_time", label: "請假開始日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_end_time", label: "請假結束日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
+      { id: "leave_total", label: "共計", type: "leave_duration", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_reason", label: "請假事由", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
+      { id: "leave_attachment", label: "附加檔案", type: "file", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
-      
-      // 新增：工時數欄位 (日、時、分下拉選單)
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
-      
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
@@ -493,11 +643,9 @@ const App = () => {
 
   const [formValues, setFormValues] = useState({});
 
-  // --- 優化：實作欄位連動清除邏輯 (Cascading Reset) ---
   const handleInputChange = (id, value) => {
     setFormValues(prev => {
       const nextValues = { ...prev, [id]: value };
-      
       const cleanupChildren = (parentId) => {
         myFormSchema.fields.forEach(field => {
           if (field.dependsOn === parentId) {
@@ -509,7 +657,6 @@ const App = () => {
           }
         });
       };
-
       cleanupChildren(id);
       return nextValues;
     });
@@ -531,12 +678,14 @@ const App = () => {
     setIsPreviewing(false);
   };
 
-  // --- 模擬統計數據 ---
+  // --- 模擬統計數據 (加入導航目標) ---
   const STATS = [
-    { label: '待處理表單', value: 8, color: 'text-blue-600', bg: 'bg-blue-50', icon: ClipboardList },
-    { label: '流程中案件', value: 14, color: 'text-amber-600', bg: 'bg-amber-50', icon: Activity },
-    { label: '本月總申請', value: 32, color: 'text-green-600', bg: 'bg-green-50', icon: FileCheck2 },
-    { label: '平均結案率', value: '94%', color: 'text-indigo-600', bg: 'bg-indigo-50', icon: BarChart3 },
+    { id: 'inbox_stat', label: '收件匣', value: 8, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
+    { id: 'pending_stat', label: '流程中案件', value: 14, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
+    { id: 'completed_stat', label: '已結案', value: 32, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck2, targetTab: 'completed_list' },
+    { id: 'draft_stat', label: '草稿匣', value: 4, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
+    { id: 'rejected_stat', label: '退件/抽單', value: 2, color: 'text-red-600', bg: 'bg-red-600', icon: FileX2, targetTab: 'rejected' },
+    { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash2, targetTab: 'trash' },
   ];
 
   const renderMainContent = () => {
@@ -544,112 +693,66 @@ const App = () => {
       case 'dashboard':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
+            {/* 歡迎看板 */}
             <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
                <div className="relative z-10">
                  <h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，Felix 資深設計師</h2>
-                 <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>歡迎來到先啟智慧表單系統。目前您有 8 件待處理的表單，系統各項功能運作正常。</p>
+                 <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>目前系統運作正常，點擊下方統計區塊可直接進入對應清單進行管理。</p>
                  <div className="flex gap-4 mt-8">
-                   <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2">
+                   <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg shadow-black/10">
                      <Plus size={18} /> 發起新表單
-                   </button>
-                   <button className="bg-blue-600/50 backdrop-blur-md text-white border border-blue-400/30 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-600 transition-all">
-                     查看進度
                    </button>
                  </div>
                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* 統計數據網格 (加入點擊功能) */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               {STATS.map((stat, idx) => (
-                <div key={idx} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
+                <div 
+                  key={idx} 
+                  onClick={() => setActiveTab(stat.targetTab)}
+                  className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer group active:scale-95"
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p>
-                      <h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: stat.color === 'text-blue-600' ? '#2563eb' : stat.color === 'text-amber-600' ? '#d97706' : stat.color === 'text-green-600' ? '#16a34a' : '#4f46e5' }}>{stat.value}</h3>
+                      <h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3>
                     </div>
-                    <div className={`p-3 rounded-2xl ${stat.bg}`} style={{ color: stat.color === 'text-blue-600' ? '#2563eb' : stat.color === 'text-amber-600' ? '#d97706' : stat.color === 'text-green-600' ? '#16a34a' : '#4f46e5' }}><stat.icon size={20} /></div>
+                    <div className={`p-3 rounded-2xl ${stat.bg} text-white shadow-lg transition-transform group-hover:rotate-6`}>
+                       <stat.icon size={20} />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center gap-1 text-[10px] text-blue-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                     <span>進入檢視</span> <ArrowRight size={10} />
                   </div>
                 </div>
               ))}
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-               <div className="lg:col-span-2 space-y-6">
-                 <h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}>
-                   <Briefcase size={20} className="text-blue-600" /> 常用智慧表單分類
-                 </h4>
-                 <div className="grid grid-cols-2 gap-4">
-                   {[
-                     { name: '人事差勤類', desc: '加班、請假、出差申請', color: 'bg-emerald-50', icon: UserCheck, text: 'text-emerald-600' },
-                     { name: '財務報支類', desc: '採購、報支、差旅核銷', color: 'bg-orange-50', icon: Database, text: 'text-orange-600' },
-                     { name: '行政資源類', desc: '設備領用、場地預約', color: 'bg-purple-50', icon: ClipboardList, text: 'text-purple-600' },
-                     { name: '系統權限類', desc: '帳號申請、系統異動', color: 'bg-blue-50', icon: Settings, text: 'text-blue-600' }
-                   ].map((cat, i) => (
-                     <div key={i} className="group bg-white p-6 rounded-[2rem] border border-slate-100 hover:border-blue-200 shadow-sm hover:shadow-lg transition-all cursor-pointer">
-                       <div className={`w-12 h-12 ${cat.color} ${cat.text} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                         <cat.icon size={24} />
-                       </div>
-                       <h5 className="font-black text-slate-800 mb-1" style={mingLiUStyle}>{cat.name}</h5>
-                       <p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{cat.desc}</p>
-                     </div>
-                   ))}
-                 </div>
-               </div>
-
-               <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm flex flex-col">
-                 <div className="flex items-center justify-between mb-8">
-                   <h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}>
-                     <Activity size={20} className="text-blue-600" /> 即時流程動態
-                   </h4>
-                   <button className="text-[10px] font-black text-blue-600 hover:underline">全部動態</button>
-                 </div>
-                 <div className="space-y-6 flex-1">
-                   {[
-                     { title: '加班申請單', time: '10分鐘前', status: '簽核通過', color: 'bg-green-500' },
-                     { title: '採購報支單', time: '2小時前', status: '待簽核', color: 'bg-amber-500' },
-                     { title: '特休申請單', time: '昨日', status: '流程結束', color: 'bg-slate-300' },
-                     { title: '系統維修申請', time: '2天前', status: '已結案', color: 'bg-green-500' }
-                   ].map((act, i) => (
-                     <div key={i} className="flex gap-4 relative">
-                       {i < 3 && <div className="absolute left-[7px] top-6 bottom-[-24px] w-[2px] bg-slate-100"></div>}
-                       <div className={`w-4 h-4 rounded-full ${act.color} mt-1.5 shrink-0 border-4 border-white shadow-sm z-10`}></div>
-                       <div>
-                         <p className="text-sm font-bold text-slate-700 leading-none mb-1" style={mingLiUStyle}>{act.title}</p>
-                         <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                           <span>{act.status}</span>
-                           <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-                           <span>{act.time}</span>
-                         </div>
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-                 <div className="mt-8 bg-blue-50 rounded-2xl p-4 flex items-center gap-3">
-                   <AlertCircle size={16} className="text-blue-600 shrink-0" />
-                   <p className="text-[10px] text-blue-700 font-bold leading-tight" style={mingLiUStyle}>系統提醒：年度特休結算將於下週開始，請及早提交表單。</p>
-                 </div>
-               </div>
+            
+            <div className="mt-8 bg-blue-50/50 rounded-3xl p-8 border border-dashed border-blue-200 flex flex-col items-center justify-center gap-4">
+               <Activity size={48} className="text-blue-200" />
+               <p className="text-slate-400 font-bold text-sm" style={mingLiUStyle}>歡迎使用智慧表單控制中心</p>
             </div>
           </div>
         );
+      case 'inbox_list':
+        return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" type="inbox" />;
+      case 'pending_list':
+        return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" type="pending" />;
+      case 'completed_list':
+        return <ListView title="已結案" icon={FileCheck2} color="bg-green-600" type="completed" />;
+      case 'draft_list':
+        return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" type="draft" />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500">
             <div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
               {isSubmitted ? (
-                <SubmissionSummary 
-                  schema={myFormSchema} 
-                  values={formValues} 
-                  onReset={resetForm} 
-                />
+                <SubmissionSummary schema={myFormSchema} values={formValues} onReset={resetForm} />
               ) : isPreviewing ? (
-                <SubmissionPreview 
-                  schema={myFormSchema} 
-                  values={formValues} 
-                  onEdit={() => setIsPreviewing(false)} 
-                  onSubmit={handleFinalSubmit}
-                />
+                <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} />
               ) : (
                 <>
                   <div className="absolute top-8 left-12 flex items-center gap-3">
@@ -660,18 +763,17 @@ const App = () => {
                     </div>
                   </div>
                   <div className="mt-16">
-                    <SmartFormEngine 
-                      schema={myFormSchema} 
-                      formValues={formValues} 
-                      onInputChange={handleInputChange} 
-                      onPreview={startPreview}
-                    />
+                    <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={startPreview} />
                   </div>
                 </>
               )}
             </div>
           </div>
         );
+      case 'rejected':
+        return <ListView title="退件 / 抽單" icon={FileX2} color="bg-red-600" type="rejected" />;
+      case 'trash':
+        return <ListView title="垃圾桶" icon={Trash2} color="bg-slate-600" type="trash" />;
       case 'settings':
         return (
           <div className="h-full flex gap-8 animate-in fade-in duration-500">
@@ -767,16 +869,18 @@ const App = () => {
           </button>
         </div>
         
-        <nav className="flex-1 px-4 space-y-1 mt-6">
+        <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide">
           {[
             { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
             { id: 'inbox', label: '智慧建單', icon: MousePointer2 },
+            { id: 'rejected', label: '退件/抽單', icon: FileX2 },
+            { id: 'trash', label: '垃圾桶', icon: Trash2 },
             { id: 'settings', label: '表單維護', icon: Settings },
           ].map((item) => (
             <button 
               key={item.id} 
               onClick={() => setActiveTab(item.id)} 
-              className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} 
+              className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} 
               style={mingLiUStyle}
             >
               <item.icon size={20} className="shrink-0" />
