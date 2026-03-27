@@ -16,7 +16,7 @@ import {
   Save, 
   Check, 
   Calendar,
-  Database,
+  Database, 
   Trash2,
   Edit3,
   Type,
@@ -557,23 +557,34 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   );
 };
 
-// --- 組件：正式提交後的存根 (更新：優化下載與列印邏輯) ---
+// --- 組件：正式提交後的存根 (更新：移除 PDF 下載，優化 Excel 欄位擷取) ---
 const SubmissionSummary = ({ schema, values, onReset }) => {
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   const handlePrintAction = () => {
-    // 為了 PDF 格式正確，觸發瀏覽器列印對話框（使用者可選「另存為 PDF」）
     window.print();
     setIsDownloadOpen(false);
   };
 
   const handleDownloadExcel = () => {
-    // 產生 CSV 內容
-    const headers = ["欄位名稱", "填寫內容"];
-    const rows = schema.fields
-      .filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice')
-      .map(f => [f.label, values[f.id] || ""]);
+    // 智慧過濾：只擷取當前「可見且有效」的欄位
+    const visibleData = schema.fields.filter(field => {
+      // 1. 排除 UI 輔助元件
+      if (['button', 'notice', 'ot_notice'].includes(field.type)) return false;
+      
+      // 2. 判斷連動顯示邏輯：若父欄位不符合條件，子欄位不匯出
+      if (field.dependsOn) {
+        const parentValue = values[field.dependsOn];
+        const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
+        if (!showConditions.includes(parentValue)) return false;
+      }
+      
+      return true;
+    });
+
+    const headers = ["欄位標籤", "填寫內容"];
+    const rows = visibleData.map(f => [f.label, values[f.id] || ""]);
     
     // 加入 UTF-8 BOM (\uFEFF) 確保 Excel 開啟不亂碼
     const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
@@ -583,7 +594,7 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `智慧表單存根_${values.form_subject || '未命名'}.csv`);
+    link.setAttribute('download', `智慧表單資料匯出_${values.form_subject || '未命名'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -592,7 +603,6 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
     setIsDownloadOpen(false);
   };
 
-  // 點擊外部關閉選單
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -660,7 +670,7 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center print:hidden">
            <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>系統流水號: EF-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
            <div className="flex items-center gap-3">
-              {/* 下載選單 */}
+              {/* 下載選單 (僅保留 Excel) */}
               <div className="relative" ref={dropdownRef}>
                  <button 
                     onClick={() => setIsDownloadOpen(!isDownloadOpen)}
@@ -672,13 +682,6 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
                  
                  {isDownloadOpen && (
                     <div className="absolute bottom-full mb-2 left-0 w-44 bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
-                       <button 
-                          onClick={handlePrintAction}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-b border-slate-50 group"
-                       >
-                          <FileDown size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs font-bold text-slate-700" style={mingLiUStyle}>下載 PDF 檔</span>
-                       </button>
                        <button 
                           onClick={handleDownloadExcel}
                           className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors group"
@@ -882,7 +885,7 @@ const App = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p>
-                      <h3 className="text-2xl font-black" style={{...mingLiUStyle, color: stat.color === 'text-blue-600' ? '#2563eb' : stat.color === 'text-amber-600' ? '#d97706' : stat.color === 'text-green-600' ? '#16a34a' : stat.color === 'text-red-600' ? '#dc2626' : '#4f46e5'}}>{stat.value}</h3>
+                      <h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3>
                     </div>
                     <div className={`p-3 rounded-2xl ${stat.bg} text-white shadow-lg transition-transform group-hover:rotate-6`}>
                        <stat.icon size={20} />
