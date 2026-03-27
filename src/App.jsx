@@ -78,7 +78,7 @@ const EMPLOYEE_DB = [
   { id: "0244", name: "黃憲政", gender: "男", dept: "系統暨工程部", group: "工程組", title: "二級資深工程師" },
   { id: "0153", name: "陳俊安", gender: "男", dept: "系統暨工程部", group: "工程組", title: "一級資深工程師" },
   { id: "0271", name: "吳孟達", gender: "男", dept: "系統暨工程部", group: "工程組", title: "二級資深工程師" },
-  { id: "0262", name: "陳俊邦", gender: "男", dept: "系統暨工程部", group: "系統組", title: "經理" }, // 已修正重複的 name 鍵
+  { id: "0262", name: "陳俊邦", gender: "男", dept: "系統暨工程部", group: "系統組", title: "經理" },
   { id: "0367", name: "李成富", gender: "男", dept: "系統暨工程部", group: "系統組", title: "工程師" },
   { id: "0348", name: "楊大宇", gender: "男", dept: "系統暨工程部", group: "系統組", title: "工程師" },
   { id: "0074", name: "邱培增", gender: "男", dept: "系統暨工程部", group: "系統組", title: "一級資深工程師" },
@@ -87,19 +87,16 @@ const EMPLOYEE_DB = [
 ];
 
 // --- 組件：登入畫面 ---
-const LoginPage = ({ onLogin }) => {
+const LoginPage = ({ onLogin, employees }) => {
   const [empId, setEmpId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = (e) => {
     e.preventDefault();
-    const user = EMPLOYEE_DB.find(emp => emp.id === empId);
-    if (user && password === '123') {
-      onLogin(user);
-    } else {
-      setError('員編或密碼錯誤 (預設密碼為 123)');
-    }
+    const user = employees.find(emp => emp.id === empId);
+    if (user && password === '123') { onLogin(user); }
+    else { setError('員編或密碼錯誤 (預設密碼為 123)'); }
   };
 
   return (
@@ -167,7 +164,7 @@ const LoginPage = ({ onLogin }) => {
   );
 };
 
-// --- 核心組件：優化後的時間選擇器 ---
+// --- 子組件：時間選擇器 ---
 const DateTimePicker = ({ id, label, value, onChange }) => {
   const [tempDate, setTempDate] = useState('');
   const [tempHour, setTempHour] = useState('09');
@@ -773,7 +770,7 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
 const ListView = ({ title, icon: Icon, type, color, data, onItemClick }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const filteredData = data.filter(item => 
-    item.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (item.id && item.id.toLowerCase().includes(searchTerm.toLowerCase())) || 
     (item.values?.form_subject && item.values.form_subject.includes(searchTerm)) ||
     (item.name && item.name.includes(searchTerm))
   );
@@ -820,7 +817,11 @@ const ListView = ({ title, icon: Icon, type, color, data, onItemClick }) => {
             </thead>
             <tbody className="divide-y divide-slate-50">
                {filteredData.length > 0 ? filteredData.map((item, i) => (
-                 <tr key={i} onClick={() => type !== 'employee' && onItemClick(item)} className={`hover:bg-blue-50/30 transition-colors group ${type !== 'employee' ? 'cursor-pointer' : ''}`}>
+                 <tr 
+                   key={i} 
+                   onClick={() => type !== 'employee' && onItemClick(item)}
+                   className="hover:bg-blue-50/30 transition-colors group cursor-pointer"
+                 >
                     {type === 'employee' ? (
                       <>
                         <td className="px-8 py-5">
@@ -942,7 +943,14 @@ const App = () => {
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const sequence = String(submittedForms.length + 1).padStart(3, '0');
     const newDocId = `EF-${today}-${sequence}`;
-    const newFormEntry = { id: newDocId, values: { ...formValues }, submitDate: new Date().toLocaleDateString(), status: 'Pending' };
+    
+    const newFormEntry = {
+      id: newDocId,
+      values: { ...formValues },
+      submitDate: new Date().toLocaleDateString(),
+      status: 'Pending'
+    };
+
     setSubmittedForms([...submittedForms, newFormEntry]);
     setCurrentDocId(newDocId);
     setIsPreviewing(false);
@@ -964,7 +972,7 @@ const App = () => {
     setViewingForm(form);
   };
 
-  if (!currentUser) return <LoginPage onLogin={handleLogin} />;
+  if (!currentUser) return <LoginPage onLogin={handleLogin} employees={EMPLOYEE_DB} />;
 
   const STATS = [
     { id: 'inbox_stat', label: '收件匣', value: 0, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
@@ -974,6 +982,9 @@ const App = () => {
     { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX2, targetTab: 'rejected' },
     { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash2, targetTab: 'trash' },
   ];
+
+  const managerTitles = ["協理", "經理", "副理"];
+  const isManager = managerTitles.includes(currentUser.title);
 
   const renderMainContent = () => {
     if (viewingForm) return <SubmissionSummary schema={myFormSchema} values={viewingForm.values} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} />;
@@ -1019,7 +1030,9 @@ const App = () => {
       case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" type="pending" data={submittedForms.filter(f => f.status === 'Pending')} onItemClick={handleOpenDetail} />;
       case 'completed_list': return <ListView title="已結案" icon={FileCheck2} color="bg-green-600" type="completed" data={submittedForms.filter(f => f.status === 'Completed')} onItemClick={handleOpenDetail} />;
       case 'rejected': return <ListView title="退件 / 抽單" icon={FileX2} color="bg-red-600" type="rejected" data={submittedForms.filter(f => f.status === 'Rejected')} onItemClick={handleOpenDetail} />;
-      case 'employee_list': return <ListView title="員工管理" icon={Users} color="bg-indigo-600" type="employee" data={EMPLOYEE_DB} onItemClick={() => {}} />;
+      case 'employee_list': 
+        if (!isManager) return null;
+        return <ListView title="員工管理" icon={Users} color="bg-indigo-600" type="employee" data={EMPLOYEE_DB} onItemClick={() => {}} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500">
@@ -1077,12 +1090,14 @@ const App = () => {
         </div>
         <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide">
           {[
-            { id: 'dashboard', label: '首頁', icon: LayoutDashboard }, 
-            { id: 'inbox', label: '智慧建單', icon: MousePointer2 }, 
-            { id: 'employee_list', label: '員工管理', icon: Users },
-            { id: 'settings', label: '表單維護', icon: Settings }
-          ].map((item) => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (item.id === 'employee_list' && activeTab === 'employee_list') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
+            { id: 'dashboard', label: '首頁', icon: LayoutDashboard, role: 'all' }, 
+            { id: 'inbox', label: '智慧建單', icon: MousePointer2, role: 'all' }, 
+            { id: 'employee_list', label: '員工管理', icon: Users, role: 'manager' }, 
+            { id: 'settings', label: '表單維護', icon: Settings, role: 'all' }
+          ]
+          .filter(item => item.role === 'all' || (item.role === 'manager' && isManager))
+          .map((item) => (
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
               <item.icon size={20} className="shrink-0" />
               {!isSidebarCollapsed && <span className="animate-in fade-in truncate">{item.label}</span>}
             </button>
