@@ -56,7 +56,11 @@ import {
   DownloadCloud,
   FileSpreadsheet,
   FileDown,
-  ArrowLeft
+  ArrowLeft,
+  Users,
+  UserPlus,
+  Mail,
+  Phone
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -356,6 +360,96 @@ const OvertimeNoticeBlock = () => (
     </div>
   </div>
 );
+
+// --- 組件：人員管理視圖 ---
+const PersonnelManagementView = () => {
+  const staff = [
+    { staffId: 'FE-2024', name: 'Felix Chen', dept: 'IT Management Dept.', pos: '資深設計師', email: 'felix@example.com' },
+    { staffId: 'AS-1021', name: '王小明', dept: '工程組', pos: '研發工程師', email: 'ming@example.com' },
+    { staffId: 'AS-1055', name: '李美美', dept: '財務行政部', pos: '行政專員', email: 'mei@example.com' },
+    { staffId: 'AS-2012', name: '張大衛', dept: '營業組', pos: '業務經理', email: 'david@example.com' }
+  ];
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
+      <div className="flex items-center justify-between bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg text-white">
+            <Users size={28} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-slate-800">人員資料管理</h2>
+            <p className="text-xs text-slate-400 font-bold">檢視及維護公司成員的基本資訊</p>
+          </div>
+        </div>
+        <button className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
+          <UserPlus size={18} /> 新增人員
+        </button>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-6 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+          <div className="relative w-72">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+            <input 
+              type="text" 
+              placeholder="搜尋姓名、工號或部門..." 
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 transition-all" 
+              style={mingLiUStyle}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all" title="篩選條件"><Filter size={18} /></button>
+          </div>
+        </div>
+        <table className="w-full text-left">
+          <thead className="bg-slate-50/30">
+            <tr>
+              {/* 這裡調整標題字體大小為 12px */}
+              <th className="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]">員編 / 姓名</th>
+              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]">部門組別</th>
+              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]">職稱</th>
+              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]">電子郵件</th>
+              <th className="px-8 py-4 text-right"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {staff.map((person, idx) => (
+              <tr key={idx} className="hover:bg-indigo-50/20 transition-colors group">
+                <td className="px-8 py-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-100 rounded-full overflow-hidden shrink-0 border border-white shadow-sm">
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${person.name}`} alt="avatar" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-indigo-600 mb-0.5">{person.staffId}</p>
+                      <p className="text-sm font-bold text-slate-700">{person.name}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-5">
+                  <p className="text-xs font-bold text-slate-600">{person.dept}</p>
+                </td>
+                <td className="px-6 py-5">
+                  <p className="text-xs font-bold text-slate-600">{person.pos}</p>
+                </td>
+                <td className="px-6 py-5">
+                  <div className="flex items-center gap-1.5 text-slate-500">
+                    <Mail size={12} className="text-slate-300" />
+                    <span className="text-[11px] font-bold">{person.email}</span>
+                  </div>
+                </td>
+                <td className="px-8 py-5 text-right">
+                  <button className="p-2 text-slate-300 hover:text-indigo-600 transition-all" title="編輯資料"><Edit3 size={18} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
 
 // --- 核心組件：智慧渲染引擎 ---
 const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
@@ -900,8 +994,8 @@ const App = () => {
                <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                  <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
                  <div className="relative z-10">
-                   <h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，Felix 資深設計師</h2>
-                   <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>目前系統運作正常，您可以點擊下方統計區塊進入管理清單，或點擊下方按鈕開始建單。</p>
+                   <h2 className="text-3xl font-black mb-3">早安，Felix 資深設計師</h2>
+                   <p className="text-blue-100 text-sm max-w-md leading-relaxed">目前系統運作正常，您可以點擊下方統計區塊進入管理清單，或點擊下方按鈕開始建單。</p>
                    <div className="flex gap-4 mt-8">
                      <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg shadow-black/10">
                        <Plus size={18} /> 開啟智慧表單
@@ -912,7 +1006,7 @@ const App = () => {
 
                <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
                  <div className="flex items-center justify-between mb-6">
-                    <h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}>
+                    <h4 className="text-lg font-black text-slate-700 flex items-center gap-2">
                       <Clock size={20} className="text-blue-600" /> 休假剩餘時數
                     </h4>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leave Balance</span>
@@ -921,7 +1015,7 @@ const App = () => {
                  <div className="space-y-6">
                     <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
                        <div className="flex justify-between items-end mb-2">
-                          <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span>
+                          <span className="text-sm font-bold text-slate-600">特休 (Annual)</span>
                           <span className="text-xl font-black text-blue-600">56.0 <small className="text-[10px] text-slate-400">hr</small></span>
                        </div>
                        <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
@@ -931,7 +1025,7 @@ const App = () => {
 
                     <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
                        <div className="flex justify-between items-end mb-2">
-                          <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span>
+                          <span className="text-sm font-bold text-slate-600">補休 (Comp.)</span>
                           <span className="text-xl font-black text-emerald-600">12.5 <small className="text-[10px] text-slate-400">hr</small></span>
                        </div>
                        <div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden">
@@ -939,7 +1033,7 @@ const App = () => {
                        </div>
                     </div>
                  </div>
-                 <p className="mt-4 text-[10px] text-slate-400 font-bold text-center italic" style={mingLiUStyle}>※ 資料更新至：{new Date().toLocaleDateString()}</p>
+                 <p className="mt-4 text-[10px] text-slate-400 font-bold text-center italic">※ 資料更新至：{new Date().toLocaleDateString()}</p>
                </div>
             </div>
 
@@ -948,8 +1042,8 @@ const App = () => {
                 <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer group active:scale-95">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p>
-                      <h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3>
+                      <p className="text-xs text-slate-400 mb-1 font-bold">{stat.label}</p>
+                      <h3 className={`text-2xl font-black ${stat.color}`}>{stat.value}</h3>
                     </div>
                     <div className={`p-3 rounded-2xl ${stat.bg} text-white shadow-lg transition-transform group-hover:rotate-6`}><stat.icon size={20} /></div>
                   </div>
@@ -961,6 +1055,8 @@ const App = () => {
             </div>
           </div>
         );
+      case 'personnel_management':
+        return <PersonnelManagementView />;
       case 'inbox_list':
         return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" type="inbox" data={[]} onItemClick={handleOpenDetail} />;
       case 'pending_list':
@@ -982,8 +1078,8 @@ const App = () => {
                   <div className="absolute top-8 left-12 flex items-center gap-3">
                     <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#1677FF]"><Eye size={20} /></div>
                     <div>
-                      <h3 className="font-black text-slate-800 text-lg" style={mingLiUStyle}>電子智慧表單填寫</h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest" style={mingLiUStyle}>Step 1: Intelligent Data Input</p>
+                      <h3 className="font-black text-slate-800 text-lg">電子智慧表單填寫</h3>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Step 1: Intelligent Data Input</p>
                     </div>
                   </div>
                   <div className="mt-16">
@@ -1003,25 +1099,25 @@ const App = () => {
           <div className="h-full flex gap-8 animate-in fade-in duration-500">
             <div className="w-1/3 flex flex-col gap-6">
               <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm flex flex-col">
-                <div className="flex items-center gap-3 mb-6 text-[#1677FF]"><Box className="w-6 h-6" /><span className="font-black text-xl" style={mingLiUStyle}>智慧引擎邏輯配置</span></div>
+                <div className="flex items-center gap-3 mb-6 text-[#1677FF]"><Box className="w-6 h-6" /><span className="font-black text-xl">智慧引擎邏輯配置</span></div>
                 <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2">
                   {myFormSchema.fields.map((field) => (
                     <div key={field.id} onClick={() => setSelectedFieldId(field.id)} className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col group ${selectedFieldId === field.id ? 'border-blue-500 bg-blue-50/30' : 'border-slate-100 hover:border-blue-200 bg-white'}`}>
-                      <div className="flex items-center justify-between mb-1"><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.label}</p><span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-400 uppercase" style={mingLiUStyle}>{field.type}</span></div>
-                      {field.dependsOn && <div className="flex items-center gap-1 text-[10px] text-[#1677FF] font-bold" style={mingLiUStyle}><ArrowRight size={10} />連動自: {field.dependsOn}</div>}
+                      <div className="flex items-center justify-between mb-1"><p className="text-sm font-bold text-slate-700">{field.label}</p><span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-400 uppercase">{field.type}</span></div>
+                      {field.dependsOn && <div className="flex items-center gap-1 text-[10px] text-[#1677FF] font-bold"><ArrowRight size={10} />連動自: {field.dependsOn}</div>}
                     </div>
                   ))}
                 </div>
               </div>
             </div>
             <div className="flex-1 bg-slate-900 rounded-[3rem] p-12 text-white shadow-2xl overflow-y-auto">
-               <div className="flex items-center gap-3 mb-10"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center"><Sliders size={20}/></div><div><h3 className="font-black text-xl" style={mingLiUStyle}>系統引擎屬性編輯</h3><p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest" style={mingLiUStyle}>System Engine Management</p></div></div>
+               <div className="flex items-center gap-3 mb-10"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center"><Sliders size={20}/></div><div><h3 className="font-black text-xl">系統引擎屬性編輯</h3><p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">System Engine Management</p></div></div>
                {selectedFieldId ? (
                  <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-                    <div><label className="text-xs font-black text-slate-500 uppercase mb-3 block" style={mingLiUStyle}>欄位名稱 (Label)</label><input value={myFormSchema.fields.find(f => f.id === selectedFieldId)?.label} onChange={(e) => { const newFields = myFormSchema.fields.map(f => f.id === selectedFieldId ? {...f, label: e.target.value} : f); setMyFormSchema({...myFormSchema, fields: newFields}); }} className="w-full bg-slate-800 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all text-white" style={mingLiUStyle} /></div>
-                    <div className="bg-blue-600/10 p-6 rounded-[2rem] border border-blue-500/20"><p className="text-xs font-black text-blue-400 uppercase mb-2" style={mingLiUStyle}>條件連動詳細 (JSON Schema)</p><pre className="text-[10px] text-slate-400 font-mono leading-relaxed bg-black/20 p-4 rounded-xl">{JSON.stringify(myFormSchema.fields.find(f => f.id === selectedFieldId), null, 2)}</pre></div>
+                    <div><label className="text-xs font-black text-slate-500 uppercase mb-3 block">欄位名稱 (Label)</label><input value={myFormSchema.fields.find(f => f.id === selectedFieldId)?.label} onChange={(e) => { const newFields = myFormSchema.fields.map(f => f.id === selectedFieldId ? {...f, label: e.target.value} : f); setMyFormSchema({...myFormSchema, fields: newFields}); }} className="w-full bg-slate-800 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all text-white" style={mingLiUStyle} /></div>
+                    <div className="bg-blue-600/10 p-6 rounded-[2rem] border border-blue-500/20"><p className="text-xs font-black text-blue-400 uppercase mb-2">條件連動詳細 (JSON Schema)</p><pre className="text-[10px] text-slate-400 font-mono leading-relaxed bg-black/20 p-4 rounded-xl">{JSON.stringify(myFormSchema.fields.find(f => f.id === selectedFieldId), null, 2)}</pre></div>
                  </div>
-               ) : (<div className="h-64 flex flex-col items-center justify-center text-slate-600 italic gap-4"><MousePointer2 size={40} className="opacity-20" /><span style={mingLiUStyle}>請點擊左側元件清單進行邏輯調整</span></div>)}
+               ) : (<div className="h-64 flex flex-col items-center justify-center text-slate-600 italic gap-4"><MousePointer2 size={40} className="opacity-20" /><span>請點擊左側元件清單進行邏輯調整</span></div>)}
             </div>
           </div>
         );
@@ -1036,13 +1132,14 @@ const App = () => {
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl shadow-blue-100 shrink-0 transition-transform active:scale-95"><Layers className="text-white w-6 h-6" /></div>
-            {!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2 whitespace-nowrap" style={mingLiUStyle}>先啟智慧表單</span>)}
+            {!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2 whitespace-nowrap">先啟智慧表單</span>)}
           </div>
           <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#1677FF] transition-all">{isSidebarCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}</button>
         </div>
         <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide print:hidden">
           {[
             { id: 'dashboard', label: '首頁', icon: LayoutDashboard }, 
+            { id: 'personnel_management', label: '人員管理', icon: Users },
             { id: 'settings', label: '表單維護', icon: Settings }
           ].map((item) => (
             <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (['rejected', 'trash'].includes(activeTab) && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
@@ -1058,7 +1155,7 @@ const App = () => {
           <div className="flex items-center gap-6">
             <div className="p-3 text-slate-400 hover:bg-slate-100 rounded-full cursor-pointer relative"><Bell size={22} /><span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm"></span></div>
             <div className="flex items-center gap-4 pl-6 border-l border-gray-100">
-              <div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>資深設計師</p><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest" style={mingLiUStyle}>IT Management Dept.</p></div>
+              <div className="text-right"><p className="text-xs font-black text-slate-800">資深設計師</p><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">IT Management Dept.</p></div>
               <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden ring-1 ring-slate-100 transform hover:scale-105 transition-transform cursor-pointer"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" /></div>
             </div>
           </div>
