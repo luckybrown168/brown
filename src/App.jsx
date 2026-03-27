@@ -314,7 +314,7 @@ const LeaveNoticeBlock = () => (
   </div>
 );
 
-// --- 新增：加班規章備註區塊 ---
+// --- 加班規章備註區塊 ---
 const OvertimeNoticeBlock = () => (
   <div className="bg-blue-50/40 border border-blue-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
     <div className="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-200 pb-2">
@@ -554,11 +554,15 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   );
 };
 
-// --- 組件：正式提交後的存根 ---
+// --- 組件：正式提交後的存根 (更新：新增列印功能與按鈕更名) ---
 const SubmissionSummary = ({ schema, values, onReset }) => {
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500">
-      <div className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif overflow-hidden">
+      <div className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif overflow-hidden print:shadow-none print:border-none print:p-0">
         <div className="absolute top-10 right-10 w-32 h-32 border-4 border-red-500 rounded-full flex flex-col items-center justify-center rotate-12 opacity-80 pointer-events-none">
           <span className="text-red-500 font-black text-xs" style={mingLiUStyle}>先啟智慧表單件</span>
           <span className="text-red-500 font-black text-lg border-y-2 border-red-500 my-1" style={mingLiUStyle}>已 收 訖</span>
@@ -587,7 +591,7 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
           })}
         </div>
 
-        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 print:bg-white print:border-none">
           <p className="text-[10px] font-black text-slate-400 mb-4 flex items-center gap-2" style={mingLiUStyle}>
             <UserCheck size={14} /> 表單流轉路徑
           </p>
@@ -610,10 +614,15 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
           </div>
         </div>
 
-        <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center">
+        <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center print:hidden">
            <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>系統流水號: EF-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
            <div className="flex gap-3">
-              <button type="button" className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all" style={mingLiUStyle}>
+              <button 
+                type="button" 
+                onClick={handlePrint}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all" 
+                style={mingLiUStyle}
+              >
                 <Printer size={14} /> 列印存根
               </button>
               <button 
@@ -622,13 +631,13 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
                 className="flex items-center gap-2 px-6 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all"
                 style={mingLiUStyle}
               >
-                <Plus size={14} /> 發起新表單
+                <CheckCircle2 size={14} /> 完成
               </button>
            </div>
         </div>
       </div>
 
-      <div className="bg-green-50 border border-green-100 p-6 rounded-3xl flex items-center gap-4">
+      <div className="bg-green-50 border border-green-100 p-6 rounded-3xl flex items-center gap-4 print:hidden">
          <div className="w-12 h-12 bg-green-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-green-100">
            <FileCheck2 size={24} />
          </div>
@@ -724,10 +733,7 @@ const App = () => {
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
-      
-      // 新增：加班備註訊息 (連動加班選項)
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "leave_type", showIf: "加班", width: "w-full" },
-      
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
   });
@@ -767,6 +773,7 @@ const App = () => {
     setFormValues({});
     setIsSubmitted(false);
     setIsPreviewing(false);
+    setActiveTab('dashboard');
   };
 
   const STATS = [
