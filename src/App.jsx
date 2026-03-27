@@ -508,7 +508,6 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
                   <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>請確認下方資訊無誤後點擊送出</p>
                 </div>
              </div>
-             {/* 移除右上角返回修改資料按鈕 */}
           </div>
 
           <div className="flex flex-wrap -mx-2 gap-y-6">
@@ -809,6 +808,18 @@ const App = () => {
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      
+      // 新增：加班補償方式選項
+      { 
+        id: "ot_compensation", 
+        label: "補償方式", 
+        type: "select", 
+        options: ["換補休", "計薪"], 
+        dependsOn: "ot_type", 
+        showIf: ["事前", "事後"], 
+        width: "w-full" 
+      },
+      
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
@@ -898,7 +909,6 @@ const App = () => {
           <div className="space-y-8 animate-in fade-in duration-500">
             {/* Top Section with Banner and Leave Hours */}
             <div className="flex flex-col lg:flex-row gap-6">
-               {/* 1. 歡迎看板 (2/3) */}
                <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                  <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
                  <div className="relative z-10">
@@ -912,7 +922,6 @@ const App = () => {
                  </div>
                </div>
 
-               {/* 2. 剩餘時數區塊 (1/3) */}
                <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
                  <div className="flex items-center justify-between mb-6">
                     <h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}>
