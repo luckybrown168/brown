@@ -493,11 +493,11 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
   );
 };
 
-// --- 組件：預覽校對畫面 (更新：移除右上角返回按鈕) ---
+// --- 組件：預覽校對畫面 ---
 const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500">
-       <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative font-serif">
+        <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative font-serif">
           <div className="flex items-center justify-between mb-8 pb-4 border-b border-blue-50">
              <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
@@ -546,12 +546,12 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
                 <Check size={24} /> 確認無誤，正式提交申請
              </button>
           </div>
-       </div>
+        </div>
     </div>
   );
 };
 
-// --- 組件：正式提交後的存根 (更新：優化下載與列印邏輯，支援檢視模式) ---
+// --- 組件：正式提交後的存根 ---
 const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, onBack }) => {
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -709,7 +709,7 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
   );
 };
 
-// --- 通用清單檢視器 (更新：支援 onItemClick) ---
+// --- 通用清單檢視器 ---
 const ListView = ({ title, icon: Icon, type, color, data, onItemClick }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -808,18 +808,7 @@ const App = () => {
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
-      
-      // 新增：加班補償方式選項
-      { 
-        id: "ot_compensation", 
-        label: "補償方式", 
-        type: "select", 
-        options: ["換補休", "計薪"], 
-        dependsOn: "ot_type", 
-        showIf: ["事前", "事後"], 
-        width: "w-full" 
-      },
-      
+      { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
@@ -907,16 +896,15 @@ const App = () => {
       case 'dashboard':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Top Section with Banner and Leave Hours */}
             <div className="flex flex-col lg:flex-row gap-6">
                <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                  <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
                  <div className="relative z-10">
                    <h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，Felix 資深設計師</h2>
-                   <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>目前系統運作正常，點擊下方統計區塊可直接進入對應清單進行管理與查看內容。</p>
+                   <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>目前系統運作正常，您可以點擊下方統計區塊進入管理清單，或點擊下方按鈕開始建單。</p>
                    <div className="flex gap-4 mt-8">
                      <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg shadow-black/10">
-                       <Plus size={18} /> 發起新表單
+                       <Plus size={18} /> 開啟智慧表單
                      </button>
                    </div>
                  </div>
@@ -951,7 +939,6 @@ const App = () => {
                        </div>
                     </div>
                  </div>
-
                  <p className="mt-4 text-[10px] text-slate-400 font-bold text-center italic" style={mingLiUStyle}>※ 資料更新至：{new Date().toLocaleDateString()}</p>
                </div>
             </div>
@@ -971,10 +958,6 @@ const App = () => {
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="mt-8 bg-blue-50/50 rounded-3xl p-8 border border-dashed border-blue-200 flex flex-col items-center justify-center gap-4">
-               <Activity size={48} className="text-blue-200" />
-               <p className="text-slate-400 font-bold text-sm" style={mingLiUStyle}>歡迎使用智慧表單控制中心</p>
             </div>
           </div>
         );
@@ -1058,7 +1041,10 @@ const App = () => {
           <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#1677FF] transition-all">{isSidebarCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}</button>
         </div>
         <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide print:hidden">
-          {[{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'inbox', label: '智慧建單', icon: MousePointer2 }, { id: 'settings', label: '表單維護', icon: Settings }].map((item) => (
+          {[
+            { id: 'dashboard', label: '首頁', icon: LayoutDashboard }, 
+            { id: 'settings', label: '表單維護', icon: Settings }
+          ].map((item) => (
             <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (['rejected', 'trash'].includes(activeTab) && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
               <item.icon size={20} className="shrink-0" />
               {!isSidebarCollapsed && <span className="animate-in fade-in truncate">{item.label}</span>}
@@ -1068,7 +1054,7 @@ const App = () => {
       </aside>
       <main className="flex-1 flex flex-col overflow-hidden relative print:p-0">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 shadow-sm z-10 print:hidden">
-          <div className="relative w-[450px] group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1677FF] transition-colors" size={20} /><input type="text" placeholder="搜尋表單類型、文號或申請人..." className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:bg-white focus:border-blue-300 outline-none transition-all font-bold shadow-inner" style={mingLiUStyle} /></div>
+          <div className="relative w-[450px] group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1677FF] transition-colors" size={20} /><input type="text" placeholder="搜尋姓名、文號或功能..." className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:bg-white focus:border-blue-300 outline-none transition-all font-bold shadow-inner" style={mingLiUStyle} /></div>
           <div className="flex items-center gap-6">
             <div className="p-3 text-slate-400 hover:bg-slate-100 rounded-full cursor-pointer relative"><Bell size={22} /><span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm"></span></div>
             <div className="flex items-center gap-4 pl-6 border-l border-gray-100">
