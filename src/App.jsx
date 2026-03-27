@@ -329,7 +329,7 @@ const OvertimeNoticeBlock = () => (
       </div>
       <div className="flex gap-3">
         <span className="font-black text-blue-600 shrink-0">B.</span>
-        <div>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</div>
+        <div>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理.</div>
       </div>
       <div className="flex gap-3">
         <span className="font-black text-blue-600 shrink-0">C.</span>
@@ -562,7 +562,8 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
 
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500">
-      <div className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif overflow-hidden print:shadow-none print:border-none print:p-0">
+      {/* 存根主區塊：加上 ID 以便進行精確列印控制 */}
+      <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif overflow-hidden print:shadow-none print:border-none print:p-0 print:m-0">
         <div className="absolute top-10 right-10 w-32 h-32 border-4 border-red-500 rounded-full flex flex-col items-center justify-center rotate-12 opacity-80 pointer-events-none">
           <span className="text-red-500 font-black text-xs" style={mingLiUStyle}>先啟智慧表單件</span>
           <span className="text-red-500 font-black text-lg border-y-2 border-red-500 my-1" style={mingLiUStyle}>已 收 訖</span>
@@ -591,7 +592,7 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
           })}
         </div>
 
-        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 print:bg-white print:border-none">
+        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 print:bg-white print:border-none print:pl-0">
           <p className="text-[10px] font-black text-slate-400 mb-4 flex items-center gap-2" style={mingLiUStyle}>
             <UserCheck size={14} /> 表單流轉路徑
           </p>
@@ -813,7 +814,7 @@ const App = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p>
-                      <h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3>
+                      <h3 className="text-2xl font-black ${stat.color}" style={{...mingLiUStyle, color: stat.color === 'text-blue-600' ? '#2563eb' : stat.color === 'text-amber-600' ? '#d97706' : stat.color === 'text-green-600' ? '#16a34a' : stat.color === 'text-red-600' ? '#dc2626' : '#4f46e5'}}>{stat.value}</h3>
                     </div>
                     <div className={`p-3 rounded-2xl ${stat.bg} text-white shadow-lg transition-transform group-hover:rotate-6`}>
                        <stat.icon size={20} />
@@ -946,7 +947,47 @@ const App = () => {
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
-      <aside className={`bg-white border-r border-gray-200 flex flex-col shadow-[2px_0_12px_rgba(0,0,0,0.02)] z-20 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
+      {/* 注入專用的列印控制 CSS */}
+      <style>
+        {`
+          @media print {
+            body {
+              background: white !important;
+            }
+            /* 隱藏所有不需要列印的 UI 元素 */
+            aside, header, nav, button, .print\\:hidden {
+              display: none !important;
+            }
+            /* 讓主內容區塊在列印時不再受限於 Flex 佈局 */
+            main {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
+            }
+            /* 只顯示存根區塊 */
+            #printable-stub {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100% !important;
+              box-shadow: none !important;
+              border: none !important;
+              padding: 0 !important;
+              visibility: visible !important;
+            }
+            /* 確保文字色彩在列印時清晰 */
+            h2, p, span, td {
+              color: black !important;
+            }
+            .text-red-500, .border-red-500 {
+              color: red !important;
+              border-color: red !important;
+            }
+          }
+        `}
+      </style>
+
+      <aside className={`bg-white border-r border-gray-200 flex flex-col shadow-[2px_0_12px_rgba(0,0,0,0.02)] z-20 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl shadow-blue-100 shrink-0 transition-transform active:scale-95">
@@ -964,7 +1005,7 @@ const App = () => {
           </button>
         </div>
         
-        <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide">
+        <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide print:hidden">
           {[
             { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
             { id: 'inbox', label: '智慧建單', icon: MousePointer2 },
@@ -983,8 +1024,8 @@ const App = () => {
         </nav>
       </aside>
 
-      <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 shadow-sm z-10">
+      <main className="flex-1 flex flex-col overflow-hidden relative print:p-0">
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 shadow-sm z-10 print:hidden">
           <div className="relative w-[450px] group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1677FF] transition-colors" size={20} />
             <input type="text" placeholder="搜尋表單類型、文號或申請人..." className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:bg-white focus:border-blue-300 outline-none transition-all font-bold shadow-inner" style={mingLiUStyle} />
@@ -1005,7 +1046,7 @@ const App = () => {
             </div>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC]">
+        <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white">
           {renderMainContent()}
         </div>
       </main>
