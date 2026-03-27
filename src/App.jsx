@@ -55,7 +55,8 @@ import {
   Info,
   DownloadCloud,
   FileSpreadsheet,
-  FileDown
+  FileDown,
+  ArrowLeft
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -492,7 +493,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
   );
 };
 
-// --- 組件：預覽校對畫面 ---
+// --- 組件：預覽校對畫面 (更新：移除右上角返回按鈕) ---
 const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500">
@@ -507,13 +508,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
                   <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>請確認下方資訊無誤後點擊送出</p>
                 </div>
              </div>
-             <button 
-                onClick={onEdit}
-                className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all font-bold text-sm"
-                style={mingLiUStyle}
-             >
-                <RotateCcw size={16} /> 返回修改資料
-             </button>
+             {/* 移除右上角返回修改資料按鈕 */}
           </div>
 
           <div className="flex flex-wrap -mx-2 gap-y-6">
@@ -557,8 +552,8 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   );
 };
 
-// --- 組件：正式提交後的存根 (更新：優化下載與列印邏輯) ---
-const SubmissionSummary = ({ schema, values, onReset, currentDocId }) => {
+// --- 組件：正式提交後的存根 (更新：優化下載與列印邏輯，支援檢視模式) ---
+const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, onBack }) => {
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -607,6 +602,16 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId }) => {
 
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500">
+      {isViewOnly && (
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-2 text-slate-400 hover:text-blue-600 font-bold transition-all print:hidden"
+          style={mingLiUStyle}
+        >
+          <ArrowLeft size={18} /> 返回單據清單
+        </button>
+      )}
+
       <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif overflow-hidden print:shadow-none print:border-none print:p-0 print:m-0">
         <div className="absolute top-10 right-10 w-32 h-32 border-4 border-red-500 rounded-full flex flex-col items-center justify-center rotate-12 opacity-80 pointer-events-none">
           <span className="text-red-500 font-black text-xs" style={mingLiUStyle}>先啟智慧表單件</span>
@@ -624,8 +629,8 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId }) => {
              <p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p>
            </div>
            <div className="text-right">
-             <p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>提交時間 Submit Time</p>
-             <p className="text-sm font-bold text-slate-500" style={mingLiUStyle}>{new Date().toLocaleString()}</p>
+             <p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>單據狀態 Status</p>
+             <p className="text-sm font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full inline-block mt-1" style={mingLiUStyle}>{isViewOnly ? '流程中 (待簽核)' : '提交成功 (初始化)'}</p>
            </div>
         </div>
 
@@ -689,9 +694,15 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId }) => {
               <button type="button" onClick={handlePrintAction} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all" style={mingLiUStyle}>
                 <Printer size={14} /> 列印存根
               </button>
-              <button type="button" onClick={onReset} className="flex items-center gap-2 px-6 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all shadow-md shadow-blue-100" style={mingLiUStyle}>
-                <CheckCircle2 size={14} /> 完成
-              </button>
+              {!isViewOnly ? (
+                <button type="button" onClick={onReset} className="flex items-center gap-2 px-6 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all shadow-md shadow-blue-100" style={mingLiUStyle}>
+                  <CheckCircle2 size={14} /> 完成
+                </button>
+              ) : (
+                <button type="button" onClick={onBack} className="flex items-center gap-2 px-6 py-2 bg-slate-800 text-white rounded-xl text-xs font-black hover:bg-black transition-all" style={mingLiUStyle}>
+                  關閉視窗
+                </button>
+              )}
            </div>
         </div>
       </div>
@@ -699,8 +710,8 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId }) => {
   );
 };
 
-// --- 通用清單檢視器 (更新：傳入動態 data) ---
-const ListView = ({ title, icon: Icon, type, color, data }) => {
+// --- 通用清單檢視器 (更新：支援 onItemClick) ---
+const ListView = ({ title, icon: Icon, type, color, data, onItemClick }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -731,10 +742,14 @@ const ListView = ({ title, icon: Icon, type, color, data }) => {
             </thead>
             <tbody className="divide-y divide-slate-50">
                {data.length > 0 ? data.map((item, i) => (
-                 <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                 <tr 
+                   key={i} 
+                   onClick={() => onItemClick(item)}
+                   className="hover:bg-blue-50/30 transition-colors group cursor-pointer"
+                 >
                     <td className="px-8 py-5">
                        <p className="text-[10px] font-bold text-blue-600 mb-1">{item.id}</p>
-                       <p className="text-sm font-bold text-slate-700">{item.values.form_subject || '( 未命名表單 )'}</p>
+                       <p className="text-sm font-bold text-slate-700 group-hover:text-blue-700">{item.values.form_subject || '( 未命名表單 )'}</p>
                     </td>
                     <td className="px-6 py-5 text-sm text-slate-500 font-bold">{item.submitDate}</td>
                     <td className="px-6 py-5">
@@ -743,7 +758,7 @@ const ListView = ({ title, icon: Icon, type, color, data }) => {
                        </span>
                     </td>
                     <td className="px-8 py-5 text-right">
-                       <button className="p-2 text-slate-300 group-hover:text-blue-600 transition-all"><ChevronRight size={20} /></button>
+                       <button className="p-2 text-slate-300 group-hover:text-blue-600 transition-all group-hover:translate-x-1 duration-300"><ChevronRight size={20} /></button>
                     </td>
                  </tr>
                )) : (
@@ -768,9 +783,10 @@ const App = () => {
   const [selectedFieldId, setSelectedFieldId] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
-  // --- 關鍵新增：存儲正式提交的表單資料 ---
+  // --- 狀態管理 ---
   const [submittedForms, setSubmittedForms] = useState([]);
   const [currentDocId, setCurrentDocId] = useState('');
+  const [viewingForm, setViewingForm] = useState(null);
 
   const LEAVE_TYPES = ["特休", "事假", "病假", "喪假", "補休", "婚假", "公假", "產假", "家庭照顧假"];
 
@@ -825,9 +841,7 @@ const App = () => {
     setIsPreviewing(true);
   };
 
-  // --- 關鍵修改：正式提交並存儲資料 ---
   const handleFinalSubmit = () => {
-    // 產生正式單號 EF-YYYYMMDD-XXX
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const sequence = String(submittedForms.length + 1).padStart(3, '0');
     const newDocId = `EF-${today}-${sequence}`;
@@ -836,7 +850,7 @@ const App = () => {
       id: newDocId,
       values: { ...formValues },
       submitDate: new Date().toLocaleDateString(),
-      status: 'Pending' // 預設狀態為流程中
+      status: 'Pending'
     };
 
     setSubmittedForms([...submittedForms, newFormEntry]);
@@ -852,7 +866,10 @@ const App = () => {
     setActiveTab('dashboard');
   };
 
-  // --- 儀表板數據同步 ---
+  const handleOpenDetail = (form) => {
+    setViewingForm(form);
+  };
+
   const STATS = [
     { id: 'inbox_stat', label: '收件匣', value: 0, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
     { id: 'pending_stat', label: '流程中案件', value: submittedForms.filter(f => f.status === 'Pending').length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
@@ -863,20 +880,70 @@ const App = () => {
   ];
 
   const renderMainContent = () => {
+    if (viewingForm) {
+      return (
+        <SubmissionSummary 
+          schema={myFormSchema} 
+          values={viewingForm.values} 
+          currentDocId={viewingForm.id} 
+          isViewOnly={true} 
+          onBack={() => setViewingForm(null)} 
+        />
+      );
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
-               <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
-               <div className="relative z-10">
-                 <h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，Felix 資深設計師</h2>
-                 <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>目前系統運作正常，點擊下方統計區塊可直接進入對應清單進行管理。</p>
-                 <div className="flex gap-4 mt-8">
-                   <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg shadow-black/10">
-                     <Plus size={18} /> 發起新表單
-                   </button>
+            {/* Top Section with Banner and Leave Hours */}
+            <div className="flex flex-col lg:flex-row gap-6">
+               {/* 1. 歡迎看板 (2/3) */}
+               <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+                 <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
+                 <div className="relative z-10">
+                   <h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，Felix 資深設計師</h2>
+                   <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>目前系統運作正常，點擊下方統計區塊可直接進入對應清單進行管理與查看內容。</p>
+                   <div className="flex gap-4 mt-8">
+                     <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg shadow-black/10">
+                       <Plus size={18} /> 發起新表單
+                     </button>
+                   </div>
                  </div>
+               </div>
+
+               {/* 2. 剩餘時數區塊 (1/3) */}
+               <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
+                 <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}>
+                      <Clock size={20} className="text-blue-600" /> 休假剩餘時數
+                    </h4>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leave Balance</span>
+                 </div>
+                 
+                 <div className="space-y-6">
+                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                       <div className="flex justify-between items-end mb-2">
+                          <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span>
+                          <span className="text-xl font-black text-blue-600">56.0 <small className="text-[10px] text-slate-400">hr</small></span>
+                       </div>
+                       <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                          <div className="w-[70%] h-full bg-blue-500 rounded-full"></div>
+                       </div>
+                    </div>
+
+                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+                       <div className="flex justify-between items-end mb-2">
+                          <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span>
+                          <span className="text-xl font-black text-emerald-600">12.5 <small className="text-[10px] text-slate-400">hr</small></span>
+                       </div>
+                       <div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden">
+                          <div className="w-[35%] h-full bg-emerald-500 rounded-full"></div>
+                       </div>
+                    </div>
+                 </div>
+
+                 <p className="mt-4 text-[10px] text-slate-400 font-bold text-center italic" style={mingLiUStyle}>※ 資料更新至：{new Date().toLocaleDateString()}</p>
                </div>
             </div>
 
@@ -903,13 +970,13 @@ const App = () => {
           </div>
         );
       case 'inbox_list':
-        return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" type="inbox" data={[]} />;
+        return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" type="inbox" data={[]} onItemClick={handleOpenDetail} />;
       case 'pending_list':
-        return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" type="pending" data={submittedForms.filter(f => f.status === 'Pending')} />;
+        return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" type="pending" data={submittedForms.filter(f => f.status === 'Pending')} onItemClick={handleOpenDetail} />;
       case 'completed_list':
-        return <ListView title="已結案" icon={FileCheck2} color="bg-green-600" type="completed" data={submittedForms.filter(f => f.status === 'Completed')} />;
+        return <ListView title="已結案" icon={FileCheck2} color="bg-green-600" type="completed" data={submittedForms.filter(f => f.status === 'Completed')} onItemClick={handleOpenDetail} />;
       case 'draft_list':
-        return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" type="draft" data={[]} />;
+        return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" type="draft" data={[]} onItemClick={handleOpenDetail} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500">
@@ -936,9 +1003,9 @@ const App = () => {
           </div>
         );
       case 'rejected':
-        return <ListView title="退件 / 抽單" icon={FileX2} color="bg-red-600" type="rejected" data={submittedForms.filter(f => f.status === 'Rejected')} />;
+        return <ListView title="退件 / 抽單" icon={FileX2} color="bg-red-600" type="rejected" data={submittedForms.filter(f => f.status === 'Rejected')} onItemClick={handleOpenDetail} />;
       case 'trash':
-        return <ListView title="垃圾桶" icon={Trash2} color="bg-slate-600" type="trash" data={[]} />;
+        return <ListView title="垃圾桶" icon={Trash2} color="bg-slate-600" type="trash" data={[]} onItemClick={handleOpenDetail} />;
       case 'settings':
         return (
           <div className="h-full flex gap-8 animate-in fade-in duration-500">
@@ -983,7 +1050,7 @@ const App = () => {
         </div>
         <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide print:hidden">
           {[{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'inbox', label: '智慧建單', icon: MousePointer2 }, { id: 'settings', label: '表單維護', icon: Settings }].map((item) => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (['rejected', 'trash'].includes(activeTab) && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (['rejected', 'trash'].includes(activeTab) && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
               <item.icon size={20} className="shrink-0" />
               {!isSidebarCollapsed && <span className="animate-in fade-in truncate">{item.label}</span>}
             </button>
