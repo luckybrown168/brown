@@ -56,11 +56,116 @@ import {
   DownloadCloud,
   FileSpreadsheet,
   FileDown,
-  ArrowLeft
+  ArrowLeft,
+  Users,
+  LogOut,
+  Lock,
+  User
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
 const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", "MingLiU", serif' };
+
+// --- 員工資料庫 (從 EXCEL 擷取之索引資料) ---
+const EMPLOYEE_DB = [
+  { id: "0039", name: "謝明宏", gender: "男", dept: "系統暨工程部", group: "", title: "協理" },
+  { id: "0086", name: "黃曉文", gender: "男", dept: "系統暨工程部", group: "工程組", title: "工程師" },
+  { id: "0176", name: "蔡文凱", gender: "男", dept: "系統暨工程部", group: "工程組", title: "工程師" },
+  { id: "0338", name: "林昱成", gender: "男", dept: "系統暨工程部", group: "工程組", title: "工程師" },
+  { id: "0133", name: "蔡秋雄", gender: "男", dept: "系統暨工程部", group: "工程組", title: "二級資深工程師" },
+  { id: "0124", name: "林山傑", gender: "男", dept: "系統暨工程部", group: "工程組", title: "二級資深工程師" },
+  { id: "0097", name: "馮金財", gender: "男", dept: "系統暨工程部", group: "工程組", title: "一級資深工程師" },
+  { id: "0244", name: "黃憲政", gender: "男", dept: "系統暨工程部", group: "工程組", title: "二級資深工程師" },
+  { id: "0153", name: "陳俊安", gender: "男", dept: "系統暨工程部", group: "工程組", title: "一級資深工程師" },
+  { id: "0271", name: "吳孟達", gender: "男", dept: "系統暨工程部", group: "工程組", title: "二級資深工程師" },
+  { id: "0262", name: "陳俊邦", gender: "男", dept: "系統暨工程部", group: "系統組", title: "經理" }, // 已修正重複的 name 鍵
+  { id: "0367", name: "李成富", gender: "男", dept: "系統暨工程部", group: "系統組", title: "工程師" },
+  { id: "0348", name: "楊大宇", gender: "男", dept: "系統暨工程部", group: "系統組", title: "工程師" },
+  { id: "0074", name: "邱培增", gender: "男", dept: "系統暨工程部", group: "系統組", title: "一級資深工程師" },
+  { id: "0199", name: "蔡木坤", gender: "男", dept: "系統暨工程部", group: "系統組", title: "二級資深工程師" },
+  { id: "0234", name: "吳志清", gender: "男", dept: "系統暨工程部", group: "系統組", title: "二級資深工程師" }
+];
+
+// --- 組件：登入畫面 ---
+const LoginPage = ({ onLogin }) => {
+  const [empId, setEmpId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const user = EMPLOYEE_DB.find(emp => emp.id === empId);
+    if (user && password === '123') {
+      onLogin(user);
+    } else {
+      setError('員編或密碼錯誤 (預設密碼為 123)');
+    }
+  };
+
+  return (
+    <div className="h-screen w-full bg-[#F0F2F5] flex items-center justify-center p-4 overflow-hidden" style={mingLiUStyle}>
+      <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+        <div className="bg-[#1677FF] p-10 text-white relative overflow-hidden">
+           <div className="absolute top-[-20px] right-[-20px] opacity-10 rotate-12"><Layers size={180} /></div>
+           <div className="relative z-10 flex flex-col items-center">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4">
+                <Lock className="text-white w-8 h-8" />
+              </div>
+              <h1 className="text-2xl font-black tracking-widest">先啟智慧表單</h1>
+              <p className="text-blue-100 text-xs mt-1 font-bold uppercase tracking-tighter">Enterprise Sign-In Portal</p>
+           </div>
+        </div>
+        
+        <form onSubmit={handleLogin} className="p-10 space-y-6">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">員工編號 (User ID)</label>
+            <div className="relative">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <input 
+                type="text" 
+                value={empId}
+                onChange={(e) => setEmpId(e.target.value)}
+                placeholder="請輸入四位員編 (如 0039)"
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:bg-white focus:border-blue-500 transition-all font-bold text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">存取密碼 (Password)</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="請輸入密碼"
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:bg-white focus:border-blue-500 transition-all font-bold text-sm"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-600 text-[10px] font-bold p-3 rounded-xl flex items-center gap-2 animate-bounce">
+              <AlertCircle size={14} /> {error}
+            </div>
+          )}
+
+          <button 
+            type="submit"
+            className="w-full bg-[#1677FF] text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 text-base"
+          >
+            登入系統
+          </button>
+
+          <div className="text-center pt-4">
+             <p className="text-[10px] text-slate-400 font-bold">先啟資訊智慧財產權所有 © 2026</p>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 // --- 核心組件：優化後的時間選擇器 ---
 const DateTimePicker = ({ id, label, value, onChange }) => {
@@ -407,6 +512,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
                     value={formValues[field.id] || ""}
                     onChange={(e) => onInputChange(field.id, e.target.value)}
                     className="w-full border border-slate-400 p-2 rounded text-sm outline-none focus:border-blue-500 shadow-sm"
+                    readOnly={field.id === 'employee_id' || field.id === 'department'} 
                   />
                 )}
 
@@ -493,7 +599,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
   );
 };
 
-// --- 組件：預覽校對畫面 (更新：移除右上角返回按鈕) ---
+// --- 組件：預覽校對畫面 ---
 const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500">
@@ -551,7 +657,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   );
 };
 
-// --- 組件：正式提交後的存根 (更新：優化下載與列印邏輯，支援檢視模式) ---
+// --- 組件：正式提交後的存根 ---
 const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, onBack }) => {
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -573,11 +679,7 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
     });
 
     const headers = ["欄位標籤", "填寫內容"];
-    const rows = [
-      ["單號", currentDocId],
-      ...visibleData.map(f => [f.label, values[f.id] || ""])
-    ];
-    
+    const rows = [["單號", currentDocId], ...visibleData.map(f => [f.label, values[f.id] || ""])];
     const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -602,11 +704,7 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500">
       {isViewOnly && (
-        <button 
-          onClick={onBack}
-          className="flex items-center gap-2 text-slate-400 hover:text-blue-600 font-bold transition-all print:hidden"
-          style={mingLiUStyle}
-        >
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-blue-600 font-bold transition-all print:hidden" style={mingLiUStyle}>
           <ArrowLeft size={18} /> 返回單據清單
         </button>
       )}
@@ -623,14 +721,8 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
         </div>
 
         <div className="mb-6 flex justify-between items-end border-b border-slate-100 pb-4">
-           <div>
-             <p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p>
-             <p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p>
-           </div>
-           <div className="text-right">
-             <p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>單據狀態 Status</p>
-             <p className="text-sm font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full inline-block mt-1" style={mingLiUStyle}>{isViewOnly ? '流程中 (待簽核)' : '提交成功 (初始化)'}</p>
-           </div>
+           <div><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
+           <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>單據狀態 Status</p><p className="text-sm font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full inline-block mt-1" style={mingLiUStyle}>{isViewOnly ? '流程中 (待簽核)' : '提交成功 (初始化)'}</p></div>
         </div>
 
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
@@ -643,31 +735,18 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
              return (
                <div key={field.id} className={`${field.width} px-2`}>
                  <p className="text-[10px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
-                 <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>
-                   {field.type === 'file' ? (values[field.id] ? `📎 ${values[field.id]}` : '( 無附加檔案 )') : (values[field.id] || '( 未填寫 )')}
-                 </p>
+                 <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.type === 'file' ? (values[field.id] ? `📎 ${values[field.id]}` : '( 無附加檔案 )') : (values[field.id] || '( 未填寫 )')}</p>
                </div>
              );
           })}
         </div>
 
         <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 print:bg-white print:border-none print:pl-0">
-          <p className="text-[10px] font-black text-slate-400 mb-4 flex items-center gap-2" style={mingLiUStyle}>
-            <UserCheck size={14} /> 表單流轉路徑
-          </p>
+          <p className="text-[10px] font-black text-slate-400 mb-4 flex items-center gap-2" style={mingLiUStyle}><UserCheck size={14} /> 表單流轉路徑</p>
           <div className="flex items-center gap-4">
-            {[
-              { role: '申請人', name: '資深設計師 Felix' },
-              { role: '部門主管', name: '張部長' },
-              { role: '行政部', name: '會簽單位' }
-            ].map((step, i, arr) => (
+            {[{ role: '申請人', name: values.employee_name || '資深設計師 Felix' }, { role: '部門主管', name: '張部長' }, { role: '行政部', name: '會簽單位' }].map((step, i, arr) => (
               <React.Fragment key={i}>
-                <div className="flex flex-col items-center gap-1">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? 'bg-green-500 text-white' : 'bg-white border border-slate-200 text-slate-400'}`}>
-                    {i === 0 ? <Check size={14}/> : i + 1}
-                  </div>
-                  <p className="text-[10px] font-bold text-slate-600" style={mingLiUStyle}>{step.role}</p>
-                </div>
+                <div className="flex flex-col items-center gap-1"><div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? 'bg-green-500 text-white' : 'bg-white border border-slate-200 text-slate-400'}`}>{i === 0 ? <Check size={14}/> : i + 1}</div><p className="text-[10px] font-bold text-slate-600" style={mingLiUStyle}>{step.role}</p></div>
                 {i < arr.length - 1 && <ArrowRight size={14} className="text-slate-200 mb-4" />}
               </React.Fragment>
             ))}
@@ -678,30 +757,11 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
            <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>系統流水驗證碼: {Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
            <div className="flex items-center gap-3">
               <div className="relative" ref={dropdownRef}>
-                 <button onClick={() => setIsDownloadOpen(!isDownloadOpen)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDownloadOpen ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} style={mingLiUStyle}>
-                    <DownloadCloud size={14} /> 下載 <ChevronDown size={12} className={`transition-transform duration-300 ${isDownloadOpen ? 'rotate-180' : ''}`} />
-                 </button>
-                 {isDownloadOpen && (
-                    <div className="absolute bottom-full mb-2 left-0 w-44 bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
-                       <button onClick={handleDownloadExcel} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors group">
-                          <FileSpreadsheet size={14} className="text-green-600 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs font-bold text-slate-700" style={mingLiUStyle}>下載 EXCEL 檔</span>
-                       </button>
-                    </div>
-                 )}
+                 <button onClick={() => setIsDownloadOpen(!isDownloadOpen)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDownloadOpen ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} style={mingLiUStyle}><DownloadCloud size={14} /> 下載 <ChevronDown size={12} className={`transition-transform duration-300 ${isDownloadOpen ? 'rotate-180' : ''}`} /></button>
+                 {isDownloadOpen && (<div className="absolute bottom-full mb-2 left-0 w-44 bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50"><button onClick={handleDownloadExcel} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors group"><FileSpreadsheet size={14} className="text-green-600 group-hover:scale-110 transition-transform" /><span className="text-xs font-bold text-slate-700" style={mingLiUStyle}>下載 EXCEL 檔</span></button></div>)}
               </div>
-              <button type="button" onClick={handlePrintAction} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all" style={mingLiUStyle}>
-                <Printer size={14} /> 列印存根
-              </button>
-              {!isViewOnly ? (
-                <button type="button" onClick={onReset} className="flex items-center gap-2 px-6 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all shadow-md shadow-blue-100" style={mingLiUStyle}>
-                  <CheckCircle2 size={14} /> 完成
-                </button>
-              ) : (
-                <button type="button" onClick={onBack} className="flex items-center gap-2 px-6 py-2 bg-slate-800 text-white rounded-xl text-xs font-black hover:bg-black transition-all" style={mingLiUStyle}>
-                  關閉視窗
-                </button>
-              )}
+              <button type="button" onClick={handlePrintAction} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all" style={mingLiUStyle}><Printer size={14} /> 列印存根</button>
+              {!isViewOnly ? (<button type="button" onClick={onReset} className="flex items-center gap-2 px-6 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all shadow-md shadow-blue-100" style={mingLiUStyle}><CheckCircle2 size={14} /> 完成</button>) : (<button type="button" onClick={onBack} className="flex items-center gap-2 px-6 py-2 bg-slate-800 text-white rounded-xl text-xs font-black hover:bg-black transition-all" style={mingLiUStyle}>關閉視窗</button>)}
            </div>
         </div>
       </div>
@@ -709,23 +769,32 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
   );
 };
 
-// --- 通用清單檢視器 (更新：支援 onItemClick) ---
+// --- 通用清單檢視器 ---
 const ListView = ({ title, icon: Icon, type, color, data, onItemClick }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const filteredData = data.filter(item => 
+    item.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (item.values?.form_subject && item.values.form_subject.includes(searchTerm)) ||
+    (item.name && item.name.includes(searchTerm))
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 ${color} rounded-2xl flex items-center justify-center shadow-inner text-white`}>
-            <Icon size={24} />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>{title}</h2>
-            <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>系統正在處理您的 {title} 項目 (共 {data.length} 筆)</p>
-          </div>
+          <div className={`w-12 h-12 ${color} rounded-2xl flex items-center justify-center shadow-inner text-white`}><Icon size={24} /></div>
+          <div><h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>{title}</h2><p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>系統共找到 {filteredData.length} 筆資料</p></div>
         </div>
-        <div className="flex gap-2">
-           <button className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 transition-all"><Filter size={18} /></button>
-           <button className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 transition-all"><Search size={18} /></button>
+        <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+           <Search size={16} className="text-slate-300" />
+           <input 
+             type="text" 
+             placeholder="輸入單號或內容搜尋..." 
+             value={searchTerm}
+             onChange={(e) => setSearchTerm(e.target.value)}
+             className="bg-transparent border-none outline-none text-xs font-bold w-48"
+             style={mingLiUStyle}
+           />
         </div>
       </div>
 
@@ -733,40 +802,52 @@ const ListView = ({ title, icon: Icon, type, color, data, onItemClick }) => {
          <table className="w-full text-left" style={mingLiUStyle}>
             <thead className="bg-slate-50/50 border-b border-slate-100">
                <tr>
-                  <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">單號 / 主旨</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">申請日期</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">目前狀態</th>
+                  {type === 'employee' ? (
+                    <>
+                      <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">員編 / 姓名</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">部門</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">職稱</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">單號 / 主旨</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">申請日期</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">目前狀態</th>
+                    </>
+                  )}
                   <th className="px-8 py-4 text-right"></th>
                </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-               {data.length > 0 ? data.map((item, i) => (
-                 <tr 
-                   key={i} 
-                   onClick={() => onItemClick(item)}
-                   className="hover:bg-blue-50/30 transition-colors group cursor-pointer"
-                 >
-                    <td className="px-8 py-5">
-                       <p className="text-[10px] font-bold text-blue-600 mb-1">{item.id}</p>
-                       <p className="text-sm font-bold text-slate-700 group-hover:text-blue-700">{item.values.form_subject || '( 未命名表單 )'}</p>
-                    </td>
-                    <td className="px-6 py-5 text-sm text-slate-500 font-bold">{item.submitDate}</td>
-                    <td className="px-6 py-5">
-                       <span className={`px-3 py-1 rounded-full text-[10px] font-black ${item.status === 'Rejected' ? 'bg-red-50 text-red-500' : item.status === 'Completed' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
-                         {item.status === 'Pending' ? '流程中' : item.status === 'Completed' ? '已結案' : item.status === 'Rejected' ? '退件' : '草稿'}
-                       </span>
-                    </td>
+               {filteredData.length > 0 ? filteredData.map((item, i) => (
+                 <tr key={i} onClick={() => type !== 'employee' && onItemClick(item)} className={`hover:bg-blue-50/30 transition-colors group ${type !== 'employee' ? 'cursor-pointer' : ''}`}>
+                    {type === 'employee' ? (
+                      <>
+                        <td className="px-8 py-5">
+                          <p className="text-[10px] font-bold text-blue-600 mb-1">{item.id}</p>
+                          <p className="text-sm font-bold text-slate-700">{item.name} ({item.gender})</p>
+                        </td>
+                        <td className="px-6 py-5 text-sm text-slate-500 font-bold">{item.dept} {item.group && ` - ${item.group}`}</td>
+                        <td className="px-6 py-5"><span className="px-3 py-1 rounded-full text-[10px] font-black bg-slate-100 text-slate-600">{item.title}</span></td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-8 py-5">
+                          <p className="text-[10px] font-bold text-blue-600 mb-1">{item.id}</p>
+                          <p className="text-sm font-bold text-slate-700 group-hover:text-blue-700">{item.values?.form_subject || '( 未命名表單 )'}</p>
+                        </td>
+                        <td className="px-6 py-5 text-sm text-slate-500 font-bold">{item.submitDate}</td>
+                        <td className="px-6 py-5">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black ${item.status === 'Rejected' ? 'bg-red-50 text-red-500' : item.status === 'Completed' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>{item.status === 'Pending' ? '流程中' : item.status === 'Completed' ? '已結案' : item.status === 'Rejected' ? '退件' : '草稿'}</span>
+                        </td>
+                      </>
+                    )}
                     <td className="px-8 py-5 text-right">
-                       <button className="p-2 text-slate-300 group-hover:text-blue-600 transition-all group-hover:translate-x-1 duration-300"><ChevronRight size={20} /></button>
+                       {type !== 'employee' && <button className="p-2 text-slate-300 group-hover:text-blue-600 transition-all group-hover:translate-x-1 duration-300"><ChevronRight size={20} /></button>}
                     </td>
                  </tr>
                )) : (
-                <tr className="hover:bg-slate-50/50 transition-colors">
-                  <td colSpan="4" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>
-                     <Inbox size={48} className="mx-auto mb-4 opacity-10" />
-                     目前尚無任何 {title} 資料
-                  </td>
-                </tr>
+                <tr><td colSpan="4" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}><Inbox size={48} className="mx-auto mb-4 opacity-10" />目前尚無任何符合資料</td></tr>
                )}
             </tbody>
          </table>
@@ -776,25 +857,49 @@ const ListView = ({ title, icon: Icon, type, color, data, onItemClick }) => {
 };
 
 const App = () => {
+  const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [selectedFieldId, setSelectedFieldId] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
-  // --- 狀態管理 ---
   const [submittedForms, setSubmittedForms] = useState([]);
   const [currentDocId, setCurrentDocId] = useState('');
   const [viewingForm, setViewingForm] = useState(null);
 
   const LEAVE_TYPES = ["特休", "事假", "病假", "喪假", "補休", "婚假", "公假", "產假", "家庭照顧假"];
 
+  const [formValues, setFormValues] = useState({});
+
+  useEffect(() => {
+    if (currentUser) {
+      setFormValues(prev => ({
+        ...prev,
+        employee_id: currentUser.id,
+        employee_name: currentUser.name,
+        department: currentUser.dept + (currentUser.group ? ` - ${currentUser.group}` : '')
+      }));
+    }
+  }, [currentUser]);
+
+  const handleLogin = (user) => {
+    setCurrentUser(user);
+    setActiveTab('dashboard');
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setFormValues({});
+    setActiveTab('dashboard');
+  };
+
   const [myFormSchema, setMyFormSchema] = useState({
     title: "電子智慧表單",
     fields: [
       { id: "form_subject", label: "單據主旨", type: "text", width: "w-full" },
       { id: "employee_id", label: "員工編號", type: "text", width: "w-1/2" },
-      { id: "department", label: "單位", type: "select", options: ["工程組", "系統組", "客服組", "產品組", "營業組", "財務行政部"], width: "w-1/2" },
+      { id: "department", label: "單位", type: "text", width: "w-1/2" },
       { id: "category", label: "選擇類別", type: "select", options: ["行政類", "銷售類", "差勤類", "系統類"], width: "w-full" },
       { id: "leave_type", label: "假單類別", type: "select", options: [...LEAVE_TYPES, "加班"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
       { id: "agent", label: "代理人", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
@@ -808,25 +913,12 @@ const App = () => {
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
-      
-      // 新增：加班補償方式選項
-      { 
-        id: "ot_compensation", 
-        label: "補償方式", 
-        type: "select", 
-        options: ["換補休", "計薪"], 
-        dependsOn: "ot_type", 
-        showIf: ["事前", "事後"], 
-        width: "w-full" 
-      },
-      
+      { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
   });
-
-  const [formValues, setFormValues] = useState({});
 
   const handleInputChange = (id, value) => {
     setFormValues(prev => {
@@ -835,10 +927,7 @@ const App = () => {
         myFormSchema.fields.forEach(field => {
           if (field.dependsOn === parentId) {
             const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
-            if (!showConditions.includes(nextValues[parentId])) {
-              delete nextValues[field.id];
-              cleanupChildren(field.id);
-            }
+            if (!showConditions.includes(nextValues[parentId])) { delete nextValues[field.id]; cleanupChildren(field.id); }
           }
         });
       };
@@ -847,23 +936,13 @@ const App = () => {
     });
   };
 
-  const startPreview = () => {
-    if (!formValues.category) return;
-    setIsPreviewing(true);
-  };
+  const startPreview = () => { if (!formValues.category) return; setIsPreviewing(true); };
 
   const handleFinalSubmit = () => {
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const sequence = String(submittedForms.length + 1).padStart(3, '0');
     const newDocId = `EF-${today}-${sequence}`;
-    
-    const newFormEntry = {
-      id: newDocId,
-      values: { ...formValues },
-      submitDate: new Date().toLocaleDateString(),
-      status: 'Pending'
-    };
-
+    const newFormEntry = { id: newDocId, values: { ...formValues }, submitDate: new Date().toLocaleDateString(), status: 'Pending' };
     setSubmittedForms([...submittedForms, newFormEntry]);
     setCurrentDocId(newDocId);
     setIsPreviewing(false);
@@ -871,7 +950,11 @@ const App = () => {
   };
 
   const resetForm = () => {
-    setFormValues({});
+    setFormValues({
+      employee_id: currentUser.id,
+      employee_name: currentUser.name,
+      department: currentUser.dept + (currentUser.group ? ` - ${currentUser.group}` : '')
+    });
     setIsSubmitted(false);
     setIsPreviewing(false);
     setActiveTab('dashboard');
@@ -880,6 +963,8 @@ const App = () => {
   const handleOpenDetail = (form) => {
     setViewingForm(form);
   };
+
+  if (!currentUser) return <LoginPage onLogin={handleLogin} />;
 
   const STATS = [
     { id: 'inbox_stat', label: '收件匣', value: 0, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
@@ -891,101 +976,50 @@ const App = () => {
   ];
 
   const renderMainContent = () => {
-    if (viewingForm) {
-      return (
-        <SubmissionSummary 
-          schema={myFormSchema} 
-          values={viewingForm.values} 
-          currentDocId={viewingForm.id} 
-          isViewOnly={true} 
-          onBack={() => setViewingForm(null)} 
-        />
-      );
-    }
+    if (viewingForm) return <SubmissionSummary schema={myFormSchema} values={viewingForm.values} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} />;
 
     switch (activeTab) {
       case 'dashboard':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Top Section with Banner and Leave Hours */}
             <div className="flex flex-col lg:flex-row gap-6">
                <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                  <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
                  <div className="relative z-10">
-                   <h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，Felix 資深設計師</h2>
-                   <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>目前系統運作正常，點擊下方統計區塊可直接進入對應清單進行管理與查看內容。</p>
+                   <h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，{currentUser.name} {currentUser.title}</h2>
+                   <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>歡迎登入先啟資訊。目前您的單位為 {currentUser.dept}{currentUser.group && ` - ${currentUser.group}`}，系統各項簽核功能運作正常。</p>
                    <div className="flex gap-4 mt-8">
-                     <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg shadow-black/10">
-                       <Plus size={18} /> 發起新表單
-                     </button>
+                     <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg shadow-black/10"><Plus size={18} /> 發起新表單</button>
                    </div>
                  </div>
                </div>
-
                <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
-                 <div className="flex items-center justify-between mb-6">
-                    <h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}>
-                      <Clock size={20} className="text-blue-600" /> 休假剩餘時數
-                    </h4>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leave Balance</span>
-                 </div>
-                 
+                 <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leave Balance</span></div>
                  <div className="space-y-6">
-                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
-                       <div className="flex justify-between items-end mb-2">
-                          <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span>
-                          <span className="text-xl font-black text-blue-600">56.0 <small className="text-[10px] text-slate-400">hr</small></span>
-                       </div>
-                       <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
-                          <div className="w-[70%] h-full bg-blue-500 rounded-full"></div>
-                       </div>
-                    </div>
-
-                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
-                       <div className="flex justify-between items-end mb-2">
-                          <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span>
-                          <span className="text-xl font-black text-emerald-600">12.5 <small className="text-[10px] text-slate-400">hr</small></span>
-                       </div>
-                       <div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden">
-                          <div className="w-[35%] h-full bg-emerald-500 rounded-full"></div>
-                       </div>
-                    </div>
+                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span><span className="text-xl font-black text-blue-600">56.0 <small className="text-[10px] text-slate-400">hr</small></span></div><div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden"><div className="w-[70%] h-full bg-blue-500 rounded-full"></div></div></div>
+                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span><span className="text-xl font-black text-emerald-600">12.5 <small className="text-[10px] text-slate-400">hr</small></span></div><div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="w-[35%] h-full bg-emerald-500 rounded-full"></div></div></div>
                  </div>
-
                  <p className="mt-4 text-[10px] text-slate-400 font-bold text-center italic" style={mingLiUStyle}>※ 資料更新至：{new Date().toLocaleDateString()}</p>
                </div>
             </div>
-
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               {STATS.map((stat, idx) => (
                 <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer group active:scale-95">
                   <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p>
-                      <h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3>
-                    </div>
+                    <div><p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3></div>
                     <div className={`p-3 rounded-2xl ${stat.bg} text-white shadow-lg transition-transform group-hover:rotate-6`}><stat.icon size={20} /></div>
                   </div>
-                  <div className="mt-4 flex items-center gap-1 text-[10px] text-blue-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                     <span>進入檢視</span> <ArrowRight size={10} />
-                  </div>
+                  <div className="mt-4 flex items-center gap-1 text-[10px] text-blue-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity"><span>進入檢視</span> <ArrowRight size={10} /></div>
                 </div>
               ))}
             </div>
-            <div className="mt-8 bg-blue-50/50 rounded-3xl p-8 border border-dashed border-blue-200 flex flex-col items-center justify-center gap-4">
-               <Activity size={48} className="text-blue-200" />
-               <p className="text-slate-400 font-bold text-sm" style={mingLiUStyle}>歡迎使用智慧表單控制中心</p>
-            </div>
           </div>
         );
-      case 'inbox_list':
-        return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" type="inbox" data={[]} onItemClick={handleOpenDetail} />;
-      case 'pending_list':
-        return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" type="pending" data={submittedForms.filter(f => f.status === 'Pending')} onItemClick={handleOpenDetail} />;
-      case 'completed_list':
-        return <ListView title="已結案" icon={FileCheck2} color="bg-green-600" type="completed" data={submittedForms.filter(f => f.status === 'Completed')} onItemClick={handleOpenDetail} />;
-      case 'draft_list':
-        return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" type="draft" data={[]} onItemClick={handleOpenDetail} />;
+      case 'inbox_list': return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" type="inbox" data={[]} onItemClick={handleOpenDetail} />;
+      case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" type="pending" data={submittedForms.filter(f => f.status === 'Pending')} onItemClick={handleOpenDetail} />;
+      case 'completed_list': return <ListView title="已結案" icon={FileCheck2} color="bg-green-600" type="completed" data={submittedForms.filter(f => f.status === 'Completed')} onItemClick={handleOpenDetail} />;
+      case 'rejected': return <ListView title="退件 / 抽單" icon={FileX2} color="bg-red-600" type="rejected" data={submittedForms.filter(f => f.status === 'Rejected')} onItemClick={handleOpenDetail} />;
+      case 'employee_list': return <ListView title="員工管理" icon={Users} color="bg-indigo-600" type="employee" data={EMPLOYEE_DB} onItemClick={() => {}} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500">
@@ -995,26 +1029,11 @@ const App = () => {
               ) : isPreviewing ? (
                 <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} />
               ) : (
-                <>
-                  <div className="absolute top-8 left-12 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#1677FF]"><Eye size={20} /></div>
-                    <div>
-                      <h3 className="font-black text-slate-800 text-lg" style={mingLiUStyle}>電子智慧表單填寫</h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest" style={mingLiUStyle}>Step 1: Intelligent Data Input</p>
-                    </div>
-                  </div>
-                  <div className="mt-16">
-                    <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={startPreview} />
-                  </div>
-                </>
+                <><div className="absolute top-8 left-12 flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#1677FF]"><Eye size={20} /></div><div><h3 className="font-black text-slate-800 text-lg" style={mingLiUStyle}>電子智慧表單填寫</h3><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest" style={mingLiUStyle}>Step 1: Intelligent Data Input</p></div></div><div className="mt-16"><SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={startPreview} /></div></>
               )}
             </div>
           </div>
         );
-      case 'rejected':
-        return <ListView title="退件 / 抽單" icon={FileX2} color="bg-red-600" type="rejected" data={submittedForms.filter(f => f.status === 'Rejected')} onItemClick={handleOpenDetail} />;
-      case 'trash':
-        return <ListView title="垃圾桶" icon={Trash2} color="bg-slate-600" type="trash" data={[]} onItemClick={handleOpenDetail} />;
       case 'settings':
         return (
           <div className="h-full flex gap-8 animate-in fade-in duration-500">
@@ -1048,32 +1067,42 @@ const App = () => {
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
-      <style>{`@media print { body { background: white !important; } aside, header, nav, button, .print\\:hidden { display: none !important; } main { margin: 0 !important; padding: 0 !important; background: white !important; } #printable-stub { position: absolute; left: 0; top: 0; width: 100% !important; box-shadow: none !important; border: none !important; padding: 0 !important; visibility: visible !important; } h2, p, span, td { color: black !important; } .text-red-500, .border-red-500 { color: red !important; border-color: red !important; } }`}</style>
       <aside className={`bg-white border-r border-gray-200 flex flex-col shadow-[2px_0_12px_rgba(0,0,0,0.02)] z-20 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl shadow-blue-100 shrink-0 transition-transform active:scale-95"><Layers className="text-white w-6 h-6" /></div>
-            {!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2 whitespace-nowrap" style={mingLiUStyle}>先啟智慧表單</span>)}
+            {!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2 whitespace-nowrap">先啟智慧表單</span>)}
           </div>
           <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#1677FF] transition-all">{isSidebarCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}</button>
         </div>
-        <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide print:hidden">
-          {[{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'inbox', label: '智慧建單', icon: MousePointer2 }, { id: 'settings', label: '表單維護', icon: Settings }].map((item) => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (['rejected', 'trash'].includes(activeTab) && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
+        <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide">
+          {[
+            { id: 'dashboard', label: '首頁', icon: LayoutDashboard }, 
+            { id: 'inbox', label: '智慧建單', icon: MousePointer2 }, 
+            { id: 'employee_list', label: '員工管理', icon: Users },
+            { id: 'settings', label: '表單維護', icon: Settings }
+          ].map((item) => (
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (item.id === 'employee_list' && activeTab === 'employee_list') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
               <item.icon size={20} className="shrink-0" />
               {!isSidebarCollapsed && <span className="animate-in fade-in truncate">{item.label}</span>}
             </button>
           ))}
         </nav>
+        <div className="p-4 border-t border-slate-100">
+           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-3.5 text-red-400 hover:bg-red-50 rounded-2xl transition-all font-black text-sm" style={mingLiUStyle}>
+             <LogOut size={20} /> {!isSidebarCollapsed && <span>系統登出</span>}
+           </button>
+        </div>
       </aside>
-      <main className="flex-1 flex flex-col overflow-hidden relative print:p-0">
+
+      <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 shadow-sm z-10 print:hidden">
-          <div className="relative w-[450px] group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1677FF] transition-colors" size={20} /><input type="text" placeholder="搜尋表單類型、文號或申請人..." className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:bg-white focus:border-blue-300 outline-none transition-all font-bold shadow-inner" style={mingLiUStyle} /></div>
+          <div className="relative w-[450px] group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1677FF] transition-colors" size={20} /><input type="text" placeholder="搜尋表單、員工姓名或部門..." className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:bg-white focus:border-blue-300 outline-none transition-all font-bold shadow-inner" style={mingLiUStyle} /></div>
           <div className="flex items-center gap-6">
             <div className="p-3 text-slate-400 hover:bg-slate-100 rounded-full cursor-pointer relative"><Bell size={22} /><span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm"></span></div>
             <div className="flex items-center gap-4 pl-6 border-l border-gray-100">
-              <div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>資深設計師</p><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest" style={mingLiUStyle}>IT Management Dept.</p></div>
-              <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden ring-1 ring-slate-100 transform hover:scale-105 transition-transform cursor-pointer"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" /></div>
+              <div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>{currentUser.name}</p><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest" style={mingLiUStyle}>{currentUser.title} / {currentUser.dept}</p></div>
+              <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden ring-1 ring-slate-100 transform hover:scale-105 transition-transform cursor-pointer"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.name}`} alt="avatar" /></div>
             </div>
           </div>
         </header>
