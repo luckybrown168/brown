@@ -52,7 +52,10 @@ import {
   FileSearch,
   Filter,
   MoreVertical,
-  Info
+  Info,
+  DownloadCloud,
+  FileSpreadsheet,
+  FileDown
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -554,15 +557,37 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   );
 };
 
-// --- 組件：正式提交後的存根 (更新：新增列印功能與按鈕更名) ---
+// --- 組件：正式提交後的存根 (更新：新增下載下拉選單) ---
 const SubmissionSummary = ({ schema, values, onReset }) => {
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
   const handlePrint = () => {
     window.print();
   };
 
+  const handleDownloadExcel = () => {
+    // 模擬 EXCEL 產生邏輯
+    const msg = document.createElement('div');
+    msg.innerHTML = '<div style="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:12px 24px;border-radius:12px;z-index:9999;font-weight:bold;box-shadow:0 10px 25px rgba(0,0,0,0.1)">系統正在擷取欄位資料並產生 EXCEL 檔案...</div>';
+    document.body.appendChild(msg);
+    setTimeout(() => document.body.removeChild(msg), 3000);
+    setIsDownloadOpen(false);
+  };
+
+  // 點擊外部關閉選單
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDownloadOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500">
-      {/* 存根主區塊：加上 ID 以便進行精確列印控制 */}
       <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif overflow-hidden print:shadow-none print:border-none print:p-0 print:m-0">
         <div className="absolute top-10 right-10 w-32 h-32 border-4 border-red-500 rounded-full flex flex-col items-center justify-center rotate-12 opacity-80 pointer-events-none">
           <span className="text-red-500 font-black text-xs" style={mingLiUStyle}>先啟智慧表單件</span>
@@ -617,7 +642,37 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
 
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center print:hidden">
            <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>系統流水號: EF-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
-           <div className="flex gap-3">
+           <div className="flex items-center gap-3">
+              {/* 新增下載下拉區塊 */}
+              <div className="relative" ref={dropdownRef}>
+                 <button 
+                    onClick={() => setIsDownloadOpen(!isDownloadOpen)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDownloadOpen ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    style={mingLiUStyle}
+                 >
+                    <DownloadCloud size={14} /> 下載 <ChevronDown size={12} className={`transition-transform duration-300 ${isDownloadOpen ? 'rotate-180' : ''}`} />
+                 </button>
+                 
+                 {isDownloadOpen && (
+                    <div className="absolute bottom-full mb-2 left-0 w-40 bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
+                       <button 
+                          onClick={handlePrint}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-b border-slate-50 group"
+                       >
+                          <FileDown size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-slate-700" style={mingLiUStyle}>下載 PDF 檔</span>
+                       </button>
+                       <button 
+                          onClick={handleDownloadExcel}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors group"
+                       >
+                          <FileSpreadsheet size={14} className="text-green-600 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-slate-700" style={mingLiUStyle}>下載 EXCEL 檔</span>
+                       </button>
+                    </div>
+                 )}
+              </div>
+
               <button 
                 type="button" 
                 onClick={handlePrint}
@@ -629,7 +684,7 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
               <button 
                 type="button"
                 onClick={onReset}
-                className="flex items-center gap-2 px-6 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all"
+                className="flex items-center gap-2 px-6 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
                 style={mingLiUStyle}
               >
                 <CheckCircle2 size={14} /> 完成
@@ -814,7 +869,7 @@ const App = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p>
-                      <h3 className="text-2xl font-black ${stat.color}" style={{...mingLiUStyle, color: stat.color === 'text-blue-600' ? '#2563eb' : stat.color === 'text-amber-600' ? '#d97706' : stat.color === 'text-green-600' ? '#16a34a' : stat.color === 'text-red-600' ? '#dc2626' : '#4f46e5'}}>{stat.value}</h3>
+                      <h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3>
                     </div>
                     <div className={`p-3 rounded-2xl ${stat.bg} text-white shadow-lg transition-transform group-hover:rotate-6`}>
                        <stat.icon size={20} />
