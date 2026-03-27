@@ -557,7 +557,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   );
 };
 
-// --- 組件：正式提交後的存根 (更新：新增下載下拉選單) ---
+// --- 組件：正式提交後的存根 (更新：新增真實檔案下載功能) ---
 const SubmissionSummary = ({ schema, values, onReset }) => {
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -566,12 +566,36 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
     window.print();
   };
 
+  // 通用下載觸發函式
+  const triggerDownload = (filename, content, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPdf = () => {
+    // 模擬產生 PDF 檔案內容 (純文字模擬)
+    const content = `先啟資訊 - 電子表單申請存根\n==============================\n申請日期: ${new Date().toLocaleDateString()}\n單據主旨: ${values.form_subject || '無'}\n員工編號: ${values.employee_id || '無'}\n單位: ${values.department || '無'}\n==============================\n(此檔案為單據快照 PDF)`;
+    triggerDownload(`單據存根_${values.form_subject || 'EF'}.pdf`, content, 'application/pdf');
+    setIsDownloadOpen(false);
+  };
+
   const handleDownloadExcel = () => {
-    // 模擬 EXCEL 產生邏輯
-    const msg = document.createElement('div');
-    msg.innerHTML = '<div style="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:12px 24px;border-radius:12px;z-index:9999;font-weight:bold;box-shadow:0 10px 25px rgba(0,0,0,0.1)">系統正在擷取欄位資料並產生 EXCEL 檔案...</div>';
-    document.body.appendChild(msg);
-    setTimeout(() => document.body.removeChild(msg), 3000);
+    // 產生 CSV 內容 (Excel 可開啟)
+    const headers = ["欄位名稱", "填寫內容"];
+    const rows = schema.fields
+      .filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice')
+      .map(f => [f.label, values[f.id] || ""]);
+    
+    // 加入 BOM 以確保 Excel 正確辨識 UTF-8 繁體中文
+    const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
+    triggerDownload(`智慧表單資料匯出_${values.form_subject || 'EF'}.csv`, csvContent, 'text/csv;charset=utf-8;');
     setIsDownloadOpen(false);
   };
 
@@ -643,7 +667,7 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center print:hidden">
            <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>系統流水號: EF-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
            <div className="flex items-center gap-3">
-              {/* 新增下載下拉區塊 */}
+              {/* 下載下拉區塊 */}
               <div className="relative" ref={dropdownRef}>
                  <button 
                     onClick={() => setIsDownloadOpen(!isDownloadOpen)}
@@ -654,9 +678,9 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
                  </button>
                  
                  {isDownloadOpen && (
-                    <div className="absolute bottom-full mb-2 left-0 w-40 bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
+                    <div className="absolute bottom-full mb-2 left-0 w-44 bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
                        <button 
-                          onClick={handlePrint}
+                          onClick={handleDownloadPdf}
                           className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-b border-slate-50 group"
                        >
                           <FileDown size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
@@ -869,7 +893,7 @@ const App = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p>
-                      <h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3>
+                      <h3 className="text-2xl font-black ${stat.color}" style={{...mingLiUStyle, color: stat.color === 'text-blue-600' ? '#2563eb' : stat.color === 'text-amber-600' ? '#d97706' : stat.color === 'text-green-600' ? '#16a34a' : stat.color === 'text-red-600' ? '#dc2626' : '#4f46e5'}}>{stat.value}</h3>
                     </div>
                     <div className={`p-3 rounded-2xl ${stat.bg} text-white shadow-lg transition-transform group-hover:rotate-6`}>
                        <stat.icon size={20} />
@@ -1009,17 +1033,14 @@ const App = () => {
             body {
               background: white !important;
             }
-            /* 隱藏所有不需要列印的 UI 元素 */
             aside, header, nav, button, .print\\:hidden {
               display: none !important;
             }
-            /* 讓主內容區塊在列印時不再受限於 Flex 佈局 */
             main {
               margin: 0 !important;
               padding: 0 !important;
               background: white !important;
             }
-            /* 只顯示存根區塊 */
             #printable-stub {
               position: absolute;
               left: 0;
@@ -1030,7 +1051,6 @@ const App = () => {
               padding: 0 !important;
               visibility: visible !important;
             }
-            /* 確保文字色彩在列印時清晰 */
             h2, p, span, td {
               color: black !important;
             }
