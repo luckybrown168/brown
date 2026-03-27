@@ -557,8 +557,8 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   );
 };
 
-// --- 組件：正式提交後的存根 (更新：移除 PDF 下載，優化 Excel 欄位擷取) ---
-const SubmissionSummary = ({ schema, values, onReset }) => {
+// --- 組件：正式提交後的存根 (更新：優化下載與列印邏輯) ---
+const SubmissionSummary = ({ schema, values, onReset, currentDocId }) => {
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -568,46 +568,38 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
   };
 
   const handleDownloadExcel = () => {
-    // 智慧過濾：只擷取當前「可見且有效」的欄位
     const visibleData = schema.fields.filter(field => {
-      // 1. 排除 UI 輔助元件
       if (['button', 'notice', 'ot_notice'].includes(field.type)) return false;
-      
-      // 2. 判斷連動顯示邏輯：若父欄位不符合條件，子欄位不匯出
       if (field.dependsOn) {
         const parentValue = values[field.dependsOn];
         const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
         if (!showConditions.includes(parentValue)) return false;
       }
-      
       return true;
     });
 
     const headers = ["欄位標籤", "填寫內容"];
-    const rows = visibleData.map(f => [f.label, values[f.id] || ""]);
+    const rows = [
+      ["單號", currentDocId],
+      ...visibleData.map(f => [f.label, values[f.id] || ""])
+    ];
     
-    // 加入 UTF-8 BOM (\uFEFF) 確保 Excel 開啟不亂碼
     const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
-    
-    // 觸發真實下載
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `智慧表單資料匯出_${values.form_subject || '未命名'}.csv`);
+    link.setAttribute('download', `智慧表單存根_${currentDocId}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
     setIsDownloadOpen(false);
   };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDownloadOpen(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setIsDownloadOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -624,6 +616,17 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
 
         <div className="text-center mb-10">
           <h2 className="text-2xl font-black text-slate-800 tracking-[0.4em] underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2>
+        </div>
+
+        <div className="mb-6 flex justify-between items-end border-b border-slate-100 pb-4">
+           <div>
+             <p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p>
+             <p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p>
+           </div>
+           <div className="text-right">
+             <p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>提交時間 Submit Time</p>
+             <p className="text-sm font-bold text-slate-500" style={mingLiUStyle}>{new Date().toLocaleString()}</p>
+           </div>
         </div>
 
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
@@ -668,66 +671,36 @@ const SubmissionSummary = ({ schema, values, onReset }) => {
         </div>
 
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center print:hidden">
-           <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>系統流水號: EF-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+           <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>系統流水驗證碼: {Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
            <div className="flex items-center gap-3">
-              {/* 下載選單 (僅保留 Excel) */}
               <div className="relative" ref={dropdownRef}>
-                 <button 
-                    onClick={() => setIsDownloadOpen(!isDownloadOpen)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDownloadOpen ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                    style={mingLiUStyle}
-                 >
+                 <button onClick={() => setIsDownloadOpen(!isDownloadOpen)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDownloadOpen ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} style={mingLiUStyle}>
                     <DownloadCloud size={14} /> 下載 <ChevronDown size={12} className={`transition-transform duration-300 ${isDownloadOpen ? 'rotate-180' : ''}`} />
                  </button>
-                 
                  {isDownloadOpen && (
                     <div className="absolute bottom-full mb-2 left-0 w-44 bg-white border border-slate-100 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
-                       <button 
-                          onClick={handleDownloadExcel}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors group"
-                       >
+                       <button onClick={handleDownloadExcel} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors group">
                           <FileSpreadsheet size={14} className="text-green-600 group-hover:scale-110 transition-transform" />
                           <span className="text-xs font-bold text-slate-700" style={mingLiUStyle}>下載 EXCEL 檔</span>
                        </button>
                     </div>
                  )}
               </div>
-
-              <button 
-                type="button" 
-                onClick={handlePrintAction}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all" 
-                style={mingLiUStyle}
-              >
+              <button type="button" onClick={handlePrintAction} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all" style={mingLiUStyle}>
                 <Printer size={14} /> 列印存根
               </button>
-              <button 
-                type="button"
-                onClick={onReset}
-                className="flex items-center gap-2 px-6 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
-                style={mingLiUStyle}
-              >
+              <button type="button" onClick={onReset} className="flex items-center gap-2 px-6 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all shadow-md shadow-blue-100" style={mingLiUStyle}>
                 <CheckCircle2 size={14} /> 完成
               </button>
            </div>
         </div>
       </div>
-
-      <div className="bg-green-50 border border-green-100 p-6 rounded-3xl flex items-center gap-4 print:hidden">
-         <div className="w-12 h-12 bg-green-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-green-100">
-           <FileCheck2 size={24} />
-         </div>
-         <div>
-           <h4 className="font-black text-green-800 text-lg" style={mingLiUStyle}>表單提交成功！</h4>
-           <p className="text-green-600 text-xs font-bold" style={mingLiUStyle}>電子流程已啟動，系統將自動通知下一階段簽核人員。</p>
-         </div>
-      </div>
     </div>
   );
 };
 
-// --- 通用清單檢視器 ---
-const ListView = ({ title, icon: Icon, type, color }) => {
+// --- 通用清單檢視器 (更新：傳入動態 data) ---
+const ListView = ({ title, icon: Icon, type, color, data }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -737,7 +710,7 @@ const ListView = ({ title, icon: Icon, type, color }) => {
           </div>
           <div>
             <h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>{title}</h2>
-            <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>系統正在處理您的 {title} 項目</p>
+            <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>系統正在處理您的 {title} 項目 (共 {data.length} 筆)</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -757,12 +730,30 @@ const ListView = ({ title, icon: Icon, type, color }) => {
                </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-               <tr className="hover:bg-slate-50/50 transition-colors">
+               {data.length > 0 ? data.map((item, i) => (
+                 <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-8 py-5">
+                       <p className="text-[10px] font-bold text-blue-600 mb-1">{item.id}</p>
+                       <p className="text-sm font-bold text-slate-700">{item.values.form_subject || '( 未命名表單 )'}</p>
+                    </td>
+                    <td className="px-6 py-5 text-sm text-slate-500 font-bold">{item.submitDate}</td>
+                    <td className="px-6 py-5">
+                       <span className={`px-3 py-1 rounded-full text-[10px] font-black ${item.status === 'Rejected' ? 'bg-red-50 text-red-500' : item.status === 'Completed' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                         {item.status === 'Pending' ? '流程中' : item.status === 'Completed' ? '已結案' : item.status === 'Rejected' ? '退件' : '草稿'}
+                       </span>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                       <button className="p-2 text-slate-300 group-hover:text-blue-600 transition-all"><ChevronRight size={20} /></button>
+                    </td>
+                 </tr>
+               )) : (
+                <tr className="hover:bg-slate-50/50 transition-colors">
                   <td colSpan="4" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>
                      <Inbox size={48} className="mx-auto mb-4 opacity-10" />
                      目前尚無任何 {title} 資料
                   </td>
-               </tr>
+                </tr>
+               )}
             </tbody>
          </table>
       </div>
@@ -776,6 +767,10 @@ const App = () => {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [selectedFieldId, setSelectedFieldId] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // --- 關鍵新增：存儲正式提交的表單資料 ---
+  const [submittedForms, setSubmittedForms] = useState([]);
+  const [currentDocId, setCurrentDocId] = useState('');
 
   const LEAVE_TYPES = ["特休", "事假", "病假", "喪假", "補休", "婚假", "公假", "產假", "家庭照顧假"];
 
@@ -784,13 +779,7 @@ const App = () => {
     fields: [
       { id: "form_subject", label: "單據主旨", type: "text", width: "w-full" },
       { id: "employee_id", label: "員工編號", type: "text", width: "w-1/2" },
-      { 
-        id: "department", 
-        label: "單位", 
-        type: "select", 
-        options: ["工程組", "系統組", "客服組", "產品組", "營業組", "財務行政部"], 
-        width: "w-1/2" 
-      },
+      { id: "department", label: "單位", type: "select", options: ["工程組", "系統組", "客服組", "產品組", "營業組", "財務行政部"], width: "w-1/2" },
       { id: "category", label: "選擇類別", type: "select", options: ["行政類", "銷售類", "差勤類", "系統類"], width: "w-full" },
       { id: "leave_type", label: "假單類別", type: "select", options: [...LEAVE_TYPES, "加班"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
       { id: "agent", label: "代理人", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
@@ -836,7 +825,22 @@ const App = () => {
     setIsPreviewing(true);
   };
 
+  // --- 關鍵修改：正式提交並存儲資料 ---
   const handleFinalSubmit = () => {
+    // 產生正式單號 EF-YYYYMMDD-XXX
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const sequence = String(submittedForms.length + 1).padStart(3, '0');
+    const newDocId = `EF-${today}-${sequence}`;
+    
+    const newFormEntry = {
+      id: newDocId,
+      values: { ...formValues },
+      submitDate: new Date().toLocaleDateString(),
+      status: 'Pending' // 預設狀態為流程中
+    };
+
+    setSubmittedForms([...submittedForms, newFormEntry]);
+    setCurrentDocId(newDocId);
     setIsPreviewing(false);
     setIsSubmitted(true);
   };
@@ -848,12 +852,13 @@ const App = () => {
     setActiveTab('dashboard');
   };
 
+  // --- 儀表板數據同步 ---
   const STATS = [
     { id: 'inbox_stat', label: '收件匣', value: 0, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
-    { id: 'pending_stat', label: '流程中案件', value: 0, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
-    { id: 'completed_stat', label: '已結案', value: 0, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck2, targetTab: 'completed_list' },
+    { id: 'pending_stat', label: '流程中案件', value: submittedForms.filter(f => f.status === 'Pending').length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
+    { id: 'completed_stat', label: '已結案', value: submittedForms.filter(f => f.status === 'Completed').length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck2, targetTab: 'completed_list' },
     { id: 'draft_stat', label: '草稿匣', value: 0, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
-    { id: 'rejected_stat', label: '退件/抽單', value: 0, color: 'text-red-600', bg: 'bg-red-600', icon: FileX2, targetTab: 'rejected' },
+    { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX2, targetTab: 'rejected' },
     { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash2, targetTab: 'trash' },
   ];
 
@@ -877,19 +882,13 @@ const App = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               {STATS.map((stat, idx) => (
-                <div 
-                  key={idx} 
-                  onClick={() => setActiveTab(stat.targetTab)}
-                  className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer group active:scale-95"
-                >
+                <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer group active:scale-95">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p>
                       <h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3>
                     </div>
-                    <div className={`p-3 rounded-2xl ${stat.bg} text-white shadow-lg transition-transform group-hover:rotate-6`}>
-                       <stat.icon size={20} />
-                    </div>
+                    <div className={`p-3 rounded-2xl ${stat.bg} text-white shadow-lg transition-transform group-hover:rotate-6`}><stat.icon size={20} /></div>
                   </div>
                   <div className="mt-4 flex items-center gap-1 text-[10px] text-blue-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
                      <span>進入檢視</span> <ArrowRight size={10} />
@@ -897,7 +896,6 @@ const App = () => {
                 </div>
               ))}
             </div>
-            
             <div className="mt-8 bg-blue-50/50 rounded-3xl p-8 border border-dashed border-blue-200 flex flex-col items-center justify-center gap-4">
                <Activity size={48} className="text-blue-200" />
                <p className="text-slate-400 font-bold text-sm" style={mingLiUStyle}>歡迎使用智慧表單控制中心</p>
@@ -905,19 +903,19 @@ const App = () => {
           </div>
         );
       case 'inbox_list':
-        return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" type="inbox" />;
+        return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" type="inbox" data={[]} />;
       case 'pending_list':
-        return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" type="pending" />;
+        return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" type="pending" data={submittedForms.filter(f => f.status === 'Pending')} />;
       case 'completed_list':
-        return <ListView title="已結案" icon={FileCheck2} color="bg-green-600" type="completed" />;
+        return <ListView title="已結案" icon={FileCheck2} color="bg-green-600" type="completed" data={submittedForms.filter(f => f.status === 'Completed')} />;
       case 'draft_list':
-        return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" type="draft" />;
+        return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" type="draft" data={[]} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500">
             <div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
               {isSubmitted ? (
-                <SubmissionSummary schema={myFormSchema} values={formValues} onReset={resetForm} />
+                <SubmissionSummary schema={myFormSchema} values={formValues} onReset={resetForm} currentDocId={currentDocId} />
               ) : isPreviewing ? (
                 <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} />
               ) : (
@@ -938,77 +936,33 @@ const App = () => {
           </div>
         );
       case 'rejected':
-        return <ListView title="退件 / 抽單" icon={FileX2} color="bg-red-600" type="rejected" />;
+        return <ListView title="退件 / 抽單" icon={FileX2} color="bg-red-600" type="rejected" data={submittedForms.filter(f => f.status === 'Rejected')} />;
       case 'trash':
-        return <ListView title="垃圾桶" icon={Trash2} color="bg-slate-600" type="trash" />;
+        return <ListView title="垃圾桶" icon={Trash2} color="bg-slate-600" type="trash" data={[]} />;
       case 'settings':
         return (
           <div className="h-full flex gap-8 animate-in fade-in duration-500">
             <div className="w-1/3 flex flex-col gap-6">
               <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm flex flex-col">
-                <div className="flex items-center gap-3 mb-6 text-[#1677FF]">
-                  <Box className="w-6 h-6" />
-                  <span className="font-black text-xl" style={mingLiUStyle}>智慧引擎邏輯配置</span>
-                </div>
+                <div className="flex items-center gap-3 mb-6 text-[#1677FF]"><Box className="w-6 h-6" /><span className="font-black text-xl" style={mingLiUStyle}>智慧引擎邏輯配置</span></div>
                 <div className="space-y-3 overflow-y-auto max-h-[600px] pr-2">
                   {myFormSchema.fields.map((field) => (
-                    <div 
-                      key={field.id}
-                      onClick={() => setSelectedFieldId(field.id)}
-                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col group ${selectedFieldId === field.id ? 'border-blue-500 bg-blue-50/30' : 'border-slate-100 hover:border-blue-200 bg-white'}`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.label}</p>
-                        <span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-400 uppercase" style={mingLiUStyle}>{field.type}</span>
-                      </div>
-                      {field.dependsOn && (
-                        <div className="flex items-center gap-1 text-[10px] text-[#1677FF] font-bold" style={mingLiUStyle}>
-                          <ArrowRight size={10} />
-                          連動自: {field.dependsOn}
-                        </div>
-                      )}
+                    <div key={field.id} onClick={() => setSelectedFieldId(field.id)} className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col group ${selectedFieldId === field.id ? 'border-blue-500 bg-blue-50/30' : 'border-slate-100 hover:border-blue-200 bg-white'}`}>
+                      <div className="flex items-center justify-between mb-1"><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.label}</p><span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-400 uppercase" style={mingLiUStyle}>{field.type}</span></div>
+                      {field.dependsOn && <div className="flex items-center gap-1 text-[10px] text-[#1677FF] font-bold" style={mingLiUStyle}><ArrowRight size={10} />連動自: {field.dependsOn}</div>}
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-
             <div className="flex-1 bg-slate-900 rounded-[3rem] p-12 text-white shadow-2xl overflow-y-auto">
-               <div className="flex items-center gap-3 mb-10">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center"><Sliders size={20}/></div>
-                  <div>
-                    <h3 className="font-black text-xl" style={mingLiUStyle}>系統引擎屬性編輯</h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest" style={mingLiUStyle}>System Engine Management</p>
-                  </div>
-               </div>
-
+               <div className="flex items-center gap-3 mb-10"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center"><Sliders size={20}/></div><div><h3 className="font-black text-xl" style={mingLiUStyle}>系統引擎屬性編輯</h3><p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest" style={mingLiUStyle}>System Engine Management</p></div></div>
                {selectedFieldId ? (
                  <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-                    <div>
-                      <label className="text-xs font-black text-slate-500 uppercase mb-3 block" style={mingLiUStyle}>欄位名稱 (Label)</label>
-                      <input 
-                        value={myFormSchema.fields.find(f => f.id === selectedFieldId)?.label}
-                        onChange={(e) => {
-                          const newFields = myFormSchema.fields.map(f => f.id === selectedFieldId ? {...f, label: e.target.value} : f);
-                          setMyFormSchema({...myFormSchema, fields: newFields});
-                        }}
-                        className="w-full bg-slate-800 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all text-white"
-                        style={mingLiUStyle}
-                      />
-                    </div>
-                    <div className="bg-blue-600/10 p-6 rounded-[2rem] border border-blue-500/20">
-                      <p className="text-xs font-black text-blue-400 uppercase mb-2" style={mingLiUStyle}>條件連動詳細 (JSON Schema)</p>
-                      <pre className="text-[10px] text-slate-400 font-mono leading-relaxed bg-black/20 p-4 rounded-xl">
-                        {JSON.stringify(myFormSchema.fields.find(f => f.id === selectedFieldId), null, 2)}
-                      </pre>
-                    </div>
+                    <div><label className="text-xs font-black text-slate-500 uppercase mb-3 block" style={mingLiUStyle}>欄位名稱 (Label)</label><input value={myFormSchema.fields.find(f => f.id === selectedFieldId)?.label} onChange={(e) => { const newFields = myFormSchema.fields.map(f => f.id === selectedFieldId ? {...f, label: e.target.value} : f); setMyFormSchema({...myFormSchema, fields: newFields}); }} className="w-full bg-slate-800 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all text-white" style={mingLiUStyle} /></div>
+                    <div className="bg-blue-600/10 p-6 rounded-[2rem] border border-blue-500/20"><p className="text-xs font-black text-blue-400 uppercase mb-2" style={mingLiUStyle}>條件連動詳細 (JSON Schema)</p><pre className="text-[10px] text-slate-400 font-mono leading-relaxed bg-black/20 p-4 rounded-xl">{JSON.stringify(myFormSchema.fields.find(f => f.id === selectedFieldId), null, 2)}</pre></div>
                  </div>
-               ) : (
-                 <div className="h-64 flex flex-col items-center justify-center text-slate-600 italic gap-4">
-                    <MousePointer2 size={40} className="opacity-20" />
-                    <span style={mingLiUStyle}>請點擊左側元件清單進行邏輯調整</span>
-                 </div>
-               )}
+               ) : (<div className="h-64 flex flex-col items-center justify-center text-slate-600 italic gap-4"><MousePointer2 size={40} className="opacity-20" /><span style={mingLiUStyle}>請點擊左側元件清單進行邏輯調整</span></div>)}
             </div>
           </div>
         );
@@ -1018,85 +972,36 @@ const App = () => {
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
-      <style>
-        {`
-          @media print {
-            body { background: white !important; }
-            aside, header, nav, button, .print\\:hidden { display: none !important; }
-            main { margin: 0 !important; padding: 0 !important; background: white !important; }
-            #printable-stub {
-              position: absolute; left: 0; top: 0; width: 100% !important;
-              box-shadow: none !important; border: none !important; padding: 0 !important;
-              visibility: visible !important;
-            }
-            h2, p, span, td { color: black !important; }
-            .text-red-500, .border-red-500 { color: red !important; border-color: red !important; }
-          }
-        `}
-      </style>
-
+      <style>{`@media print { body { background: white !important; } aside, header, nav, button, .print\\:hidden { display: none !important; } main { margin: 0 !important; padding: 0 !important; background: white !important; } #printable-stub { position: absolute; left: 0; top: 0; width: 100% !important; box-shadow: none !important; border: none !important; padding: 0 !important; visibility: visible !important; } h2, p, span, td { color: black !important; } .text-red-500, .border-red-500 { color: red !important; border-color: red !important; } }`}</style>
       <aside className={`bg-white border-r border-gray-200 flex flex-col shadow-[2px_0_12px_rgba(0,0,0,0.02)] z-20 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl shadow-blue-100 shrink-0 transition-transform active:scale-95">
-              <Layers className="text-white w-6 h-6" />
-            </div>
-            {!isSidebarCollapsed && (
-              <span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2 whitespace-nowrap" style={mingLiUStyle}>先啟智慧表單</span>
-            )}
+            <div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl shadow-blue-100 shrink-0 transition-transform active:scale-95"><Layers className="text-white w-6 h-6" /></div>
+            {!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2 whitespace-nowrap" style={mingLiUStyle}>先啟智慧表單</span>)}
           </div>
-          <button 
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#1677FF] transition-all"
-          >
-            {isSidebarCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
-          </button>
+          <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#1677FF] transition-all">{isSidebarCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}</button>
         </div>
-        
         <nav className="flex-1 px-4 space-y-1 mt-6 overflow-y-auto scrollbar-hide print:hidden">
-          {[
-            { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
-            { id: 'inbox', label: '智慧建單', icon: MousePointer2 },
-            { id: 'settings', label: '表單維護', icon: Settings },
-          ].map((item) => (
-            <button 
-              key={item.id} 
-              onClick={() => setActiveTab(item.id)} 
-              className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (['rejected', 'trash'].includes(activeTab) && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} 
-              style={mingLiUStyle}
-            >
+          {[{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'inbox', label: '智慧建單', icon: MousePointer2 }, { id: 'settings', label: '表單維護', icon: Settings }].map((item) => (
+            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || (activeTab.includes('_list') && item.id === 'dashboard') || (['rejected', 'trash'].includes(activeTab) && item.id === 'dashboard') ? 'bg-blue-50 text-[#1677FF] shadow-sm shadow-blue-50' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
               <item.icon size={20} className="shrink-0" />
               {!isSidebarCollapsed && <span className="animate-in fade-in truncate">{item.label}</span>}
             </button>
           ))}
         </nav>
       </aside>
-
       <main className="flex-1 flex flex-col overflow-hidden relative print:p-0">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 shadow-sm z-10 print:hidden">
-          <div className="relative w-[450px] group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1677FF] transition-colors" size={20} />
-            <input type="text" placeholder="搜尋表單類型、文號或申請人..." className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:bg-white focus:border-blue-300 outline-none transition-all font-bold shadow-inner" style={mingLiUStyle} />
-          </div>
+          <div className="relative w-[450px] group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1677FF] transition-colors" size={20} /><input type="text" placeholder="搜尋表單類型、文號或申請人..." className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:bg-white focus:border-blue-300 outline-none transition-all font-bold shadow-inner" style={mingLiUStyle} /></div>
           <div className="flex items-center gap-6">
-            <div className="p-3 text-slate-400 hover:bg-slate-100 rounded-full cursor-pointer relative">
-              <Bell size={22} />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm"></span>
-            </div>
+            <div className="p-3 text-slate-400 hover:bg-slate-100 rounded-full cursor-pointer relative"><Bell size={22} /><span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm"></span></div>
             <div className="flex items-center gap-4 pl-6 border-l border-gray-100">
-              <div className="text-right">
-                <p className="text-xs font-black text-slate-800" style={mingLiUStyle}>資深設計師</p>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest" style={mingLiUStyle}>IT Management Dept.</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden ring-1 ring-slate-100 transform hover:scale-105 transition-transform cursor-pointer">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" />
-              </div>
+              <div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>資深設計師</p><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest" style={mingLiUStyle}>IT Management Dept.</p></div>
+              <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden ring-1 ring-slate-100 transform hover:scale-105 transition-transform cursor-pointer"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" /></div>
             </div>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white">
-          {renderMainContent()}
-        </div>
+        <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white">{renderMainContent()}</div>
       </main>
     </div>
   );
