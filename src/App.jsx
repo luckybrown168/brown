@@ -68,7 +68,7 @@ import {
 
 // 原本是 const SERVER_IP = 'localhost';
 // 改為直接指定 API 路徑：
-const API_BASE_URL = "[https://subdiapasonic-raylan-cheerless.ngrok-free.dev/api]";
+const API_BASE_URL = "[https://subdiapasonic-raylan-cheerless.ngrok-free.dev/api](https://subdiapasonic-raylan-cheerless.ngrok-free.dev/api)";
 
 // --- 全域設計規範 (Design Tokens) ---
 const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", "MingLiU", serif' };
