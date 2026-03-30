@@ -603,7 +603,10 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
         </div>
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 print:hidden">
           <button type="button" onClick={window.print} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold" style={mingLiUStyle}>列印存根</button>
-          <button type="button" onClick={onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 transition-all" style={mingLiUStyle}>完成返回</button>
+          {/* 修改點：判斷是否為檢視模式，決定按鈕執行的事件 */}
+          <button type="button" onClick={isViewOnly ? onBack : onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 transition-all" style={mingLiUStyle}>
+            {isViewOnly ? "返回清單" : "完成返回"}
+          </button>
         </div>
       </div>
     </div>
@@ -720,7 +723,6 @@ const App = () => {
                         <span className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span>
                       </div>
                       <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
-                        {/* 修改：特休滿格基準調整為 720 小時 */}
                         <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 720) * 100, 100)}%` }}></div>
                       </div>
                     </div>
