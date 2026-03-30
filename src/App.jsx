@@ -520,7 +520,24 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
                 {field.type === "datetime" && <DateTimePicker id={field.id} label={field.label} value={formValues[field.id]} onChange={onInputChange} />}
                 {field.type === "duration" && <DurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} />}
                 {field.type === "leave_duration" && <LeaveDurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} />}
-                {field.type === "file" && <div className="border-2 border-dashed border-slate-300 p-6 rounded-xl flex flex-col items-center gap-2 text-slate-400" style={mingLiUStyle}><UploadCloud size={30} /><p className="text-xs font-bold" style={mingLiUStyle}>點擊或拖曳檔案上傳 (模擬)</p></div>}
+                
+                {/* 檔案上傳元件實作 */}
+                {field.type === "file" && (
+                  <div className="relative group">
+                    <input type="file" className="hidden" id={`file-${field.id}`} onChange={(e) => onInputChange(field.id, e.target.files[0]?.name || "")} />
+                    <label htmlFor={`file-${field.id}`} className="flex items-center gap-3 w-full border-2 border-dashed border-slate-300 p-4 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-all group">
+                      <div className="w-10 h-10 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                        <Paperclip size={20} />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-bold text-slate-600 truncate" style={mingLiUStyle}>{formValues[field.id] || "點擊或拖曳檔案至此處上傳"}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight" style={mingLiUStyle}>支援 PDF, JPG, PNG (最大 5MB)</p>
+                      </div>
+                      <UploadCloud className="text-slate-200 group-hover:text-blue-300 transition-colors" size={24} />
+                    </label>
+                  </div>
+                )}
+
                 {field.type === "notice" && <LeaveNoticeBlock />}
                 {field.type === "ot_notice" && <OvertimeNoticeBlock />}
                 {field.type === "button" && <div className="w-full mt-4"><button type="button" onClick={onPreview} className="w-full bg-[#1677FF] text-white py-4 rounded-xl font-black shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-lg" style={mingLiUStyle}><Eye size={20} /> 預覽填寫內容</button></div>}
@@ -546,7 +563,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
              {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
                 if (field.dependsOn && !values[field.dependsOn]) return null;
                 return (
-                  <div key={field.id} className={`${field.width} px-2`}><div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 h-full flex flex-col justify-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-base font-bold text-slate-700" style={mingLiUStyle}>{values[field.id] || '( 未填寫 )'}</p></div></div>
+                  <div key={field.id} className={`${field.width} px-2`}><div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 h-full flex flex-col justify-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-base font-bold text-slate-700" style={mingLiUStyle}>{field.type === 'file' && values[field.id] ? `📎 ${values[field.id]}` : (values[field.id] || '( 未填寫 )')}</p></div></div>
                 );
              })}
           </div>
@@ -575,7 +592,7 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
           {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
              if (field.dependsOn && !values[field.id]) return null;
-             return (<div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}><p className="text-[10px] font-black text-slate-400 uppercase mb-1">{field.label}</p><p className="text-sm font-bold text-slate-700">{values[field.id] || '( 未填寫 )'}</p></div>);
+             return (<div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}><p className="text-[10px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.type === 'file' && values[field.id] ? `📎 ${values[field.id]}` : (values[field.id] || '( 未填寫 )')}</p></div>);
           })}
         </div>
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 print:hidden">
@@ -629,6 +646,12 @@ const App = () => {
       { id: "leave_end_time", label: "請假結束日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_total", label: "共計", type: "leave_duration", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_reason", label: "請假事由", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
+      
+      // 新增：意見 欄位
+      { id: "leave_comment", label: "意見", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
+      // 新增：附加檔案 欄位
+      { id: "leave_attachment", label: "附加檔案", type: "file", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
+      
       { id: "leave_rules_notice", type: "notice", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
