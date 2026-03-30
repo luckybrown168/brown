@@ -66,10 +66,9 @@ import {
   LogOut
 } from 'lucide-react';
 
-// --- 全域連線設定 ---
-// 注意：若要在別台電腦連線，請將 'localhost' 改為您執行 server.js 那台電腦的 IP (例如 '192.168.1.100')
-const SERVER_IP = '192.168.0.157'; 
-const API_BASE_URL = `http://${SERVER_IP}:3001/api`;
+// 原本是 const SERVER_IP = 'localhost';
+// 改為直接指定 API 路徑：
+const API_BASE_URL = "[https://subdiapasonic-raylan-cheerless.ngrok-free.dev/api]";
 
 // --- 全域設計規範 (Design Tokens) ---
 const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", "MingLiU", serif' };
