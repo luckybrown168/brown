@@ -60,7 +60,8 @@ import {
   UserPlus,
   Mail,
   Phone,
-  Lock
+  Lock,
+  WifiOff
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -568,11 +569,38 @@ const OvertimeNoticeBlock = () => (
   </div>
 );
 
-// --- 組件：人員管理視圖 ---
+// --- 組件：人員管理視圖 (已優化連動錯誤處理與備援機制) ---
 const PersonnelManagementView = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [staffList, setStaffList] = useState([]);
   const [editingStaff, setEditingStaff] = useState(null); 
+  const [isLoading, setIsLoading] = useState(false);
+  const [isMockMode, setIsMockMode] = useState(false); // 是否處於模擬模式
+
+  // --- SQL 資料庫對接配置 ---
+  const API_BASE_URL = "http://localhost:3001/api/personnel"; 
+
+  // 初始化載入資料：從資料庫獲取最新人員清單
+  const fetchStaffFromDB = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(API_BASE_URL);
+      if (!response.ok) throw new Error("API 回應異常");
+      const data = await response.json();
+      setStaffList(data);
+      setIsMockMode(false);
+    } catch (err) {
+      console.error("無法連線至地端資料庫，系統將切換至模擬模式:", err.message);
+      setIsMockMode(true);
+      // 如果失敗，暫時保留目前的列表 (不報錯)
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStaffFromDB();
+  }, []);
 
   const handleOpenAdd = () => {
     setEditingStaff(null);
@@ -584,22 +612,90 @@ const PersonnelManagementView = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveStaff = (staffData) => {
-    if (editingStaff) {
-      setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item));
-    } else {
-      setStaffList(prev => [...prev, staffData]);
+  // 儲存邏輯 (具備備援機制)
+  const handleSaveStaff = async (staffData) => {
+    try {
+      setIsLoading(true);
+      if (!isMockMode) {
+        if (editingStaff) {
+          await fetch(`${API_BASE_URL}/${staffData.staffId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(staffData)
+          });
+        } else {
+          await fetch(API_BASE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(staffData)
+          });
+        }
+        await fetchStaffFromDB(); // 重新整理
+      } else {
+        // 模擬模式下的邏輯
+        if (editingStaff) {
+          setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item));
+        } else {
+          setStaffList(prev => [...prev, staffData]);
+        }
+      }
+    } catch (err) {
+      console.error("操作失敗，轉為模擬模式:", err);
+      setIsMockMode(true);
+      // 同樣執行本地更新
+      if (editingStaff) {
+        setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item));
+      } else {
+        setStaffList(prev => [...prev, staffData]);
+      }
+    } finally {
+      setIsLoading(false);
+      setIsModalOpen(false);
+      setEditingStaff(null);
     }
-    setIsModalOpen(false);
-    setEditingStaff(null);
   };
 
-  const handleDeleteStaff = (staffId) => {
-    setStaffList(prev => prev.filter(item => item.staffId !== staffId));
+  // 刪除邏輯
+  const handleDeleteStaff = async (staffId) => {
+    if (!window.confirm(`確定要刪除成員 [${staffId}] 嗎？`)) return;
+    
+    try {
+      setIsLoading(true);
+      if (!isMockMode) {
+        await fetch(`${API_BASE_URL}/${staffId}`, { method: 'DELETE' });
+        await fetchStaffFromDB();
+      } else {
+        setStaffList(prev => prev.filter(item => item.staffId !== staffId));
+      }
+    } catch (err) {
+      console.error("刪除失敗:", err);
+      setIsMockMode(true);
+      setStaffList(prev => prev.filter(item => item.staffId !== staffId));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
+      {/* 警告提示區塊：當偵測不到地端 API 時顯示 */}
+      {isMockMode && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-4">
+          <div className="bg-amber-500 p-2.5 rounded-2xl text-white">
+            <WifiOff size={20} />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-amber-800 font-black text-sm">地端 SQL 資料庫未連線 (模擬模式已啟用)</h4>
+            <p className="text-amber-600 text-xs mt-1 leading-relaxed">
+              原因：Canvas 的雲端環境無法直接抓取您電腦的 localhost。您現在仍可在此畫面中新增、修改人員進行測試，但資料僅存於目前瀏覽器分頁中。若要正式同步，請於本機開發環境執行本專案。
+            </p>
+          </div>
+          <button onClick={fetchStaffFromDB} className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-100 transition-colors shrink-0">
+            嘗試重新連線
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg text-white">
@@ -610,12 +706,25 @@ const PersonnelManagementView = () => {
             <p className="text-xs text-slate-400 font-bold">檢視及維護公司成員的基本資訊</p>
           </div>
         </div>
-        <button 
-          onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
-        >
-          <UserPlus size={18} /> 新增人員
-        </button>
+        <div className="flex gap-3">
+          <div className={`px-4 py-3 rounded-2xl border flex items-center gap-2 transition-colors ${isMockMode ? 'bg-slate-100 border-slate-200' : 'bg-emerald-50 border-emerald-100'}`}>
+             {isMockMode ? (
+                <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+             ) : (
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+             )}
+             <span className={`text-[10px] font-black uppercase tracking-widest ${isMockMode ? 'text-slate-500' : 'text-emerald-600'}`}>
+                {isMockMode ? 'Local Mock Mode' : 'Database Linked'}
+             </span>
+          </div>
+          <button 
+            onClick={handleOpenAdd}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95 disabled:opacity-50"
+          >
+            <UserPlus size={18} /> 新增人員
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
@@ -630,7 +739,7 @@ const PersonnelManagementView = () => {
             />
           </div>
           <div className="flex gap-2">
-            <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all" title="篩選條件"><Filter size={18} /></button>
+            <button onClick={fetchStaffFromDB} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all" title="重新整理資料庫"><RotateCcw size={18} /></button>
           </div>
         </div>
         <table className="w-full text-left">
@@ -645,7 +754,7 @@ const PersonnelManagementView = () => {
           </thead>
           <tbody className="divide-y divide-slate-50">
             {staffList.length > 0 ? staffList.map((person, idx) => (
-              <tr key={idx} className="hover:bg-indigo-50/20 transition-colors group">
+              <tr key={person.staffId || idx} className="hover:bg-indigo-50/20 transition-colors group">
                 <td className="px-8 py-5">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-slate-100 rounded-full overflow-hidden shrink-0 border border-white shadow-sm">
@@ -691,7 +800,7 @@ const PersonnelManagementView = () => {
             )) : (
               <tr>
                 <td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm">
-                   目前尚無人員資料，請點擊右上方按鈕新增。
+                   {isLoading ? "正在連通地端伺服器..." : "目前資料庫尚無人員資料。"}
                 </td>
               </tr>
             )}
