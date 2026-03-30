@@ -230,8 +230,14 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   });
 
   useEffect(() => {
-    if (initialData) { setFormData({ ...initialData, hireDate: initialData.hireDate ? initialData.hireDate.split('T')[0] : '' }); } 
-    else { setFormData({ staffId: '', name: '', dept: '', team: '', pos: '', email: '', password: '', hireDate: '', annualLeave: '0', compLeave: '0' }); }
+    if (initialData) { 
+      // 確保日期字串能正確放入 HTML 日期輸入框 (YYYY-MM-DD)
+      const hDate = initialData.hireDate ? initialData.hireDate.split('T')[0] : '';
+      setFormData({ ...initialData, hireDate: hDate }); 
+    } 
+    else { 
+      setFormData({ staffId: '', name: '', dept: '', team: '', pos: '', email: '', password: '', hireDate: '', annualLeave: '0', compLeave: '0' }); 
+    }
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -440,16 +446,46 @@ const PersonnelManagementView = ({ isMockMode }) => {
   const handleSaveStaff = async (staffData) => {
     try {
       setIsLoading(true);
+      
+      // 資料格式清理：確保數值為數字型態
+      const payload = {
+        ...staffData,
+        annualLeave: parseFloat(staffData.annualLeave) || 0,
+        compLeave: parseFloat(staffData.compLeave) || 0
+      };
+
       if (!isMockMode) {
-        if (editingStaff) { await fetch(`${API_BASE_URL}/${staffData.staffId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(staffData) }); } 
-        else { await fetch(API_BASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(staffData) }); }
+        if (editingStaff) { 
+          // 正式連線：更新模式
+          const res = await fetch(`${API_BASE_URL}/${staffData.staffId}`, { 
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+          }); 
+          if (!res.ok) throw new Error("更新伺服器回應錯誤");
+        } 
+        else { 
+          // 正式連線：新增模式
+          const res = await fetch(API_BASE_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+          }); 
+          if (!res.ok) throw new Error("新增伺服器回應錯誤");
+        }
         await fetchStaffFromDB();
       } else {
-        if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item)); } 
-        else { setStaffList(prev => [...prev, staffData]); }
+        // 模擬模式
+        if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? payload : item)); } 
+        else { setStaffList(prev => [...prev, payload]); }
       }
-    } catch (err) { console.error("操作失敗"); } 
-    finally { setIsLoading(false); setIsModalOpen(false); setEditingStaff(null); }
+      setIsModalOpen(false);
+      setEditingStaff(null);
+    } catch (err) { 
+      console.error("SQL 操作失敗:", err.message);
+      alert("儲存失敗，請檢查 Node.js 後端服務是否正常運作。\n錯誤訊息: " + err.message);
+    } 
+    finally { setIsLoading(false); }
   };
 
   const handleDeleteStaff = async (staffId) => {
