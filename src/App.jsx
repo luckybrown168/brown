@@ -19,7 +19,7 @@ import {
   Database, 
   Trash,
   Edit,
-  Type,
+  Type, 
   Paperclip,
   ArrowRight,
   ChevronRight,
@@ -66,6 +66,11 @@ import {
   LogOut
 } from 'lucide-react';
 
+// --- 全域連線設定 ---
+// 注意：若要在別台電腦連線，請將 'localhost' 改為您執行 server.js 那台電腦的 IP (例如 '192.168.1.100')
+const SERVER_IP = 'localhost'; 
+const API_BASE_URL = `http://${192.168.0.157}:3001/api`;
+
 // --- 全域設計規範 (Design Tokens) ---
 const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", "MingLiU", serif' };
 
@@ -96,7 +101,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           setError('連線中斷或測試模式請輸入 admin / 123456');
         }
       } else {
-        const response = await fetch('http://localhost:3001/api/login', {
+        const response = await fetch(`${API_BASE_URL}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ staffId, password })
@@ -109,7 +114,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
         }
       }
     } catch (err) {
-      setError('連線至地端 SQL 伺服器失敗，請檢查 Node.js 是否運作');
+      setError(`無法連線至伺服器 (${SERVER_IP})，請檢查網路或伺服器 IP 設定`);
     } finally {
       setLoading(false);
     }
@@ -231,7 +236,6 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
 
   useEffect(() => {
     if (initialData) { 
-      // 確保日期字串能正確放入 HTML 日期輸入框 (YYYY-MM-DD)
       const hDate = initialData.hireDate ? initialData.hireDate.split('T')[0] : '';
       setFormData({ ...initialData, hireDate: hDate }); 
     } 
@@ -427,13 +431,12 @@ const PersonnelManagementView = ({ isMockMode }) => {
   const [staffList, setStaffList] = useState([]);
   const [editingStaff, setEditingStaff] = useState(null); 
   const [isLoading, setIsLoading] = useState(false);
-  const API_BASE_URL = "http://localhost:3001/api/personnel"; 
 
   const fetchStaffFromDB = async () => {
     try {
       if (isMockMode) return;
       setIsLoading(true);
-      const response = await fetch(API_BASE_URL);
+      const response = await fetch(`${API_BASE_URL}/personnel`);
       if (!response.ok) throw new Error();
       const data = await response.json();
       setStaffList(data);
@@ -446,8 +449,6 @@ const PersonnelManagementView = ({ isMockMode }) => {
   const handleSaveStaff = async (staffData) => {
     try {
       setIsLoading(true);
-      
-      // 資料格式清理：確保數值為數字型態
       const payload = {
         ...staffData,
         annualLeave: parseFloat(staffData.annualLeave) || 0,
@@ -456,8 +457,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
 
       if (!isMockMode) {
         if (editingStaff) { 
-          // 正式連線：更新模式
-          const res = await fetch(`${API_BASE_URL}/${staffData.staffId}`, { 
+          const res = await fetch(`${API_BASE_URL}/personnel/${staffData.staffId}`, { 
             method: 'PUT', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify(payload) 
@@ -465,8 +465,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
           if (!res.ok) throw new Error("更新伺服器回應錯誤");
         } 
         else { 
-          // 正式連線：新增模式
-          const res = await fetch(API_BASE_URL, { 
+          const res = await fetch(`${API_BASE_URL}/personnel`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify(payload) 
@@ -475,7 +474,6 @@ const PersonnelManagementView = ({ isMockMode }) => {
         }
         await fetchStaffFromDB();
       } else {
-        // 模擬模式
         if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? payload : item)); } 
         else { setStaffList(prev => [...prev, payload]); }
       }
@@ -491,7 +489,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
   const handleDeleteStaff = async (staffId) => {
     if (!window.confirm(`確定要刪除成員 [${staffId}] 嗎？`)) return;
     try {
-      if (!isMockMode) { await fetch(`${API_BASE_URL}/${staffId}`, { method: 'DELETE' }); await fetchStaffFromDB(); } 
+      if (!isMockMode) { await fetch(`${API_BASE_URL}/personnel/${staffId}`, { method: 'DELETE' }); await fetchStaffFromDB(); } 
       else { setStaffList(prev => prev.filter(item => item.staffId !== staffId)); }
     } catch (err) { console.error("刪除失敗"); }
   };
@@ -669,7 +667,7 @@ const App = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/personnel');
+        const res = await fetch(`${API_BASE_URL}/personnel`);
         if (res.ok) setIsMockMode(false);
       } catch (err) { setIsMockMode(true); }
     };
