@@ -84,7 +84,14 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
     try {
       if (isMockMode) {
         if (staffId === 'admin' && password === '123456') {
-          onLoginSuccess({ name: '系統管理員', pos: 'Administrator', dept: '總經理室', staffId: 'ADMIN-01' });
+          onLoginSuccess({ 
+            name: '系統管理員', 
+            pos: 'Administrator', 
+            dept: '總經理室', 
+            staffId: 'ADMIN-01',
+            annualLeave: 56.0,
+            compLeave: 12.5
+          });
         } else {
           setError('連線中斷或測試模式請輸入 admin / 123456');
         }
@@ -364,7 +371,7 @@ const LeaveNoticeBlock = () => (
         {[
           { title: "一. 婚假", content: "以日為單位，可分次或連續實施，於結婚之日前10日起三個月內休完。檢附結婚證明。" },
           { title: "二. 喪假", content: "以日為單位，可分次或連續實施。檢附訃文。" },
-          { title: "三. 普通傷病假", content: "以日或時為單位，請假日數超過一日以上，檢附健保醫院或公立醫院或公司特約醫院診斷證明(附醫囑建議休息天數)。" },
+          { title: "三. 普通傷病假", content: "以日或時為單位，請假日數超過一日以上，檢附健保醫院或公立醫院 or 公司特約醫院診斷證明(附醫囑建議休息天數)。" },
           { title: "四. 事假", content: "以日或時為單位。" },
           { title: "五. 分娩假", content: "以日為單位。檢附診斷證明或出生證明。" },
           { title: "六. 陪產假", content: "以日為單位，於配偶分娩之當日及其前後合計十五日期間內，擇其中之五日請假。檢附診斷證明或出生證明。" },
@@ -521,7 +528,6 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
                 {field.type === "duration" && <DurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} />}
                 {field.type === "leave_duration" && <LeaveDurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} />}
                 
-                {/* 檔案上傳元件實作 */}
                 {field.type === "file" && (
                   <div className="relative group">
                     <input type="file" className="hidden" id={`file-${field.id}`} onChange={(e) => onInputChange(field.id, e.target.files[0]?.name || "")} />
@@ -646,12 +652,8 @@ const App = () => {
       { id: "leave_end_time", label: "請假結束日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_total", label: "共計", type: "leave_duration", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_reason", label: "請假事由", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
-      
-      // 新增：意見 欄位
       { id: "leave_comment", label: "意見", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
-      // 新增：附加檔案 欄位
       { id: "leave_attachment", label: "附加檔案", type: "file", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
-      
       { id: "leave_rules_notice", type: "notice", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
@@ -712,8 +714,25 @@ const App = () => {
                 <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase" style={mingLiUStyle}>Balance</span></div>
                   <div className="space-y-6">
-                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span><span className="text-xl font-black text-blue-600" style={mingLiUStyle}>56.0 <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden"><div className="w-[70%] h-full bg-blue-500 rounded-full"></div></div></div>
-                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span><span className="text-xl font-black text-emerald-600" style={mingLiUStyle}>12.5 <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="w-[35%] h-full bg-emerald-500 rounded-full"></div></div></div>
+                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span>
+                        <span className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span>
+                      </div>
+                      <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                        {/* 修改：特休滿格基準調整為 720 小時 */}
+                        <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 720) * 100, 100)}%` }}></div>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span>
+                        <span className="text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span>
+                      </div>
+                      <div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((currentUser?.compLeave || 0) * 2, 100)}%` }}></div>
+                      </div>
+                    </div>
                   </div>
                 </div>
             </div>
