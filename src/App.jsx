@@ -25,7 +25,7 @@ import {
   ChevronRight,
   ChevronLeft,
   GripVertical,
-  MousePointer,
+  MousePointer, 
   ListOrdered,
   Eye,
   Box,
@@ -340,23 +340,86 @@ const LeaveDurationPicker = ({ id, value, onChange }) => {
   );
 };
 
-// --- 規章備註區塊 ---
+// --- 規章備註區塊 (請假規章) ---
 const LeaveNoticeBlock = () => (
   <div className="bg-amber-50/40 border border-amber-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
-    <div className="flex items-center gap-2 mb-4 text-amber-800 border-b border-amber-200 pb-2"><Info size={18} /><span className="font-black text-base">請假規章與簽核流程說明</span></div>
+    <div className="flex items-center gap-2 mb-4 text-amber-800 border-b border-amber-200 pb-2">
+      <Info size={18} />
+      <span className="font-black text-base">請假規章與簽核流程說明</span>
+    </div>
     <div className="space-y-4 text-[13px] text-slate-700 leading-relaxed">
-      <div><div className="font-black text-amber-900 mb-1 flex items-center gap-1.5">簽核流程：</div><div className="pl-3 border-l-2 border-amber-100 ml-0.5">申請人 → 經副理 (3日以下) → 協理 (5日以下) → 總經理 (5日以上) → 財務行政部。</div></div>
-      <div className="pt-2 border-t border-amber-100 font-bold text-slate-500 italic">※ 給假天數均依勞基法辦理。</div>
+      <div>
+        <div className="font-black text-amber-900 mb-1 flex items-center gap-1.5">
+          <div className="w-1 h-3 bg-amber-500 rounded-full"></div> 簽核流程：
+        </div>
+        <div className="pl-3 border-l-2 border-amber-100 ml-0.5">
+          申請人 → 經副理(請假天數3日(含)以下) → 協理(請假天數5日(含)以下) → 總經理(請假天數5日以上) → 交辦(財務行政部)。<br />
+          <span className="text-red-600 font-bold underline">單位主管一天(含)以上由總經理核定。</span>
+        </div>
+      </div>
+      <div>
+        <div className="font-black text-amber-900 mb-1 flex items-center gap-1.5 text-red-600">
+          <div className="w-1 h-3 bg-red-500 rounded-full"></div> 一般規範：
+        </div>
+        <div className="pl-3 text-slate-600 font-bold">連續日期之請假單不可分開簽核，並均須檢附相關證明文件或說明事項：</div>
+      </div>
+      <div className="grid grid-cols-1 gap-2.5 pl-3">
+        {[
+          { title: "一. 婚假", content: "以日為單位，可分次或連續實施，於結婚之日前10日起三個月內休完。檢附結婚證明。" },
+          { title: "二. 喪假", content: "以日為單位，可分次或連續實施。檢附訃文。" },
+          { title: "三. 普通傷病假", content: "以日或時為單位，請假日數超過一日以上，檢附健保醫院或公立醫院或公司特約醫院診斷證明(附醫囑建議休息天數)。" },
+          { title: "四. 事假", content: "以日或時為單位。" },
+          { title: "五. 分娩假", content: "以日為單位。檢附診斷證明或出生證明。" },
+          { title: "六. 陪產假", content: "以日為單位，於配偶分娩之當日及其前後合計十五日期間內，擇其中之五日請假。檢附診斷證明或出生證明。" },
+          { title: "七. 產檢假", content: "以半日或小時為單位，一經選定不得更改。檢附診斷證明或媽媽手冊。" }
+        ].map((item, idx) => (
+          <div key={idx} className="flex gap-2">
+            <span className="font-black text-slate-800 shrink-0">{item.title}：</span>
+            <span>{item.content}</span>
+          </div>
+        ))}
+      </div>
+      <div className="pt-2 border-t border-amber-100 font-black text-slate-900">八. 給假天數均依勞基法辦理。</div>
     </div>
   </div>
 );
 
+// --- 規章備註區塊 (加班備註 - 新修正) ---
 const OvertimeNoticeBlock = () => (
   <div className="bg-blue-50/40 border border-blue-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
-    <div className="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-200 pb-2"><Info size={18} /><span className="font-black text-base">加班申請規則與備註</span></div>
-    <div className="space-y-3 text-[13px] text-slate-700 leading-relaxed">
-      <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0">A.</span><div>加班申請須事前由直屬主管核准，始得進行加班。</div></div>
-      <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0">E.</span><div className="text-red-600 font-bold underline">每月加班時數上限不得超過46小時。</div></div>
+    <div className="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-200 pb-2">
+      <Info size={18} />
+      <span className="font-black text-base">加班申請規則與備註</span>
+    </div>
+    <div className="space-y-4 text-[13px] text-slate-700 leading-relaxed">
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">A.</span>
+        <div>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</div>
+      </div>
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">B.</span>
+        <div>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</div>
+      </div>
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">C.</span>
+        <div>
+          <span className="font-black">加班類別：</span>
+          <span className="inline-flex flex-wrap gap-2 ml-1">
+            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">1. 一般上班日</span>
+            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">2. 國定假日</span>
+            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">3. 休息日</span>
+            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">4. 出差加班</span>
+          </span>
+        </div>
+      </div>
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">D.</span>
+        <div>此加班工時將依比率換算為補休時數或薪資。</div>
+      </div>
+      <div className="flex gap-3">
+        <span className="font-black text-blue-600 shrink-0">E.</span>
+        <div className="text-red-600 font-bold underline">每月加班時數上限不得超過46小時。</div>
+      </div>
     </div>
   </div>
 );
@@ -367,7 +430,6 @@ const PersonnelManagementView = ({ isMockMode }) => {
   const [staffList, setStaffList] = useState([]);
   const [editingStaff, setEditingStaff] = useState(null); 
   const [isLoading, setIsLoading] = useState(false);
-
   const API_BASE_URL = "http://localhost:3001/api/personnel"; 
 
   const fetchStaffFromDB = async () => {
@@ -378,11 +440,8 @@ const PersonnelManagementView = ({ isMockMode }) => {
       if (!response.ok) throw new Error();
       const data = await response.json();
       setStaffList(data);
-    } catch (err) {
-      console.error("無法載入資料");
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (err) { console.error("無法載入資料"); } 
+    finally { setIsLoading(false); }
   };
 
   useEffect(() => { fetchStaffFromDB(); }, [isMockMode]);
@@ -415,11 +474,10 @@ const PersonnelManagementView = ({ isMockMode }) => {
       {isMockMode && (
         <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-4">
           <div className="bg-amber-500 p-2.5 rounded-2xl text-white"><WifiOff size={20} /></div>
-          <div className="flex-1"><h4 className="text-amber-800 font-black text-sm">離線測試模式</h4><p className="text-amber-600 text-xs mt-1 leading-relaxed">Canvas 雲端環境限制，無法連通您本機的 SQL。目前資料僅暫存於瀏覽器，重整後會消失。</p></div>
+          <div className="flex-1"><h4 className="text-amber-800 font-black text-sm">離線測試模式</h4><p className="text-amber-600 text-xs mt-1 leading-relaxed">Canvas 雲端環境限制，無法連通您本機的 SQL。目前資料僅暫存於瀏覽器。</p></div>
           <button onClick={fetchStaffFromDB} className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-100 transition-colors">嘗試重連</button>
         </div>
       )}
-
       <div className="flex items-center justify-between bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg text-white"><Users size={28} /></div>
@@ -433,7 +491,6 @@ const PersonnelManagementView = ({ isMockMode }) => {
           <button onClick={() => { setEditingStaff(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg active:scale-95"><UserPlus size={18} /> 新增人員</button>
         </div>
       </div>
-
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-slate-50/30"><tr className="text-[12px] font-black text-slate-400 uppercase tracking-widest"><th className="px-8 py-4">員編 / 姓名</th><th className="px-6 py-4">部門組別</th><th className="px-6 py-4">職稱</th><th className="px-6 py-4">電子郵件</th><th className="px-8 py-4 text-right"></th></tr></thead>
@@ -591,14 +648,34 @@ const App = () => {
       { id: "leave_rules_notice", type: "notice", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "leave_type", showIf: "加班", width: "w-full" },
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
   };
 
-  const handleInputChange = (id, value) => { setFormValues(prev => ({ ...prev, [id]: value })); };
+  const handleInputChange = (id, value) => {
+    setFormValues(prev => {
+      const nextValues = { ...prev, [id]: value };
+      const cleanupChildren = (parentId) => {
+        myFormSchema.fields.forEach(field => {
+          if (field.dependsOn === parentId) {
+            const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
+            if (!showConditions.includes(nextValues[parentId])) {
+              delete nextValues[field.id];
+              cleanupChildren(field.id);
+            }
+          }
+        });
+      };
+      cleanupChildren(id);
+      return nextValues;
+    });
+  };
+
   const handleFinalSubmit = () => {
     const newDocId = `EF-${Date.now()}`;
     setSubmittedForms([...submittedForms, { id: newDocId, values: { ...formValues }, submitDate: new Date().toLocaleDateString(), status: 'Pending' }]);
@@ -633,7 +710,6 @@ const App = () => {
                   </div>
                 </div>
             </div>
-            {/* 修改點：將原本的 lg:grid-cols-6 改為 lg:grid-cols-3 以達成每列 3 個區塊 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
                 { id: 'inbox_stat', label: '收件匣', value: 0, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
