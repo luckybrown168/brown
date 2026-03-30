@@ -115,40 +115,40 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm shadow-xl">
             <Lock size={32} />
           </div>
-          <h1 className="text-2xl font-black tracking-tighter">先啟智慧表單系統</h1>
-          <p className="text-indigo-100 text-[10px] font-bold mt-2 uppercase tracking-widest opacity-80">Smart Approval Workflow</p>
+          <h1 className="text-2xl font-black tracking-tighter" style={mingLiUStyle}>先啟智慧表單系統</h1>
+          <p className="text-indigo-100 text-[10px] font-bold mt-2 uppercase tracking-widest opacity-80" style={mingLiUStyle}>Smart Approval Workflow</p>
         </div>
         
         <form onSubmit={handleLogin} className="p-10 space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2">
+            <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2" style={mingLiUStyle}>
               <AlertCircle size={16} /> {error}
             </div>
           )}
           
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-1">員工編號 Staff ID</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-1" style={mingLiUStyle}>員工編號 Staff ID</label>
             <div className="relative">
               <UserCheck size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-              <input type="text" required value={staffId} onChange={(e) => setStaffId(e.target.value)}
+              <input type="text" required value={staffId} onChange={(e) => setStaffId(e.target.value)} style={mingLiUStyle}
                 className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-indigo-500 transition-all font-bold text-sm" placeholder="請輸入員編" />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-1">登入密碼 Password</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-1" style={mingLiUStyle}>登入密碼 Password</label>
             <div className="relative">
               <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} style={mingLiUStyle}
                 className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-indigo-500 transition-all font-bold text-sm" placeholder="請輸入密碼" />
             </div>
           </div>
 
-          <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4">
+          <button type="submit" disabled={loading} style={mingLiUStyle} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4">
             {loading ? <RotateCcw className="animate-spin" size={20} /> : <LogIn size={20} />} 進入系統
           </button>
           
-          <p className="text-center text-[10px] text-slate-300 font-bold uppercase pt-4 tracking-tighter">
+          <p className="text-center text-[10px] text-slate-300 font-bold uppercase pt-4 tracking-tighter" style={mingLiUStyle}>
             {isMockMode ? "⚠️ 檢測到地端離線 - 模擬模式已啟動" : "✅ 地端資料庫通訊正常"}
           </p>
         </form>
@@ -166,8 +166,8 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick }) => {
           <Icon size={28} />
         </div>
         <div>
-          <h2 className="text-2xl font-black text-slate-800">{title}</h2>
-          <p className="text-xs text-slate-400 font-bold">管理與追蹤您的單據申請</p>
+          <h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>{title}</h2>
+          <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>管理與追蹤您的單據申請</p>
         </div>
       </div>
 
@@ -175,24 +175,24 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick }) => {
         <table className="w-full text-left">
           <thead className="bg-slate-50/30">
             <tr>
-              <th className="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]">單號</th>
-              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]">主旨</th>
-              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]">提交日期</th>
-              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]">狀態</th>
-              <th className="px-8 py-4 text-right">操作</th>
+              <th className="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>單號</th>
+              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>主旨</th>
+              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>提交日期</th>
+              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>狀態</th>
+              <th className="px-8 py-4 text-right" style={mingLiUStyle}>操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {data.length > 0 ? data.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
-                <td className="px-8 py-5 text-sm font-bold text-blue-600">{item.id}</td>
-                <td className="px-6 py-5 text-sm font-bold text-slate-700">{item.values?.form_subject || '無主旨'}</td>
-                <td className="px-6 py-5 text-xs font-bold text-slate-500">{item.submitDate}</td>
+                <td className="px-8 py-5 text-sm font-bold text-blue-600" style={mingLiUStyle}>{item.id}</td>
+                <td className="px-6 py-5 text-sm font-bold text-slate-700" style={mingLiUStyle}>{item.values?.form_subject || '無主旨'}</td>
+                <td className="px-6 py-5 text-xs font-bold text-slate-500" style={mingLiUStyle}>{item.submitDate}</td>
                 <td className="px-6 py-5">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
                     item.status === 'Pending' ? 'bg-amber-50 text-amber-600' : 
                     item.status === 'Completed' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-                  }`}>
+                  }`} style={mingLiUStyle}>
                     {item.status === 'Pending' ? '待簽核' : item.status}
                   </span>
                 </td>
@@ -204,7 +204,7 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick }) => {
               </tr>
             )) : (
               <tr>
-                <td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm">
+                <td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>
                   目前尚無相關單據資料。
                 </td>
               </tr>
@@ -238,52 +238,52 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   const inputClass = "w-full border border-slate-300 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 transition-all bg-white shadow-sm";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={mingLiUStyle}>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}></div>
       <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden" style={mingLiUStyle}>
         <div className="bg-indigo-600 px-8 py-6 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">{initialData ? <Edit size={20} /> : <UserPlus size={20} />}</div>
             <div>
-              <h3 className="text-lg font-black tracking-tight">{initialData ? '修改人員資料' : '新增人員資料'}</h3>
-              <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest">{initialData ? 'Update Profile' : 'Create New Profile'}</p>
+              <h3 className="text-lg font-black tracking-tight" style={mingLiUStyle}>{initialData ? '修改人員資料' : '新增人員資料'}</h3>
+              <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest" style={mingLiUStyle}>{initialData ? 'Update Profile' : 'Create New Profile'}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
         </div>
         <div className="p-8 space-y-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-2 gap-4">
-            <div><label className={labelClass}>員編</label><input name="staffId" value={formData.staffId} onChange={handleChange} className={inputClass} disabled={!!initialData} /></div>
-            <div><label className={labelClass}>姓名</label><input name="name" value={formData.name} onChange={handleChange} className={inputClass} /></div>
+            <div><label className={labelClass} style={mingLiUStyle}>員編</label><input name="staffId" value={formData.staffId} onChange={handleChange} className={inputClass} disabled={!!initialData} style={mingLiUStyle} /></div>
+            <div><label className={labelClass} style={mingLiUStyle}>姓名</label><input name="name" value={formData.name} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className={labelClass}>部門</label>
-              <select name="dept" value={formData.dept} onChange={handleChange} className={inputClass}>
+            <div><label className={labelClass} style={mingLiUStyle}>部門</label>
+              <select name="dept" value={formData.dept} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
                 <option value="">請選擇部門</option>
                 <option value="總經理">總經理</option><option value="財務行政部">財務行政部</option>
                 <option value="業務部">業務部</option><option value="系統暨工程部">系統暨工程部</option>
               </select>
             </div>
-            <div><label className={labelClass}>組別</label>
-              <select name="team" value={formData.team} onChange={handleChange} className={inputClass}>
+            <div><label className={labelClass} style={mingLiUStyle}>組別</label>
+              <select name="team" value={formData.team} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
                 <option value="">請選擇組別</option>
                 <option value="總經理室">總經理室</option><option value="北區營業組">北區營業組</option><option value="中區營業組">中區營業組</option><option value="南區營業組">南區營業組</option><option value="客服組">客服組</option><option value="產品組">產品組</option><option value="工程組">工程組</option><option value="系統組">系統組</option>
               </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className={labelClass}>職稱</label><input name="pos" value={formData.pos} onChange={handleChange} className={inputClass} /></div>
-            <div><label className={labelClass}>電子郵件</label><input name="email" value={formData.email} onChange={handleChange} className={inputClass} /></div>
+            <div><label className={labelClass} style={mingLiUStyle}>職稱</label><input name="pos" value={formData.pos} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
+            <div><label className={labelClass} style={mingLiUStyle}>電子郵件</label><input name="email" value={formData.email} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
           </div>
-          <div><label className={labelClass}>登入密碼</label><input type="password" name="password" value={formData.password} onChange={handleChange} className={inputClass} /></div>
+          <div><label className={labelClass} style={mingLiUStyle}>登入密碼</label><input type="password" name="password" value={formData.password} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-            <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100"><label className={`${labelClass} text-blue-600`}>剩餘特休 (hr)</label><input type="number" name="annualLeave" value={formData.annualLeave} onChange={handleChange} className={inputClass} /></div>
-            <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100"><label className={`${labelClass} text-emerald-600`}>剩餘補休 (hr)</label><input type="number" name="compLeave" value={formData.compLeave} onChange={handleChange} className={inputClass} /></div>
+            <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100"><label className={`${labelClass} text-blue-600`} style={mingLiUStyle}>剩餘特休 (hr)</label><input type="number" name="annualLeave" value={formData.annualLeave} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
+            <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100"><label className={`${labelClass} text-emerald-600`} style={mingLiUStyle}>剩餘補休 (hr)</label><input type="number" name="compLeave" value={formData.compLeave} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
           </div>
         </div>
         <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 border rounded-xl text-sm font-bold text-slate-500 hover:bg-white transition-all">取消返回</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl text-sm font-black flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all"><Save size={18} /> 儲存資料</button>
+          <button onClick={onClose} className="flex-1 py-3 border rounded-xl text-sm font-bold text-slate-500 hover:bg-white transition-all" style={mingLiUStyle}>取消返回</button>
+          <button onClick={() => onSave(formData)} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl text-sm font-black flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all" style={mingLiUStyle}><Save size={18} /> 儲存資料</button>
         </div>
       </div>
     </div>
@@ -299,15 +299,15 @@ const DateTimePicker = ({ id, label, value, onChange }) => {
   useEffect(() => { if (value && !isConfirmed) { const parts = value.split(' '); if (parts.length >= 3) { setTempDate(parts[0]); setIsConfirmed(true); } } }, [value, isConfirmed]);
   const handleConfirm = (period) => { if (!tempDate) return; onChange(id, `${tempDate} ${period} ${tempHour}:${tempMin}`); setIsConfirmed(true); };
   return (
-    <div className={`p-4 border rounded-xl transition-all ${isConfirmed ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-slate-200'}`}>
+    <div className={`p-4 border rounded-xl transition-all ${isConfirmed ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-slate-200'}`} style={mingLiUStyle}>
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-col gap-1"><span className="text-[10px] font-black text-slate-400 uppercase">1. 日期</span><input type="date" value={tempDate} onChange={(e) => { setTempDate(e.target.value); setIsConfirmed(false); }} className="border rounded px-2 py-1 text-sm outline-none" style={mingLiUStyle} /></div>
-        <div className="flex flex-col gap-1"><span className="text-[10px] font-black text-slate-400 uppercase">2. 時間</span><div className="flex items-center gap-1"><select value={tempHour} onChange={(e) => { setTempHour(e.target.value); setIsConfirmed(false); }} className="border rounded px-1 py-1 text-sm">{Array.from({length: 12}, (_, i) => String(i+1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}</select><span>:</span><select value={tempMin} onChange={(e) => { setTempMin(e.target.value); setIsConfirmed(false); }} className="border rounded px-1 py-1 text-sm"><option value="00">00</option><option value="30">30</option></select></div></div>
-        <div className="flex flex-col gap-1"><span className="text-[10px] font-black text-slate-400 uppercase">3. 確認</span><div className="flex items-center gap-1">
+        <div className="flex flex-col gap-1"><span className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>1. 日期</span><input type="date" value={tempDate} onChange={(e) => { setTempDate(e.target.value); setIsConfirmed(false); }} className="border rounded px-2 py-1 text-sm outline-none" style={mingLiUStyle} /></div>
+        <div className="flex flex-col gap-1"><span className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>2. 時間</span><div className="flex items-center gap-1"><select value={tempHour} onChange={(e) => { setTempHour(e.target.value); setIsConfirmed(false); }} className="border rounded px-1 py-1 text-sm" style={mingLiUStyle}>{Array.from({length: 12}, (_, i) => String(i+1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}</select><span>:</span><select value={tempMin} onChange={(e) => { setTempMin(e.target.value); setIsConfirmed(false); }} className="border rounded px-1 py-1 text-sm" style={mingLiUStyle}><option value="00">00</option><option value="30">30</option></select></div></div>
+        <div className="flex flex-col gap-1"><span className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>3. 確認</span><div className="flex items-center gap-1">
           <button type="button" onClick={() => handleConfirm('上午')} className={`px-3 py-1 text-xs font-bold rounded border ${value?.includes('上午') ? 'bg-blue-600 text-white' : 'bg-white'}`} style={mingLiUStyle}><Sun size={12} /> 上午</button>
           <button type="button" onClick={() => handleConfirm('下午')} className={`px-3 py-1 text-xs font-bold rounded border ${value?.includes('下午') ? 'bg-blue-600 text-white' : 'bg-white'}`} style={mingLiUStyle}><Moon size={12} /> 下午</button>
         </div></div>
-        {isConfirmed && <div className="ml-auto flex items-center gap-1 text-green-600 font-bold text-xs animate-bounce"><CheckCircle size={16} /> 已確認</div>}
+        {isConfirmed && <div className="ml-auto flex items-center gap-1 text-green-600 font-bold text-xs animate-bounce" style={mingLiUStyle}><CheckCircle size={16} /> 已確認</div>}
       </div>
     </div>
   );
@@ -318,10 +318,10 @@ const DurationPicker = ({ id, value, onChange }) => {
   useEffect(() => { if (value) { const match = value.match(/(\d+)\s*日\s*(\d+)\s*時\s*(\d+)\s*分/); if (match) { setD(match[1]); setH(match[2]); setM(match[3]); } } }, [value]);
   const updateDuration = (newD, newH, newM) => onChange(id, `${newD} 日 ${newH} 時 ${newM} 分`);
   return (
-    <div className="flex items-center gap-4 bg-slate-50 p-4 border border-slate-200 rounded-xl">
-      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={d} onChange={(e) => { setD(e.target.value); updateDuration(e.target.value, h, m); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 32}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600">日</span></div>
-      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={h} onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value, m); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600">時</span></div>
-      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={m} onChange={(e) => { setM(e.target.value); updateDuration(d, h, e.target.value); }} className="border rounded px-2 py-1 text-sm"><option value="00">00</option><option value="30">30</option></select><span className="text-sm font-bold text-slate-600">分</span></div>
+    <div className="flex items-center gap-4 bg-slate-50 p-4 border border-slate-200 rounded-xl" style={mingLiUStyle}>
+      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={d} onChange={(e) => { setD(e.target.value); updateDuration(e.target.value, h, m); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 32}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>日</span></div>
+      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={h} onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value, m); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>時</span></div>
+      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={m} onChange={(e) => { setM(e.target.value); updateDuration(d, h, e.target.value); }} className="border rounded px-2 py-1 text-sm"><option value="00">00</option><option value="30">30</option></select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>分</span></div>
       <div className="ml-auto text-[#1677FF] opacity-30"><Timer size={20} /></div>
     </div>
   );
@@ -332,36 +332,33 @@ const LeaveDurationPicker = ({ id, value, onChange }) => {
   useEffect(() => { if (value) { const match = value.match(/(\d+)\s*日\s*(\d+)\s*時/); if (match) { setD(match[1]); setH(match[2]); } } }, [value]);
   const updateDuration = (newD, newH) => onChange(id, `${newD} 日 ${newH} 時`);
   return (
-    <div className="flex items-center gap-4 bg-blue-50/30 p-4 border border-blue-100 rounded-xl">
-      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={d} onChange={(e) => { setD(e.target.value); updateDuration(e.target.value, h); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 32}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600">日</span></div>
-      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={h} onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600">時</span></div>
+    <div className="flex items-center gap-4 bg-blue-50/30 p-4 border border-blue-100 rounded-xl" style={mingLiUStyle}>
+      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={d} onChange={(e) => { setD(e.target.value); updateDuration(e.target.value, h); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 32}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>日</span></div>
+      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={h} onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>時</span></div>
       <div className="ml-auto text-blue-600 opacity-30"><ClipboardList size={20} /></div>
     </div>
   );
 };
 
-// --- 規章備註區塊 (請假規章) ---
+// --- 規章備註區塊 ---
 const LeaveNoticeBlock = () => (
   <div className="bg-amber-50/40 border border-amber-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
-    <div className="flex items-center gap-2 mb-4 text-amber-800 border-b border-amber-200 pb-2">
-      <Info size={18} />
-      <span className="font-black text-base">請假規章與簽核流程說明</span>
-    </div>
+    <div className="flex items-center gap-2 mb-4 text-amber-800 border-b border-amber-200 pb-2"><Info size={18} /><span className="font-black text-base" style={mingLiUStyle}>請假規章與簽核流程說明</span></div>
     <div className="space-y-4 text-[13px] text-slate-700 leading-relaxed">
       <div>
-        <div className="font-black text-amber-900 mb-1 flex items-center gap-1.5">
+        <div className="font-black text-amber-900 mb-1 flex items-center gap-1.5" style={mingLiUStyle}>
           <div className="w-1 h-3 bg-amber-500 rounded-full"></div> 簽核流程：
         </div>
-        <div className="pl-3 border-l-2 border-amber-100 ml-0.5">
+        <div className="pl-3 border-l-2 border-amber-100 ml-0.5" style={mingLiUStyle}>
           申請人 → 經副理(請假天數3日(含)以下) → 協理(請假天數5日(含)以下) → 總經理(請假天數5日以上) → 交辦(財務行政部)。<br />
           <span className="text-red-600 font-bold underline">單位主管一天(含)以上由總經理核定。</span>
         </div>
       </div>
       <div>
-        <div className="font-black text-amber-900 mb-1 flex items-center gap-1.5 text-red-600">
+        <div className="font-black text-amber-900 mb-1 flex items-center gap-1.5 text-red-600" style={mingLiUStyle}>
           <div className="w-1 h-3 bg-red-500 rounded-full"></div> 一般規範：
         </div>
-        <div className="pl-3 text-slate-600 font-bold">連續日期之請假單不可分開簽核，並均須檢附相關證明文件或說明事項：</div>
+        <div className="pl-3 text-slate-600 font-bold" style={mingLiUStyle}>連續日期之請假單不可分開簽核，並均須檢附相關證明文件或說明事項：</div>
       </div>
       <div className="grid grid-cols-1 gap-2.5 pl-3">
         {[
@@ -373,53 +370,37 @@ const LeaveNoticeBlock = () => (
           { title: "六. 陪產假", content: "以日為單位，於配偶分娩之當日及其前後合計十五日期間內，擇其中之五日請假。檢附診斷證明或出生證明。" },
           { title: "七. 產檢假", content: "以半日或小時為單位，一經選定不得更改。檢附診斷證明或媽媽手冊。" }
         ].map((item, idx) => (
-          <div key={idx} className="flex gap-2">
+          <div key={idx} className="flex gap-2" style={mingLiUStyle}>
             <span className="font-black text-slate-800 shrink-0">{item.title}：</span>
             <span>{item.content}</span>
           </div>
         ))}
       </div>
-      <div className="pt-2 border-t border-amber-100 font-black text-slate-900">八. 給假天數均依勞基法辦理。</div>
+      <div className="pt-2 border-t border-amber-100 font-black text-slate-900" style={mingLiUStyle}>八. 給假天數均依勞基法辦理。</div>
     </div>
   </div>
 );
 
-// --- 規章備註區塊 (加班備註 - 新修正) ---
 const OvertimeNoticeBlock = () => (
   <div className="bg-blue-50/40 border border-blue-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
-    <div className="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-200 pb-2">
-      <Info size={18} />
-      <span className="font-black text-base">加班申請規則與備註</span>
-    </div>
+    <div className="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-200 pb-2"><Info size={18} /><span className="font-black text-base" style={mingLiUStyle}>加班申請規則與備註</span></div>
     <div className="space-y-4 text-[13px] text-slate-700 leading-relaxed">
+      <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>A.</span><div style={mingLiUStyle}>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</div></div>
+      <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>B.</span><div style={mingLiUStyle}>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</div></div>
       <div className="flex gap-3">
-        <span className="font-black text-blue-600 shrink-0">A.</span>
-        <div>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</div>
-      </div>
-      <div className="flex gap-3">
-        <span className="font-black text-blue-600 shrink-0">B.</span>
-        <div>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</div>
-      </div>
-      <div className="flex gap-3">
-        <span className="font-black text-blue-600 shrink-0">C.</span>
-        <div>
+        <span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>C.</span>
+        <div style={mingLiUStyle}>
           <span className="font-black">加班類別：</span>
           <span className="inline-flex flex-wrap gap-2 ml-1">
-            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">1. 一般上班日</span>
-            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">2. 國定假日</span>
-            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">3. 休息日</span>
-            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700">4. 出差加班</span>
+            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700" style={mingLiUStyle}>1. 一般上班日</span>
+            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700" style={mingLiUStyle}>2. 國定假日</span>
+            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700" style={mingLiUStyle}>3. 休息日</span>
+            <span className="px-2 py-0.5 bg-white border border-blue-100 rounded text-blue-700" style={mingLiUStyle}>4. 出差加班</span>
           </span>
         </div>
       </div>
-      <div className="flex gap-3">
-        <span className="font-black text-blue-600 shrink-0">D.</span>
-        <div>此加班工時將依比率換算為補休時數或薪資。</div>
-      </div>
-      <div className="flex gap-3">
-        <span className="font-black text-blue-600 shrink-0">E.</span>
-        <div className="text-red-600 font-bold underline">每月加班時數上限不得超過46小時。</div>
-      </div>
+      <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>D.</span><div style={mingLiUStyle}>此加班工時將依比率換算為補休時數或薪資。</div></div>
+      <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>E.</span><div className="text-red-600 font-bold underline" style={mingLiUStyle}>每月加班時數上限不得超過46小時。</div></div>
     </div>
   </div>
 );
@@ -474,36 +455,39 @@ const PersonnelManagementView = ({ isMockMode }) => {
       {isMockMode && (
         <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-4">
           <div className="bg-amber-500 p-2.5 rounded-2xl text-white"><WifiOff size={20} /></div>
-          <div className="flex-1"><h4 className="text-amber-800 font-black text-sm">離線測試模式</h4><p className="text-amber-600 text-xs mt-1 leading-relaxed">Canvas 雲端環境限制，無法連通您本機的 SQL。目前資料僅暫存於瀏覽器。</p></div>
-          <button onClick={fetchStaffFromDB} className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-100 transition-colors">嘗試重連</button>
+          <div className="flex-1">
+            <h4 className="text-amber-800 font-black text-sm" style={mingLiUStyle}>離線測試模式</h4>
+            <p className="text-amber-600 text-xs mt-1 leading-relaxed" style={mingLiUStyle}>Canvas 雲端環境限制，無法連通您本機的 SQL。目前資料僅暫存於瀏覽器。</p>
+          </div>
+          <button onClick={fetchStaffFromDB} className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-100 transition-colors" style={mingLiUStyle}>嘗試重連</button>
         </div>
       )}
       <div className="flex items-center justify-between bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg text-white"><Users size={28} /></div>
-          <div><h2 className="text-2xl font-black text-slate-800">人員資料管理</h2><p className="text-xs text-slate-400 font-bold">檢視及維護公司成員的基本資訊</p></div>
+          <div><h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>人員資料管理</h2><p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>檢視及維護公司成員的基本資訊</p></div>
         </div>
         <div className="flex gap-3">
           <div className={`px-4 py-3 rounded-2xl border flex items-center gap-2 transition-colors ${isMockMode ? 'bg-slate-100 border-slate-200' : 'bg-emerald-50 border-emerald-100'}`}>
              <div className={`w-2 h-2 rounded-full ${isMockMode ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></div>
-             <span className={`text-[10px] font-black uppercase tracking-widest ${isMockMode ? 'text-slate-500' : 'text-emerald-600'}`}>{isMockMode ? 'Mock Mode' : 'SQL Linked'}</span>
+             <span className={`text-[10px] font-black uppercase tracking-widest ${isMockMode ? 'text-slate-500' : 'text-emerald-600'}`} style={mingLiUStyle}>{isMockMode ? 'Mock Mode' : 'SQL Linked'}</span>
           </div>
-          <button onClick={() => { setEditingStaff(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg active:scale-95"><UserPlus size={18} /> 新增人員</button>
+          <button onClick={() => { setEditingStaff(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg active:scale-95" style={mingLiUStyle}><UserPlus size={18} /> 新增人員</button>
         </div>
       </div>
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-slate-50/30"><tr className="text-[12px] font-black text-slate-400 uppercase tracking-widest"><th className="px-8 py-4">員編 / 姓名</th><th className="px-6 py-4">部門組別</th><th className="px-6 py-4">職稱</th><th className="px-6 py-4">電子郵件</th><th className="px-8 py-4 text-right"></th></tr></thead>
+          <thead className="bg-slate-50/30"><tr className="text-[12px] font-black text-slate-400 uppercase tracking-widest" style={mingLiUStyle}><th className="px-8 py-4">員編 / 姓名</th><th className="px-6 py-4">部門組別</th><th className="px-6 py-4">職稱</th><th className="px-6 py-4">電子郵件</th><th className="px-8 py-4 text-right"></th></tr></thead>
           <tbody className="divide-y divide-slate-50">
             {staffList.length > 0 ? staffList.map((person, idx) => (
               <tr key={person.staffId || idx} className="hover:bg-indigo-50/20 transition-colors group">
-                <td className="px-8 py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-slate-100 rounded-full border border-white shadow-sm overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${person.name}`} alt="avatar" /></div><div><p className="text-[10px] font-bold text-indigo-600 mb-0.5">{person.staffId}</p><p className="text-sm font-bold text-slate-700">{person.name}</p></div></div></td>
-                <td className="px-6 py-5 text-xs font-bold text-slate-600">{person.dept} {person.team ? `/ ${person.team}` : ''}</td>
-                <td className="px-6 py-5 text-xs font-bold text-slate-600">{person.pos}</td>
-                <td className="px-6 py-5 flex items-center gap-1.5 text-slate-500"><Mail size={12} className="text-slate-300" /><span className="text-[11px] font-bold">{person.email}</span></td>
+                <td className="px-8 py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-slate-100 rounded-full border border-white shadow-sm overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${person.name}`} alt="avatar" /></div><div><p className="text-[10px] font-bold text-indigo-600 mb-0.5" style={mingLiUStyle}>{person.staffId}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{person.name}</p></div></div></td>
+                <td className="px-6 py-5 text-xs font-bold text-slate-600" style={mingLiUStyle}>{person.dept} {person.team ? `/ ${person.team}` : ''}</td>
+                <td className="px-6 py-5 text-xs font-bold text-slate-600" style={mingLiUStyle}>{person.pos}</td>
+                <td className="px-6 py-5 flex items-center gap-1.5 text-slate-500" style={mingLiUStyle}><Mail size={12} className="text-slate-300" /><span className="text-[11px] font-bold">{person.email}</span></td>
                 <td className="px-8 py-5 text-right"><div className="flex justify-end gap-2"><button onClick={() => { setEditingStaff(person); setIsModalOpen(true); }} className="p-2 text-slate-300 hover:text-indigo-600 transition-all"><Edit size={18} /></button><button onClick={() => handleDeleteStaff(person.staffId)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash size={18} /></button></div></td>
               </tr>
-            )) : <tr><td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm">{isLoading ? "正在讀取資料..." : "目前資料庫尚無資料。"}</td></tr>}
+            )) : <tr><td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>{isLoading ? "正在讀取資料..." : "目前資料庫尚無資料。"}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -515,7 +499,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
 // --- 組件：智慧渲染引擎 ---
 const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={mingLiUStyle}>
       <div className="bg-white border border-slate-300 rounded-xl p-8 shadow-sm font-serif relative overflow-hidden">
         <div className="absolute top-[-20px] right-[-20px] opacity-[0.03] rotate-12 pointer-events-none"><FileText size={200} /></div>
         <h3 className="text-xl font-bold mb-8 text-center tracking-widest text-slate-800 relative z-10" style={mingLiUStyle}>** {schema.title.split('').join(' ')} **</h3>
@@ -536,7 +520,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
                 {field.type === "datetime" && <DateTimePicker id={field.id} label={field.label} value={formValues[field.id]} onChange={onInputChange} />}
                 {field.type === "duration" && <DurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} />}
                 {field.type === "leave_duration" && <LeaveDurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} />}
-                {field.type === "file" && <div className="border-2 border-dashed border-slate-300 p-6 rounded-xl flex flex-col items-center gap-2 text-slate-400"><UploadCloud size={30} /><p className="text-xs font-bold" style={mingLiUStyle}>點擊或拖曳檔案上傳 (模擬)</p></div>}
+                {field.type === "file" && <div className="border-2 border-dashed border-slate-300 p-6 rounded-xl flex flex-col items-center gap-2 text-slate-400" style={mingLiUStyle}><UploadCloud size={30} /><p className="text-xs font-bold" style={mingLiUStyle}>點擊或拖曳檔案上傳 (模擬)</p></div>}
                 {field.type === "notice" && <LeaveNoticeBlock />}
                 {field.type === "ot_notice" && <OvertimeNoticeBlock />}
                 {field.type === "button" && <div className="w-full mt-4"><button type="button" onClick={onPreview} className="w-full bg-[#1677FF] text-white py-4 rounded-xl font-black shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-lg" style={mingLiUStyle}><Eye size={20} /> 預覽填寫內容</button></div>}
@@ -556,19 +540,19 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
         <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative font-serif">
           <div className="flex items-center gap-3 mb-8 border-b pb-4 border-blue-50">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><FileText size={24} /></div>
-            <div><h2 className="text-xl font-black text-slate-800">簽核表單預覽校對</h2><p className="text-xs text-slate-400 font-bold">請確認下方資訊無誤後點擊送出</p></div>
+            <div><h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>簽核表單預覽校對</h2><p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>請確認下方資訊無誤後點擊送出</p></div>
           </div>
           <div className="flex flex-wrap -mx-2 gap-y-6">
              {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
                 if (field.dependsOn && !values[field.dependsOn]) return null;
                 return (
-                  <div key={field.id} className={`${field.width} px-2`}><div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 h-full flex flex-col justify-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">{field.label}</p><p className="text-base font-bold text-slate-700">{values[field.id] || '( 未填寫 )'}</p></div></div>
+                  <div key={field.id} className={`${field.width} px-2`}><div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 h-full flex flex-col justify-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-base font-bold text-slate-700" style={mingLiUStyle}>{values[field.id] || '( 未填寫 )'}</p></div></div>
                 );
              })}
           </div>
           <div className="mt-12 flex gap-4">
-             <button onClick={onEdit} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black text-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"><ChevronLeft size={20} /> 資訊有誤，回填單頁面</button>
-             <button onClick={onSubmit} className="flex-[2] py-4 bg-[#1677FF] text-white rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-lg active:scale-95"><Check size={24} /> 確認無誤，正式提交申請</button>
+             <button onClick={onEdit} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black text-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2" style={mingLiUStyle}><ChevronLeft size={20} /> 資訊有誤，回填單頁面</button>
+             <button onClick={onSubmit} className="flex-[2] py-4 bg-[#1677FF] text-white rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-lg active:scale-95" style={mingLiUStyle}><Check size={24} /> 確認無誤，正式提交申請</button>
           </div>
         </div>
     </div>
@@ -581,22 +565,22 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
     <div className="space-y-8 animate-in zoom-in-95 duration-500" style={mingLiUStyle}>
       <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif">
         <div className="absolute top-10 right-10 w-32 h-32 border-4 border-red-500 rounded-full flex flex-col items-center justify-center rotate-12 opacity-80 pointer-events-none text-red-500 font-black">
-          <span className="text-xs">先啟智慧表單件</span><span className="text-lg border-y-2 border-red-500 my-1">已 收 訖</span><span className="text-[10px]">{new Date().toLocaleDateString()}</span>
+          <span className="text-xs" style={mingLiUStyle}>先啟智慧表單件</span><span className="text-lg border-y-2 border-red-500 my-1" style={mingLiUStyle}>已 收 訖</span><span className="text-[10px]" style={mingLiUStyle}>{new Date().toLocaleDateString()}</span>
         </div>
-        <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8">電子表單申請存根</h2></div>
+        <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
-           <div><p className="text-[10px] font-black text-slate-400 uppercase">文件單號 Document ID</p><p className="text-xl font-black text-blue-600">{currentDocId}</p></div>
-           <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase">申請人 Applicant</p><p className="text-sm font-bold text-slate-700">{currentUser?.name || '測試人員'}</p></div>
+           <div><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
+           <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p></div>
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
           {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
              if (field.dependsOn && !values[field.id]) return null;
-             return (<div key={field.id} className={`${field.width} px-2`}><p className="text-[10px] font-black text-slate-400 uppercase mb-1">{field.label}</p><p className="text-sm font-bold text-slate-700">{values[field.id] || '( 未填寫 )'}</p></div>);
+             return (<div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}><p className="text-[10px] font-black text-slate-400 uppercase mb-1">{field.label}</p><p className="text-sm font-bold text-slate-700">{values[field.id] || '( 未填寫 )'}</p></div>);
           })}
         </div>
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 print:hidden">
-          <button type="button" onClick={window.print} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold">列印存根</button>
-          <button type="button" onClick={onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 transition-all">完成返回</button>
+          <button type="button" onClick={window.print} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold" style={mingLiUStyle}>列印存根</button>
+          <button type="button" onClick={onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 transition-all" style={mingLiUStyle}>完成返回</button>
         </div>
       </div>
     </div>
@@ -697,16 +681,16 @@ const App = () => {
                 <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                   <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
                   <div className="relative z-10">
-                    <h2 className="text-3xl font-black mb-3">早安，{currentUser.name} {currentUser.pos}</h2>
-                    <p className="text-blue-100 text-sm max-w-md leading-relaxed">您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p>
-                    <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg mt-8"><Plus size={18} /> 開始建立表單</button>
+                    <h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，{currentUser.name} {currentUser.pos}</h2>
+                    <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p>
+                    <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg mt-8" style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button>
                   </div>
                 </div>
                 <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2"><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Balance</span></div>
+                  <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase" style={mingLiUStyle}>Balance</span></div>
                   <div className="space-y-6">
-                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600">特休 (Annual)</span><span className="text-xl font-black text-blue-600">56.0 <small className="text-[10px] text-slate-400">hr</small></span></div><div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden"><div className="w-[70%] h-full bg-blue-500 rounded-full"></div></div></div>
-                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600">補休 (Comp.)</span><span className="text-xl font-black text-emerald-600">12.5 <small className="text-[10px] text-slate-400">hr</small></span></div><div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="w-[35%] h-full bg-emerald-500 rounded-full"></div></div></div>
+                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span><span className="text-xl font-black text-blue-600" style={mingLiUStyle}>56.0 <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden"><div className="w-[70%] h-full bg-blue-500 rounded-full"></div></div></div>
+                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span><span className="text-xl font-black text-emerald-600" style={mingLiUStyle}>12.5 <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="w-[35%] h-full bg-emerald-500 rounded-full"></div></div></div>
                   </div>
                 </div>
             </div>
@@ -720,7 +704,7 @@ const App = () => {
                 { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash' },
               ].map((stat, idx) => (
                 <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer group active:scale-95">
-                  <div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold">{stat.label}</p><h3 className={`text-2xl font-black ${stat.color}`}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
+                  <div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
                 </div>
               ))}
             </div>
@@ -746,11 +730,11 @@ const App = () => {
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
-      <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
+      <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`} style={mingLiUStyle}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl text-white shrink-0"><Layers size={24} /></div>
-            {!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2">先啟智慧表單</span>)}
+            {!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2" style={mingLiUStyle}>先啟智慧表單</span>)}
           </div>
         </div>
         <nav className="flex-1 px-4 space-y-1 mt-6">
@@ -758,28 +742,28 @@ const App = () => {
             { id: 'dashboard', label: '首頁', icon: LayoutDashboard }, 
             { id: 'personnel_management', label: '人員管理', icon: Users }
           ].map((item) => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`}>
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
               <item.icon size={20} />
-              {!isSidebarCollapsed && <span>{item.label}</span>}
+              {!isSidebarCollapsed && <span style={mingLiUStyle}>{item.label}</span>}
             </button>
           ))}
           <div className="pt-8 mt-8 border-t border-slate-100">
-            <button onClick={handleLogout} className={`w-full flex items-center px-5 py-3.5 rounded-2xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-all font-black text-sm ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
+            <button onClick={handleLogout} className={`w-full flex items-center px-5 py-3.5 rounded-2xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-all font-black text-sm ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`} style={mingLiUStyle}>
               <LogOut size={20} />
-              {!isSidebarCollapsed && <span>登出系統</span>}
+              {!isSidebarCollapsed && <span style={mingLiUStyle}>登出系統</span>}
             </button>
           </div>
         </nav>
       </aside>
-      <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
-          <div className="text-slate-800 font-black text-lg">{activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'inbox' ? '建立智慧表單' : '人員管理'}</div>
+      <main className="flex-1 flex flex-col overflow-hidden relative" style={mingLiUStyle}>
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden" style={mingLiUStyle}>
+          <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'inbox' ? '建立智慧表單' : '人員管理'}</div>
           <div className="flex items-center gap-4 border-l border-gray-100 pl-6">
-            <div className="text-right"><p className="text-xs font-black text-slate-800">{currentUser.name}</p><p className="text-[10px] text-slate-400 font-black uppercase">{currentUser.pos}</p></div>
+            <div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>{currentUser.name}</p><p className="text-[10px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p></div>
             <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.name}`} alt="avatar" /></div>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white">{renderMainContent()}</div>
+        <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white" style={mingLiUStyle}>{renderMainContent()}</div>
       </main>
     </div>
   );
