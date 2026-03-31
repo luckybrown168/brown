@@ -42,7 +42,7 @@ import {
   Menu,
   ClipboardList,
   Activity,
-  Layers,
+  Layers, 
   Briefcase,
   Timer,
   UploadCloud,
@@ -68,6 +68,15 @@ import {
 
 // --- 全域設計規範 (Design Tokens) ---
 const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", "MingLiU", serif' };
+
+/**
+ * 【關鍵連線設定】
+ * 1. 請在筆電 CMD 輸入 `ipconfig` 找到您的「IPv4 位址」(例如: 192.168.1.100)
+ * 2. 將下方的 "localhost" 更改為該 IP 位址。
+ * 3. 外部手機/電腦連線時，請開啟瀏覽器並輸入：http://[您的IP]:[前端Port]
+ */
+const LAN_IP = "192.168.0.157"; 
+const API_URL_ROOT = `http://${LAN_IP}:3001`;
 
 // --- 登入頁面組件 ---
 const LoginView = ({ onLoginSuccess, isMockMode }) => {
@@ -96,7 +105,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           setError('連線中斷或測試模式請輸入 admin / 123456');
         }
       } else {
-        const response = await fetch('http://localhost:3001/api/login', {
+        const response = await fetch(`${API_URL_ROOT}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ staffId, password })
@@ -109,7 +118,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
         }
       }
     } catch (err) {
-      setError('連線至地端 SQL 伺服器失敗，請檢查 Node.js 是否運作');
+      setError(`連線至伺服器(${LAN_IP})失敗。請確認：1. IP是否正確 2. 後端已啟動 3. 防火牆已開啟`);
     } finally {
       setLoading(false);
     }
@@ -156,7 +165,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           </button>
           
           <p className="text-center text-[10px] text-slate-300 font-bold uppercase pt-4 tracking-tighter" style={mingLiUStyle}>
-            {isMockMode ? "⚠️ 檢測到地端離線 - 模擬模式已啟動" : "✅ 地端資料庫通訊正常"}
+            {isMockMode ? "⚠️ 檢測到地端離線 - 模擬模式已啟動" : `✅ 伺服器通訊正常 (${LAN_IP})`}
           </p>
         </form>
       </div>
@@ -418,7 +427,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
   const [staffList, setStaffList] = useState([]);
   const [editingStaff, setEditingStaff] = useState(null); 
   const [isLoading, setIsLoading] = useState(false);
-  const API_BASE_URL = "http://localhost:3001/api/personnel"; 
+  const API_BASE_URL = `${API_URL_ROOT}/api/personnel`; 
 
   const fetchStaffFromDB = async () => {
     try {
@@ -464,7 +473,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
           <div className="bg-amber-500 p-2.5 rounded-2xl text-white"><WifiOff size={20} /></div>
           <div className="flex-1">
             <h4 className="text-amber-800 font-black text-sm" style={mingLiUStyle}>離線測試模式</h4>
-            <p className="text-amber-600 text-xs mt-1 leading-relaxed" style={mingLiUStyle}>Canvas 雲端環境限制，無法連通您本機的 SQL。目前資料僅暫存於瀏覽器。</p>
+            <p className="text-amber-600 text-xs mt-1 leading-relaxed" style={mingLiUStyle}>此裝置無法連通伺服器(${LAN_IP})。目前資料僅暫存於瀏覽器。</p>
           </div>
           <button onClick={fetchStaffFromDB} className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-100 transition-colors" style={mingLiUStyle}>嘗試重連</button>
         </div>
@@ -627,7 +636,7 @@ const App = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/personnel');
+        const res = await fetch(`${API_URL_ROOT}/api/personnel`);
         if (res.ok) setIsMockMode(false);
       } catch (err) { setIsMockMode(true); }
     };
@@ -720,7 +729,6 @@ const App = () => {
                         <span className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span>
                       </div>
                       <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
-                        {/* 修改：特休滿格基準調整為 720 小時 */}
                         <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 720) * 100, 100)}%` }}></div>
                       </div>
                     </div>
@@ -758,8 +766,8 @@ const App = () => {
           <div className="h-full flex justify-center animate-in fade-in duration-500">
             <div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
               {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} onReset={resetForm} currentDocId={currentDocId} currentUser={currentUser} /> : 
-               isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} /> : 
-               <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} />}
+                isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} /> : 
+                <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} />}
             </div>
           </div>
         );
