@@ -69,25 +69,22 @@ import {
 // --- 全域設計規範 (Design Tokens) ---
 const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", "MingLiU", serif' };
 
-/**
- * 【部署與連線修正建議】
- * * 1. 為什麼 Vercel 不能連線到您的筆電？
- * - 私有 IP (192.168.x.x) 在網際網路上是無效的，Vercel 伺服器找不到它。
- * - Vercel (HTTPS) 基於安全考量會擋掉 HTTP 的連線 (Mixed Content)。
- * * 2. 解決方案：使用 Ngrok (內網穿透)
- * - 在筆電執行：ngrok http 3001
- * - 獲取一個 https://xxxx.ngrok-free.app 的網址
- * - 將下方的 PROD_API 更改為該網址。
- */
-
 // 偵測是否為開發環境
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-// 設定 API 位址
-const DEV_LAN_IP = "localhost"; // 本機開發用
-const PROD_API_URL = "https://subdiapasonic-raylan-cheerless.ngrok-free.dev"; // 部署到 Vercel 後使用的穿透網址
+/**
+ * 【Ngrok 連線關鍵修正】
+ * 加入 ngrok-skip-browser-warning Header 以跳過 Ngrok 的 HTML 警告頁面
+ */
+const PROD_API_URL = "https://subdiapasonic-raylan-cheerless.ngrok-free.dev";
+const API_URL_ROOT = isLocalhost ? `http://localhost:3001` : PROD_API_URL;
 
-const API_URL_ROOT = isLocalhost ? `http://${DEV_LAN_IP}:3001` : PROD_API_URL;
+// 通用的 Fetch Headers 處理
+const getRequestHeaders = (extraHeaders = {}) => ({
+  'Content-Type': 'application/json',
+  'ngrok-skip-browser-warning': 'true', // 核心修正：跳過 Ngrok 警告頁
+  ...extraHeaders
+});
 
 // --- 登入頁面組件 ---
 const LoginView = ({ onLoginSuccess, isMockMode }) => {
@@ -118,7 +115,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
       } else {
         const response = await fetch(`${API_URL_ROOT}/api/login`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getRequestHeaders(),
           body: JSON.stringify({ staffId, password })
         });
         const data = await response.json();
@@ -129,7 +126,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
         }
       }
     } catch (err) {
-      setError(`連線失敗。連線目標：${API_URL_ROOT}。請確認後端是否已透過穿透工具對外開放。`);
+      setError(`連線失敗。請確認筆電 Ngrok 是否正常運作且 URL 正確。`);
     } finally {
       setLoading(false);
     }
@@ -176,7 +173,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           </button>
           
           <p className="text-center text-[10px] text-slate-300 font-bold uppercase pt-4 tracking-tighter" style={mingLiUStyle}>
-            {isMockMode ? "⚠️ 檢測到地端離線 - 模擬模式已啟動" : `✅ 伺服器狀態：${isLocalhost ? 'Local' : 'Remote'}`}
+            {!isLocalhost && !isMockMode ? "🌐 正透過公網安全隧道連線" : isMockMode ? "⚠️ 模擬模式已啟動" : "✅ 本機開發模式"}
           </p>
         </form>
       </div>
@@ -444,7 +441,9 @@ const PersonnelManagementView = ({ isMockMode }) => {
     try {
       if (isMockMode) return;
       setIsLoading(true);
-      const response = await fetch(API_BASE_URL);
+      const response = await fetch(API_BASE_URL, {
+        headers: getRequestHeaders()
+      });
       if (!response.ok) throw new Error();
       const data = await response.json();
       setStaffList(data);
@@ -458,8 +457,14 @@ const PersonnelManagementView = ({ isMockMode }) => {
     try {
       setIsLoading(true);
       if (!isMockMode) {
-        if (editingStaff) { await fetch(`${API_BASE_URL}/${staffData.staffId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(staffData) }); } 
-        else { await fetch(API_URL_ROOT + '/api/personnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(staffData) }); }
+        const url = editingStaff ? `${API_BASE_URL}/${staffData.staffId}` : API_BASE_URL;
+        const method = editingStaff ? 'PUT' : 'POST';
+        
+        await fetch(url, { 
+          method, 
+          headers: getRequestHeaders(), 
+          body: JSON.stringify(staffData) 
+        });
         await fetchStaffFromDB();
       } else {
         if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item)); } 
@@ -472,7 +477,13 @@ const PersonnelManagementView = ({ isMockMode }) => {
   const handleDeleteStaff = async (staffId) => {
     if (!window.confirm(`確定要刪除成員 [${staffId}] 嗎？`)) return;
     try {
-      if (!isMockMode) { await fetch(`${API_BASE_URL}/${staffId}`, { method: 'DELETE' }); await fetchStaffFromDB(); } 
+      if (!isMockMode) { 
+        await fetch(`${API_BASE_URL}/${staffId}`, { 
+          method: 'DELETE',
+          headers: getRequestHeaders()
+        }); 
+        await fetchStaffFromDB(); 
+      } 
       else { setStaffList(prev => prev.filter(item => item.staffId !== staffId)); }
     } catch (err) { console.error("刪除失敗"); }
   };
@@ -497,7 +508,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
         <div className="flex gap-3">
           <div className={`px-4 py-3 rounded-2xl border flex items-center gap-2 transition-colors ${isMockMode ? 'bg-slate-100 border-slate-200' : 'bg-emerald-50 border-emerald-100'}`}>
              <div className={`w-2 h-2 rounded-full ${isMockMode ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></div>
-             <span className={`text-[10px] font-black uppercase tracking-widest ${isMockMode ? 'text-slate-500' : 'text-emerald-600'}`} style={mingLiUStyle}>{isMockMode ? 'Mock Mode' : 'SQL Linked'}</span>
+             <span className={`text-[10px] font-black uppercase tracking-widest ${isMockMode ? 'text-slate-500' : 'text-emerald-600'}`} style={mingLiUStyle}>{isMockMode ? 'Mock Mode' : 'Tunnel Active'}</span>
           </div>
           <button onClick={() => { setEditingStaff(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg active:scale-95" style={mingLiUStyle}><UserPlus size={18} /> 新增人員</button>
         </div>
@@ -647,7 +658,9 @@ const App = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const res = await fetch(`${API_URL_ROOT}/api/personnel`);
+        const res = await fetch(`${API_URL_ROOT}/api/personnel`, {
+          headers: getRequestHeaders()
+        });
         if (res.ok) setIsMockMode(false);
       } catch (err) { setIsMockMode(true); }
     };
@@ -765,7 +778,7 @@ const App = () => {
                 { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash' },
               ].map((stat, idx) => (
                 <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer group active:scale-95">
-                  <div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className={`text-2xl font-black ${stat.color}`} style={mingLiUStyle}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
+                  <div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
                 </div>
               ))}
             </div>
