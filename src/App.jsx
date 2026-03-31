@@ -19,7 +19,7 @@ import {
   Database, 
   Trash,
   Edit,
-  Type, 
+  Type,
   Paperclip,
   ArrowRight,
   ChevronRight,
@@ -96,7 +96,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           setError('連線中斷或測試模式請輸入 admin / 123456');
         }
       } else {
-        const response = await fetch(`${API_BASE_URL}/login`, {
+        const response = await fetch('http://localhost:3001/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ staffId, password })
@@ -109,7 +109,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
         }
       }
     } catch (err) {
-      setError(`無法連線至伺服器 (${SERVER_IP})，請檢查網路或伺服器 IP 設定`);
+      setError('連線至地端 SQL 伺服器失敗，請檢查 Node.js 是否運作');
     } finally {
       setLoading(false);
     }
@@ -226,17 +226,12 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick }) => {
 // --- 核心組件：人員編輯/新增彈出視窗 ---
 const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   const [formData, setFormData] = useState({
-    staffId: '', name: '', dept: '', team: '', pos: '', email: '', password: '', hireDate: '', annualLeave: '0', compLeave: '0'
+    staffId: '', name: '', dept: '', team: '', pos: '', email: '', password: '', annualLeave: '0', compLeave: '0'
   });
 
   useEffect(() => {
-    if (initialData) { 
-      const hDate = initialData.hireDate ? initialData.hireDate.split('T')[0] : '';
-      setFormData({ ...initialData, hireDate: hDate }); 
-    } 
-    else { 
-      setFormData({ staffId: '', name: '', dept: '', team: '', pos: '', email: '', password: '', hireDate: '', annualLeave: '0', compLeave: '0' }); 
-    }
+    if (initialData) { setFormData(initialData); } 
+    else { setFormData({ staffId: '', name: '', dept: '', team: '', pos: '', email: '', password: '', annualLeave: '0', compLeave: '0' }); }
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -285,12 +280,9 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className={labelClass} style={mingLiUStyle}>職稱</label><input name="pos" value={formData.pos} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
-            <div><label className={labelClass} style={mingLiUStyle}>到職日</label><input type="date" name="hireDate" value={formData.hireDate} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
+            <div><label className={labelClass} style={mingLiUStyle}>電子郵件</label><input name="email" value={formData.email} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-             <div><label className={labelClass} style={mingLiUStyle}>電子郵件</label><input name="email" value={formData.email} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
-             <div><label className={labelClass} style={mingLiUStyle}>登入密碼</label><input type="password" name="password" value={formData.password} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
-          </div>
+          <div><label className={labelClass} style={mingLiUStyle}>登入密碼</label><input type="password" name="password" value={formData.password} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
             <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100"><label className={`${labelClass} text-blue-600`} style={mingLiUStyle}>剩餘特休 (hr)</label><input type="number" name="annualLeave" value={formData.annualLeave} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
             <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100"><label className={`${labelClass} text-emerald-600`} style={mingLiUStyle}>剩餘補休 (hr)</label><input type="number" name="compLeave" value={formData.compLeave} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
@@ -426,12 +418,13 @@ const PersonnelManagementView = ({ isMockMode }) => {
   const [staffList, setStaffList] = useState([]);
   const [editingStaff, setEditingStaff] = useState(null); 
   const [isLoading, setIsLoading] = useState(false);
+  const API_BASE_URL = "http://localhost:3001/api/personnel"; 
 
   const fetchStaffFromDB = async () => {
     try {
       if (isMockMode) return;
       setIsLoading(true);
-      const response = await fetch(`${API_BASE_URL}/personnel`);
+      const response = await fetch(API_BASE_URL);
       if (!response.ok) throw new Error();
       const data = await response.json();
       setStaffList(data);
@@ -444,47 +437,22 @@ const PersonnelManagementView = ({ isMockMode }) => {
   const handleSaveStaff = async (staffData) => {
     try {
       setIsLoading(true);
-      const payload = {
-        ...staffData,
-        annualLeave: parseFloat(staffData.annualLeave) || 0,
-        compLeave: parseFloat(staffData.compLeave) || 0
-      };
-
       if (!isMockMode) {
-        if (editingStaff) { 
-          const res = await fetch(`${API_BASE_URL}/personnel/${staffData.staffId}`, { 
-            method: 'PUT', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(payload) 
-          }); 
-          if (!res.ok) throw new Error("更新伺服器回應錯誤");
-        } 
-        else { 
-          const res = await fetch(`${API_BASE_URL}/personnel`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(payload) 
-          }); 
-          if (!res.ok) throw new Error("新增伺服器回應錯誤");
-        }
+        if (editingStaff) { await fetch(`${API_BASE_URL}/${staffData.staffId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(staffData) }); } 
+        else { await fetch(API_BASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(staffData) }); }
         await fetchStaffFromDB();
       } else {
-        if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? payload : item)); } 
-        else { setStaffList(prev => [...prev, payload]); }
+        if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item)); } 
+        else { setStaffList(prev => [...prev, staffData]); }
       }
-      setIsModalOpen(false);
-      setEditingStaff(null);
-    } catch (err) { 
-      console.error("SQL 操作失敗:", err.message);
-      alert("儲存失敗，請檢查 Node.js 後端服務是否正常運作。\n錯誤訊息: " + err.message);
-    } 
-    finally { setIsLoading(false); }
+    } catch (err) { console.error("操作失敗"); } 
+    finally { setIsLoading(false); setIsModalOpen(false); setEditingStaff(null); }
   };
 
   const handleDeleteStaff = async (staffId) => {
     if (!window.confirm(`確定要刪除成員 [${staffId}] 嗎？`)) return;
     try {
-      if (!isMockMode) { await fetch(`${API_BASE_URL}/personnel/${staffId}`, { method: 'DELETE' }); await fetchStaffFromDB(); } 
+      if (!isMockMode) { await fetch(`${API_BASE_URL}/${staffId}`, { method: 'DELETE' }); await fetchStaffFromDB(); } 
       else { setStaffList(prev => prev.filter(item => item.staffId !== staffId)); }
     } catch (err) { console.error("刪除失敗"); }
   };
@@ -516,18 +484,17 @@ const PersonnelManagementView = ({ isMockMode }) => {
       </div>
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-slate-50/30"><tr className="text-[12px] font-black text-slate-400 uppercase tracking-widest" style={mingLiUStyle}><th className="px-8 py-4">員編 / 姓名</th><th className="px-6 py-4">部門組別</th><th className="px-6 py-4">職稱</th><th className="px-6 py-4">到職日</th><th className="px-6 py-4">電子郵件</th><th className="px-8 py-4 text-right"></th></tr></thead>
+          <thead className="bg-slate-50/30"><tr className="text-[12px] font-black text-slate-400 uppercase tracking-widest" style={mingLiUStyle}><th className="px-8 py-4">員編 / 姓名</th><th className="px-6 py-4">部門組別</th><th className="px-6 py-4">職稱</th><th className="px-6 py-4">電子郵件</th><th className="px-8 py-4 text-right"></th></tr></thead>
           <tbody className="divide-y divide-slate-50">
             {staffList.length > 0 ? staffList.map((person, idx) => (
               <tr key={person.staffId || idx} className="hover:bg-indigo-50/20 transition-colors group">
                 <td className="px-8 py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-slate-100 rounded-full border border-white shadow-sm overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${person.name}`} alt="avatar" /></div><div><p className="text-[10px] font-bold text-indigo-600 mb-0.5" style={mingLiUStyle}>{person.staffId}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{person.name}</p></div></div></td>
                 <td className="px-6 py-5 text-xs font-bold text-slate-600" style={mingLiUStyle}>{person.dept} {person.team ? `/ ${person.team}` : ''}</td>
                 <td className="px-6 py-5 text-xs font-bold text-slate-600" style={mingLiUStyle}>{person.pos}</td>
-                <td className="px-6 py-5 text-xs font-bold text-slate-600" style={mingLiUStyle}>{person.hireDate ? person.hireDate.split('T')[0] : '未設定'}</td>
                 <td className="px-6 py-5 flex items-center gap-1.5 text-slate-500" style={mingLiUStyle}><Mail size={12} className="text-slate-300" /><span className="text-[11px] font-bold">{person.email}</span></td>
                 <td className="px-8 py-5 text-right"><div className="flex justify-end gap-2"><button onClick={() => { setEditingStaff(person); setIsModalOpen(true); }} className="p-2 text-slate-300 hover:text-indigo-600 transition-all"><Edit size={18} /></button><button onClick={() => handleDeleteStaff(person.staffId)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash size={18} /></button></div></td>
               </tr>
-            )) : <tr><td colSpan="6" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>{isLoading ? "正在讀取資料..." : "目前資料庫尚無資料。"}</td></tr>}
+            )) : <tr><td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>{isLoading ? "正在讀取資料..." : "目前資料庫尚無資料。"}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -562,7 +529,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
                 {field.type === "leave_duration" && <LeaveDurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} />}
                 
                 {field.type === "file" && (
-                  <div className="relative group" style={mingLiUStyle}>
+                  <div className="relative group">
                     <input type="file" className="hidden" id={`file-${field.id}`} onChange={(e) => onInputChange(field.id, e.target.files[0]?.name || "")} />
                     <label htmlFor={`file-${field.id}`} className="flex items-center gap-3 w-full border-2 border-dashed border-slate-300 p-4 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-all group">
                       <div className="w-10 h-10 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
@@ -636,9 +603,7 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
         </div>
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 print:hidden">
           <button type="button" onClick={window.print} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold" style={mingLiUStyle}>列印存根</button>
-          <button type="button" onClick={isViewOnly ? onBack : onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 transition-all" style={mingLiUStyle}>
-            {isViewOnly ? "返回清單" : "完成返回"}
-          </button>
+          <button type="button" onClick={onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 transition-all" style={mingLiUStyle}>完成返回</button>
         </div>
       </div>
     </div>
@@ -662,7 +627,7 @@ const App = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/personnel`);
+        const res = await fetch('http://localhost:3001/api/personnel');
         if (res.ok) setIsMockMode(false);
       } catch (err) { setIsMockMode(true); }
     };
@@ -755,6 +720,7 @@ const App = () => {
                         <span className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span>
                       </div>
                       <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                        {/* 修改：特休滿格基準調整為 720 小時 */}
                         <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 720) * 100, 100)}%` }}></div>
                       </div>
                     </div>
