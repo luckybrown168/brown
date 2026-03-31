@@ -70,13 +70,24 @@ import {
 const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", "MingLiU", serif' };
 
 /**
- * 【關鍵連線設定】
- * 1. 請在筆電 CMD 輸入 `ipconfig` 找到您的「IPv4 位址」(例如: 192.168.1.100)
- * 2. 將下方的 "localhost" 更改為該 IP 位址。
- * 3. 外部手機/電腦連線時，請開啟瀏覽器並輸入：http://[您的IP]:[前端Port]
+ * 【部署與連線修正建議】
+ * * 1. 為什麼 Vercel 不能連線到您的筆電？
+ * - 私有 IP (192.168.x.x) 在網際網路上是無效的，Vercel 伺服器找不到它。
+ * - Vercel (HTTPS) 基於安全考量會擋掉 HTTP 的連線 (Mixed Content)。
+ * * 2. 解決方案：使用 Ngrok (內網穿透)
+ * - 在筆電執行：ngrok http 3001
+ * - 獲取一個 https://xxxx.ngrok-free.app 的網址
+ * - 將下方的 PROD_API 更改為該網址。
  */
-const LAN_IP = "192.168.0.157"; 
-const API_URL_ROOT = `http://${LAN_IP}:3001`;
+
+// 偵測是否為開發環境
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// 設定 API 位址
+const DEV_LAN_IP = "localhost"; // 本機開發用
+const PROD_API_URL = "https://subdiapasonic-raylan-cheerless.ngrok-free.dev"; // 部署到 Vercel 後使用的穿透網址
+
+const API_URL_ROOT = isLocalhost ? `http://${DEV_LAN_IP}:3001` : PROD_API_URL;
 
 // --- 登入頁面組件 ---
 const LoginView = ({ onLoginSuccess, isMockMode }) => {
@@ -118,7 +129,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
         }
       }
     } catch (err) {
-      setError(`連線至伺服器(${LAN_IP})失敗。請確認：1. IP是否正確 2. 後端已啟動 3. 防火牆已開啟`);
+      setError(`連線失敗。連線目標：${API_URL_ROOT}。請確認後端是否已透過穿透工具對外開放。`);
     } finally {
       setLoading(false);
     }
@@ -165,7 +176,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           </button>
           
           <p className="text-center text-[10px] text-slate-300 font-bold uppercase pt-4 tracking-tighter" style={mingLiUStyle}>
-            {isMockMode ? "⚠️ 檢測到地端離線 - 模擬模式已啟動" : `✅ 伺服器通訊正常 (${LAN_IP})`}
+            {isMockMode ? "⚠️ 檢測到地端離線 - 模擬模式已啟動" : `✅ 伺服器狀態：${isLocalhost ? 'Local' : 'Remote'}`}
           </p>
         </form>
       </div>
@@ -448,7 +459,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
       setIsLoading(true);
       if (!isMockMode) {
         if (editingStaff) { await fetch(`${API_BASE_URL}/${staffData.staffId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(staffData) }); } 
-        else { await fetch(API_BASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(staffData) }); }
+        else { await fetch(API_URL_ROOT + '/api/personnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(staffData) }); }
         await fetchStaffFromDB();
       } else {
         if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item)); } 
@@ -473,7 +484,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
           <div className="bg-amber-500 p-2.5 rounded-2xl text-white"><WifiOff size={20} /></div>
           <div className="flex-1">
             <h4 className="text-amber-800 font-black text-sm" style={mingLiUStyle}>離線測試模式</h4>
-            <p className="text-amber-600 text-xs mt-1 leading-relaxed" style={mingLiUStyle}>此裝置無法連通伺服器(${LAN_IP})。目前資料僅暫存於瀏覽器。</p>
+            <p className="text-amber-600 text-xs mt-1 leading-relaxed" style={mingLiUStyle}>此裝置無法連通伺服器。如果是 Vercel 環境，請確認後端已開啟 Ngrok 穿透。</p>
           </div>
           <button onClick={fetchStaffFromDB} className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-100 transition-colors" style={mingLiUStyle}>嘗試重連</button>
         </div>
