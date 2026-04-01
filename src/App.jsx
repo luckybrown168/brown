@@ -18,7 +18,7 @@ import {
   Calendar,
   Database, 
   Trash,
-  Edit,
+  Edit, 
   Type,
   Paperclip,
   ArrowRight,
@@ -875,8 +875,34 @@ const App = () => {
     });
   };
 
+  /**
+   * 【新功能：生成年月日付序號單號】
+   * 格式：YYYYMMDD_XXX (例如 20231027_001)
+   */
+  const generateNewDocId = () => {
+    const now = new Date();
+    const dateStr = now.getFullYear().toString() + 
+                    (now.getMonth() + 1).toString().padStart(2, '0') + 
+                    now.getDate().toString().padStart(2, '0');
+    
+    // 從現有的已提交單據中尋找今天的最後一個序號
+    // 註：這會基於 fetchMyForms 抓回來的資料做比對
+    const todayPrefix = dateStr + "_";
+    const todayForms = submittedForms.filter(f => f.id && f.id.startsWith(todayPrefix));
+    
+    let nextNum = 1;
+    if (todayForms.length > 0) {
+      // 找出序號最大的數字
+      const nums = todayForms.map(f => parseInt(f.id.split('_')[1]) || 0);
+      nextNum = Math.max(...nums) + 1;
+    }
+    
+    return `${todayPrefix}${nextNum.toString().padStart(3, '0')}`;
+  };
+
   const handleFinalSubmit = async () => {
-    const newDocId = `EF-${Date.now()}`;
+    // 使用新的邏輯生成單號
+    const newDocId = generateNewDocId();
     
     if (isMockMode) {
       setSubmittedForms([...submittedForms, { 
