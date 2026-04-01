@@ -120,8 +120,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
         
         const contentType = response.headers.get("content-type");
         if (!response.ok || !contentType || !contentType.includes("application/json")) {
-          const text = await response.text();
-          throw new Error("伺服器回應異常，請確認後端 Node.js 是否已加入 /api/login 路由");
+          throw new Error("伺服器回應異常，請確認後端 Node.js 是否運作");
         }
 
         const data = await response.json();
@@ -564,6 +563,36 @@ const PersonnelManagementView = ({ isMockMode }) => {
 
 // --- 組件：智慧渲染引擎 ---
 const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileChange = async (fieldId, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 檔案大小限制 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("檔案太大，請上傳小於 5MB 的檔案");
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // 正式化：將檔案轉為 Base64 物件儲存
+      onInputChange(fieldId, {
+        name: file.name,
+        type: file.type,
+        base64: reader.result 
+      });
+      setIsUploading(false);
+    };
+    reader.onerror = () => {
+      alert("檔案讀取失敗");
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="space-y-6" style={mingLiUStyle}>
       <div className="bg-white border border-slate-300 rounded-xl p-8 shadow-sm font-serif relative overflow-hidden">
@@ -589,16 +618,18 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
                 
                 {field.type === "file" && (
                   <div className="relative group">
-                    <input type="file" className="hidden" id={`file-${field.id}`} onChange={(e) => onInputChange(field.id, e.target.files[0]?.name || "")} />
-                    <label htmlFor={`file-${field.id}`} className="flex items-center gap-3 w-full border-2 border-dashed border-slate-300 p-4 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-all group">
-                      <div className="w-10 h-10 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                        <Paperclip size={20} />
+                    <input type="file" className="hidden" id={`file-${field.id}`} onChange={(e) => handleFileChange(field.id, e)} />
+                    <label htmlFor={`file-${field.id}`} className={`flex items-center gap-3 w-full border-2 border-dashed ${formValues[field.id] ? 'border-green-400 bg-green-50/30' : 'border-slate-300 bg-transparent'} p-4 rounded-xl cursor-pointer hover:border-blue-400 transition-all group`}>
+                      <div className={`w-10 h-10 ${formValues[field.id] ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'} rounded-lg flex items-center justify-center transition-colors`}>
+                        {isUploading ? <RotateCcw size={20} className="animate-spin" /> : <Paperclip size={20} />}
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-bold text-slate-600 truncate" style={mingLiUStyle}>{formValues[field.id] || "點擊或拖曳檔案至此處上傳"}</p>
+                        <p className="text-sm font-bold text-slate-600 truncate" style={mingLiUStyle}>
+                          {isUploading ? "正在處理檔案..." : (formValues[field.id]?.name || "點擊或拖曳檔案至此處上傳")}
+                        </p>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight" style={mingLiUStyle}>支援 PDF, JPG, PNG (最大 5MB)</p>
                       </div>
-                      <UploadCloud className="text-slate-200 group-hover:text-blue-300 transition-colors" size={24} />
+                      {formValues[field.id] && !isUploading && <CheckCircle className="text-green-500" size={24} />}
                     </label>
                   </div>
                 )}
@@ -627,8 +658,10 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
           <div className="flex flex-wrap -mx-2 gap-y-6">
              {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
                 if (field.dependsOn && !values[field.dependsOn]) return null;
+                const val = values[field.id];
+                const displayVal = field.type === 'file' ? (val?.name ? `📎 ${val.name}` : '(未上傳)') : (val || '(未填寫)');
                 return (
-                  <div key={field.id} className={`${field.width} px-2`}><div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 h-full flex flex-col justify-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-base font-bold text-slate-700" style={mingLiUStyle}>{field.type === 'file' && values[field.id] ? `📎 ${values[field.id]}` : (values[field.id] || '( 未填寫 )')}</p></div></div>
+                  <div key={field.id} className={`${field.width} px-2`}><div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 h-full flex flex-col justify-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-base font-bold text-slate-700" style={mingLiUStyle}>{displayVal}</p></div></div>
                 );
              })}
           </div>
@@ -641,7 +674,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
   );
 };
 
-// --- 組件：提交後的存根 ---
+// --- 組件：提交後的存根 (增加檔案檢視功能) ---
 const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, onBack, currentUser }) => {
   const handlePrint = () => {
     const originalTitle = document.title;
@@ -650,7 +683,30 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
     document.title = originalTitle;
   };
 
-  // 確保 values 存在，防止遍歷報錯
+  // 處理附件下載與檢視的邏輯
+  const handleViewFile = (fileObj) => {
+    if (!fileObj || !fileObj.base64) return;
+    
+    // 建立一個臨時的下載連結
+    const link = document.createElement('a');
+    link.href = fileObj.base64;
+    link.download = fileObj.name || "attachment";
+    
+    // 如果是圖片或 PDF，嘗試在新分頁開啟
+    if (fileObj.type?.match(/image|pdf/i)) {
+      const newTab = window.open();
+      if (newTab) {
+        newTab.document.write(`<iframe src="${fileObj.base64}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+        return;
+      }
+    }
+    
+    // 否則直接下載
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const safeValues = values || {};
 
   return (
@@ -666,10 +722,32 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
           {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
-             const displayValue = safeValues[field.id] || '( 未填寫 )';
+             const val = safeValues[field.id];
              if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              
-             return (<div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}><p className="text-[10px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.type === 'file' && displayValue !== '( 未填寫 )' ? `📎 ${displayValue}` : displayValue}</p></div>);
+             return (
+              <div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}>
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
+                <div className="flex items-center gap-2">
+                  {field.type === 'file' ? (
+                    val?.base64 ? (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-bold text-slate-700">📎 {val.name}</p>
+                        <button 
+                          type="button" 
+                          onClick={() => handleViewFile(val)}
+                          className="print:hidden flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-black hover:bg-blue-100 transition-colors"
+                        >
+                          <DownloadCloud size={14} /> 點擊下載/檢視附件
+                        </button>
+                      </div>
+                    ) : <p className="text-sm font-bold text-slate-400 italic">(無附件)</p>
+                  ) : (
+                    <p className="text-sm font-bold text-slate-700">{val || '(未填寫)'}</p>
+                  )}
+                </div>
+              </div>
+             );
           })}
         </div>
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 print:hidden">
@@ -709,14 +787,11 @@ const App = () => {
       
       const contentType = res.headers.get("content-type");
       if (!res.ok || !contentType || !contentType.includes("application/json")) {
-        // 如果不是 JSON，代表可能回傳了 HTML 錯誤頁面，暫不解析以防止崩潰
-        const errorBody = await res.text();
         console.warn("無法取得表單 JSON: 後端路由 /api/forms/:staffId 可能尚未建立");
         return;
       }
 
       const data = await res.json();
-      // 轉換資料庫儲存的 JSON 字串回物件
       const formattedData = data.map(item => ({
         ...item,
         values: typeof item.form_values === 'string' ? JSON.parse(item.form_values) : item.form_values
@@ -743,7 +818,6 @@ const App = () => {
     checkConnection();
   }, []);
 
-  // 當登入後或切換標籤時讀取資料
   useEffect(() => {
     if (currentUser) {
       fetchMyForms(currentUser.staffId);
@@ -828,7 +902,7 @@ const App = () => {
         
         const contentType = response.headers.get("content-type");
         if (!response.ok || !contentType || !contentType.includes("application/json")) {
-          throw new Error("提交失敗，後端 API 可能未正確設定。");
+          throw new Error("提交失敗，請確認後端 API 設定");
         }
         
         await fetchMyForms(currentUser.staffId);
