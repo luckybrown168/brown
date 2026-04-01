@@ -73,8 +73,7 @@ const mingLiUStyle = { fontFamily: '"PMingLiU", "新細明體", "MingLiU", serif
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 /**
- * 【Ngrok 連線關鍵修正】
- * 加入 ngrok-skip-browser-warning Header 以跳過 Ngrok 的 HTML 警告頁面
+ * 【連線設定】
  */
 const PROD_API_URL = "https://subdiapasonic-raylan-cheerless.ngrok-free.dev";
 const API_URL_ROOT = isLocalhost ? `http://localhost:3001` : PROD_API_URL;
@@ -82,7 +81,7 @@ const API_URL_ROOT = isLocalhost ? `http://localhost:3001` : PROD_API_URL;
 // 通用的 Fetch Headers 處理
 const getRequestHeaders = (extraHeaders = {}) => ({
   'Content-Type': 'application/json',
-  'ngrok-skip-browser-warning': 'true', // 核心修正：跳過 Ngrok 警告頁
+  'ngrok-skip-browser-warning': 'true', 
   ...extraHeaders
 });
 
@@ -243,12 +242,17 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick }) => {
 // --- 核心組件：人員編輯/新增彈出視窗 ---
 const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   const [formData, setFormData] = useState({
-    staffId: '', name: '', dept: '', team: '', pos: '', email: '', password: '', annualLeave: '0', compLeave: '0'
+    staffId: '', name: '', dept: '', team: '', pos: '', hireDate: '', email: '', password: '', annualLeave: '0', compLeave: '0'
   });
 
   useEffect(() => {
-    if (initialData) { setFormData(initialData); } 
-    else { setFormData({ staffId: '', name: '', dept: '', team: '', pos: '', email: '', password: '', annualLeave: '0', compLeave: '0' }); }
+    if (initialData) { 
+      const formattedDate = initialData.hireDate ? initialData.hireDate.split('T')[0] : '';
+      setFormData({ ...initialData, hireDate: formattedDate }); 
+    } 
+    else { 
+      setFormData({ staffId: '', name: '', dept: '', team: '', pos: '', hireDate: '', email: '', password: '', annualLeave: '0', compLeave: '0' }); 
+    }
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -297,9 +301,12 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className={labelClass} style={mingLiUStyle}>職稱</label><input name="pos" value={formData.pos} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
-            <div><label className={labelClass} style={mingLiUStyle}>電子郵件</label><input name="email" value={formData.email} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
+            <div><label className={labelClass} style={mingLiUStyle}>到職日</label><input type="date" name="hireDate" value={formData.hireDate} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
           </div>
-          <div><label className={labelClass} style={mingLiUStyle}>登入密碼</label><input type="password" name="password" value={formData.password} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className={labelClass} style={mingLiUStyle}>電子郵件</label><input name="email" value={formData.email} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
+            <div><label className={labelClass} style={mingLiUStyle}>登入密碼</label><input type="password" name="password" value={formData.password} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
+          </div>
           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
             <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100"><label className={`${labelClass} text-blue-600`} style={mingLiUStyle}>剩餘特休 (hr)</label><input type="number" name="annualLeave" value={formData.annualLeave} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
             <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100"><label className={`${labelClass} text-emerald-600`} style={mingLiUStyle}>剩餘補休 (hr)</label><input type="number" name="compLeave" value={formData.compLeave} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
@@ -615,9 +622,17 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
 
 // --- 組件：提交後的存根 ---
 const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, onBack, currentUser }) => {
+  const handlePrint = () => {
+    // 設置列印時的標題
+    const originalTitle = document.title;
+    document.title = `申請存根_${currentDocId}`;
+    window.print();
+    document.title = originalTitle;
+  };
+
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500" style={mingLiUStyle}>
-      <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif">
+      <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif print:shadow-none print:border-slate-400">
         <div className="absolute top-10 right-10 w-32 h-32 border-4 border-red-500 rounded-full flex flex-col items-center justify-center rotate-12 opacity-80 pointer-events-none text-red-500 font-black">
           <span className="text-xs" style={mingLiUStyle}>先啟智慧表單件</span><span className="text-lg border-y-2 border-red-500 my-1" style={mingLiUStyle}>已 收 訖</span><span className="text-[10px]" style={mingLiUStyle}>{new Date().toLocaleDateString()}</span>
         </div>
@@ -633,7 +648,9 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
           })}
         </div>
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 print:hidden">
-          <button type="button" onClick={window.print} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold" style={mingLiUStyle}>列印存根</button>
+          <button type="button" onClick={handlePrint} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center gap-2" style={mingLiUStyle}>
+            <Printer size={14} /> 列印存根
+          </button>
           <button type="button" onClick={onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 transition-all" style={mingLiUStyle}>完成返回</button>
         </div>
       </div>
@@ -804,6 +821,24 @@ const App = () => {
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #printable-stub, #printable-stub * { visibility: visible; }
+          #printable-stub {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 0;
+            box-shadow: none;
+          }
+          .print\\:hidden { display: none !important; }
+        }
+      `}</style>
       <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`} style={mingLiUStyle}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
