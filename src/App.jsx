@@ -514,8 +514,8 @@ const PersonnelManagementView = ({ isMockMode }) => {
         </div>
         <div className="flex gap-3">
           <div className={`px-4 py-3 rounded-2xl border flex items-center gap-2 transition-colors ${isMockMode ? 'bg-slate-100 border-slate-200' : 'bg-emerald-50 border-emerald-100'}`}>
-             <div className={`w-2 h-2 rounded-full ${isMockMode ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></div>
-             <span className={`text-[10px] font-black uppercase tracking-widest ${isMockMode ? 'text-slate-500' : 'text-emerald-600'}`} style={mingLiUStyle}>{isMockMode ? 'Mock Mode' : 'Tunnel Active'}</span>
+              <div className={`w-2 h-2 rounded-full ${isMockMode ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></div>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${isMockMode ? 'text-slate-500' : 'text-emerald-600'}`} style={mingLiUStyle}>{isMockMode ? 'Mock Mode' : 'Tunnel Active'}</span>
           </div>
           <button onClick={() => { setEditingStaff(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg active:scale-95" style={mingLiUStyle}><UserPlus size={18} /> 新增人員</button>
         </div>
@@ -638,8 +638,8 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
         </div>
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
-           <div><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
-           <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p></div>
+            <div><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
+            <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p></div>
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
           {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
@@ -651,7 +651,9 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
           <button type="button" onClick={handlePrint} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center gap-2" style={mingLiUStyle}>
             <Printer size={14} /> 列印存根
           </button>
-          <button type="button" onClick={onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 transition-all" style={mingLiUStyle}>完成返回</button>
+          <button type="button" onClick={onBack || onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 transition-all flex items-center gap-2" style={mingLiUStyle}>
+            {isViewOnly ? <ArrowLeft size={14} /> : null} {isViewOnly ? "返回列表" : "完成返回"}
+          </button>
         </div>
       </div>
     </div>
@@ -746,7 +748,19 @@ const App = () => {
   if (!currentUser) { return <LoginView onLoginSuccess={setCurrentUser} isMockMode={isMockMode} />; }
 
   const renderMainContent = () => {
-    if (viewingForm) { return <SubmissionSummary schema={myFormSchema} values={viewingForm.values} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} currentUser={currentUser} />; }
+    if (viewingForm) { 
+      return (
+        <SubmissionSummary 
+          schema={myFormSchema} 
+          values={viewingForm.values} 
+          currentDocId={viewingForm.id} 
+          isViewOnly={true} 
+          onBack={() => setViewingForm(null)} 
+          onReset={() => setViewingForm(null)}
+          currentUser={currentUser} 
+        />
+      ); 
+    }
 
     switch (activeTab) {
       case 'dashboard':
