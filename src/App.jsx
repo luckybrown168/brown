@@ -117,6 +117,13 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           headers: getRequestHeaders(),
           body: JSON.stringify({ staffId, password })
         });
+        
+        const contentType = response.headers.get("content-type");
+        if (!response.ok || !contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          throw new Error("伺服器回應異常，請確認後端 Node.js 是否已加入 /api/login 路由");
+        }
+
         const data = await response.json();
         if (data.success) {
           onLoginSuccess(data.user);
@@ -125,7 +132,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
         }
       }
     } catch (err) {
-      setError(`連線失敗。請確認筆電 Ngrok 是否正常運作且 URL 正確。`);
+      setError(`登入失敗：${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -209,8 +216,12 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick }) => {
             {data.length > 0 ? data.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
                 <td className="px-8 py-5 text-sm font-bold text-blue-600" style={mingLiUStyle}>{item.id}</td>
-                <td className="px-6 py-5 text-sm font-bold text-slate-700" style={mingLiUStyle}>{item.values?.form_subject || '無主旨'}</td>
-                <td className="px-6 py-5 text-xs font-bold text-slate-500" style={mingLiUStyle}>{item.submitDate}</td>
+                <td className="px-6 py-5 text-sm font-bold text-slate-700" style={mingLiUStyle}>
+                  {item.form_subject || item.values?.form_subject || '無主旨'}
+                </td>
+                <td className="px-6 py-5 text-xs font-bold text-slate-500" style={mingLiUStyle}>
+                  {item.submitDate ? new Date(item.submitDate).toLocaleDateString() : 'N/A'}
+                </td>
                 <td className="px-6 py-5">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
                     item.status === 'Pending' ? 'bg-amber-50 text-amber-600' : 
@@ -451,10 +462,17 @@ const PersonnelManagementView = ({ isMockMode }) => {
       const response = await fetch(API_BASE_URL, {
         headers: getRequestHeaders()
       });
-      if (!response.ok) throw new Error();
+      
+      const contentType = response.headers.get("content-type");
+      if (!response.ok || !contentType || !contentType.includes("application/json")) {
+        throw new Error(`伺服器回應錯誤 (${response.status})，請確認後端 Node.js 已啟動。`);
+      }
+
       const data = await response.json();
       setStaffList(data);
-    } catch (err) { console.error("無法載入資料"); } 
+    } catch (err) { 
+      console.error("無法載入人員資料:", err.message); 
+    } 
     finally { setIsLoading(false); }
   };
 
@@ -467,17 +485,19 @@ const PersonnelManagementView = ({ isMockMode }) => {
         const url = editingStaff ? `${API_BASE_URL}/${staffData.staffId}` : API_BASE_URL;
         const method = editingStaff ? 'PUT' : 'POST';
         
-        await fetch(url, { 
+        const response = await fetch(url, { 
           method, 
           headers: getRequestHeaders(), 
           body: JSON.stringify(staffData) 
         });
+        
+        if (!response.ok) throw new Error("儲存失敗");
         await fetchStaffFromDB();
       } else {
         if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item)); } 
         else { setStaffList(prev => [...prev, staffData]); }
       }
-    } catch (err) { console.error("操作失敗"); } 
+    } catch (err) { console.error("操作失敗", err); } 
     finally { setIsLoading(false); setIsModalOpen(false); setEditingStaff(null); }
   };
 
@@ -485,14 +505,15 @@ const PersonnelManagementView = ({ isMockMode }) => {
     if (!window.confirm(`確定要刪除成員 [${staffId}] 嗎？`)) return;
     try {
       if (!isMockMode) { 
-        await fetch(`${API_BASE_URL}/${staffId}`, { 
+        const response = await fetch(`${API_BASE_URL}/${staffId}`, { 
           method: 'DELETE',
           headers: getRequestHeaders()
         }); 
+        if (!response.ok) throw new Error("刪除失敗");
         await fetchStaffFromDB(); 
       } 
       else { setStaffList(prev => prev.filter(item => item.staffId !== staffId)); }
-    } catch (err) { console.error("刪除失敗"); }
+    } catch (err) { console.error("刪除失敗", err); }
   };
 
   return (
@@ -502,7 +523,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
           <div className="bg-amber-500 p-2.5 rounded-2xl text-white"><WifiOff size={20} /></div>
           <div className="flex-1">
             <h4 className="text-amber-800 font-black text-sm" style={mingLiUStyle}>離線測試模式</h4>
-            <p className="text-amber-600 text-xs mt-1 leading-relaxed" style={mingLiUStyle}>此裝置無法連通伺服器。如果是 Vercel 環境，請確認後端已開啟 Ngrok 穿透。</p>
+            <p className="text-amber-600 text-xs mt-1 leading-relaxed" style={mingLiUStyle}>此裝置無法連通伺服器。如果是 Vercel 環境，請確認後端已開啟 Ngrok 穿透且路由已設定。</p>
           </div>
           <button onClick={fetchStaffFromDB} className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-100 transition-colors" style={mingLiUStyle}>嘗試重連</button>
         </div>
@@ -623,12 +644,14 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
 // --- 組件：提交後的存根 ---
 const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, onBack, currentUser }) => {
   const handlePrint = () => {
-    // 設置列印時的標題
     const originalTitle = document.title;
     document.title = `申請存根_${currentDocId}`;
     window.print();
     document.title = originalTitle;
   };
+
+  // 確保 values 存在，防止遍歷報錯
+  const safeValues = values || {};
 
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500" style={mingLiUStyle}>
@@ -643,8 +666,10 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
           {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
-             if (field.dependsOn && !values[field.id]) return null;
-             return (<div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}><p className="text-[10px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.type === 'file' && values[field.id] ? `📎 ${values[field.id]}` : (values[field.id] || '( 未填寫 )')}</p></div>);
+             const displayValue = safeValues[field.id] || '( 未填寫 )';
+             if (field.dependsOn && !safeValues[field.dependsOn]) return null;
+             
+             return (<div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}><p className="text-[10px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.type === 'file' && displayValue !== '( 未填寫 )' ? `📎 ${displayValue}` : displayValue}</p></div>);
           })}
         </div>
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 print:hidden">
@@ -674,17 +699,56 @@ const App = () => {
   const [viewingForm, setViewingForm] = useState(null);
   const [formValues, setFormValues] = useState({});
 
+  // 從資料庫讀取該使用者的表單資料
+  const fetchMyForms = async (userId) => {
+    if (isMockMode || !userId) return;
+    try {
+      const res = await fetch(`${API_URL_ROOT}/api/forms/${userId}`, {
+        headers: getRequestHeaders()
+      });
+      
+      const contentType = res.headers.get("content-type");
+      if (!res.ok || !contentType || !contentType.includes("application/json")) {
+        // 如果不是 JSON，代表可能回傳了 HTML 錯誤頁面，暫不解析以防止崩潰
+        const errorBody = await res.text();
+        console.warn("無法取得表單 JSON: 後端路由 /api/forms/:staffId 可能尚未建立");
+        return;
+      }
+
+      const data = await res.json();
+      // 轉換資料庫儲存的 JSON 字串回物件
+      const formattedData = data.map(item => ({
+        ...item,
+        values: typeof item.form_values === 'string' ? JSON.parse(item.form_values) : item.form_values
+      }));
+      setSubmittedForms(formattedData);
+    } catch (err) {
+      console.error("無法載入表單資料:", err.message);
+    }
+  };
+
   useEffect(() => {
     const checkConnection = async () => {
       try {
         const res = await fetch(`${API_URL_ROOT}/api/personnel`, {
           headers: getRequestHeaders()
         });
-        if (res.ok) setIsMockMode(false);
-      } catch (err) { setIsMockMode(true); }
+        if (res.ok) {
+          setIsMockMode(false);
+        }
+      } catch (err) { 
+        setIsMockMode(true); 
+      }
     };
     checkConnection();
   }, []);
+
+  // 當登入後或切換標籤時讀取資料
+  useEffect(() => {
+    if (currentUser) {
+      fetchMyForms(currentUser.staffId);
+    }
+  }, [currentUser, activeTab]);
 
   const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); setFormValues({}); };
 
@@ -737,10 +801,44 @@ const App = () => {
     });
   };
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     const newDocId = `EF-${Date.now()}`;
-    setSubmittedForms([...submittedForms, { id: newDocId, values: { ...formValues }, submitDate: new Date().toLocaleDateString(), status: 'Pending' }]);
-    setCurrentDocId(newDocId); setIsPreviewing(false); setIsSubmitted(true);
+    
+    if (isMockMode) {
+      setSubmittedForms([...submittedForms, { 
+        id: newDocId, 
+        values: { ...formValues }, 
+        form_subject: formValues.form_subject,
+        submitDate: new Date().toISOString(), 
+        status: 'Pending' 
+      }]);
+      setCurrentDocId(newDocId); setIsPreviewing(false); setIsSubmitted(true);
+    } else {
+      try {
+        const response = await fetch(`${API_URL_ROOT}/api/forms`, {
+          method: 'POST',
+          headers: getRequestHeaders(),
+          body: JSON.stringify({
+            id: newDocId,
+            staffId: currentUser.staffId,
+            form_subject: formValues.form_subject || '未命名表單',
+            values: formValues
+          })
+        });
+        
+        const contentType = response.headers.get("content-type");
+        if (!response.ok || !contentType || !contentType.includes("application/json")) {
+          throw new Error("提交失敗，後端 API 可能未正確設定。");
+        }
+        
+        await fetchMyForms(currentUser.staffId);
+        setCurrentDocId(newDocId);
+        setIsPreviewing(false);
+        setIsSubmitted(true);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
   };
 
   const resetForm = () => { setFormValues({}); setIsSubmitted(false); setIsPreviewing(false); setActiveTab('dashboard'); };
@@ -802,8 +900,8 @@ const App = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
                 { id: 'inbox_stat', label: '收件匣', value: 0, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
-                { id: 'pending_stat', label: '流程中案件', value: submittedForms.length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
-                { id: 'completed_stat', label: '已結案', value: 0, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
+                { id: 'pending_stat', label: '流程中案件', value: submittedForms.filter(f => f.status === 'Pending').length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
+                { id: 'completed_stat', label: '已結案', value: submittedForms.filter(f => f.status === 'Completed').length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
                 { id: 'draft_stat', label: '草稿匣', value: 0, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
                 { id: 'rejected_stat', label: '退件/抽單', value: 0, color: 'text-red-600', bg: 'bg-red-600', icon: FileX, targetTab: 'rejected' },
                 { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash' },
@@ -826,8 +924,9 @@ const App = () => {
             </div>
           </div>
         );
-      case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" data={submittedForms} onItemClick={setViewingForm} />;
-      case 'completed_list': case 'inbox_list': case 'draft_list': case 'rejected': case 'trash':
+      case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" data={submittedForms.filter(f => f.status === 'Pending')} onItemClick={setViewingForm} />;
+      case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={submittedForms.filter(f => f.status === 'Completed')} onItemClick={setViewingForm} />;
+      case 'inbox_list': case 'draft_list': case 'rejected': case 'trash':
         return <ListView title="清單管理" icon={ClipboardList} color="bg-slate-600" data={[]} onItemClick={setViewingForm} />;
       default: return null;
     }
@@ -867,7 +966,7 @@ const App = () => {
           ].map((item) => (
             <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}>
               <item.icon size={20} />
-              {!isSidebarCollapsed && <span style={mingLiUStyle}>{item.label}</span>}
+              {!isSidebarCollapsed && <span style={item.id === 'personnel_management' ? mingLiUStyle : {}}>{item.label}</span>}
             </button>
           ))}
           <div className="pt-8 mt-8 border-t border-slate-100">
