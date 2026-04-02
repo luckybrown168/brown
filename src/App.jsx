@@ -912,20 +912,23 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
           })}
         </div>
         
-        {/* 預覽時顯示設定的路徑 */}
+        {/* 預覽時顯示設定的路徑與目前進度 */}
         {safeValues.workflowPath && (
            <div className="mt-8 pt-6 border-t border-slate-100">
              <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest" style={mingLiUStyle}>核定路徑 Workflow Path</p>
-             <div className="flex flex-wrap gap-4">
-                {safeValues.workflowPath.map((step, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 flex flex-col items-center">
-                      <span className="text-[9px] font-black text-indigo-600">{step.role}</span>
-                      <span className="text-xs font-black text-slate-700">{step.name}</span>
+             <div className="flex flex-wrap gap-4 items-center">
+                {safeValues.workflowPath.map((step, i) => {
+                  const isCurrentStep = (safeValues.currentStep || 0) === i;
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className={`${isCurrentStep ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-100' : 'bg-slate-50 border-slate-200'} border rounded-lg px-3 py-1.5 flex flex-col items-center transition-all`}>
+                        <span className={`text-[9px] font-black ${isCurrentStep ? 'text-indigo-700' : 'text-indigo-600'}`}>{step.role}</span>
+                        <span className={`text-xs font-black ${isCurrentStep ? 'text-slate-900' : 'text-slate-700'}`}>{step.name}</span>
+                      </div>
+                      {i < safeValues.workflowPath.length - 1 && <ChevronRight size={14} className={`${isCurrentStep ? 'text-indigo-400' : 'text-slate-300'}`} />}
                     </div>
-                    {i < safeValues.workflowPath.length - 1 && <ChevronRight size={14} className="text-slate-300" />}
-                  </div>
-                ))}
+                  );
+                })}
              </div>
            </div>
         )}
@@ -1104,7 +1107,8 @@ const App = () => {
       form_subject: formValues.form_subject || '未命名表單',
       values: {
         ...formValues,
-        ...approvalFlow // 包含 workflowPath (Array)
+        ...approvalFlow, // 包含 workflowPath (Array)
+        currentStep: 0   // ★ 新增：追蹤目前簽核到哪一關，預設為 0
       }
     };
 
@@ -1142,19 +1146,25 @@ const App = () => {
 
   if (!currentUser) { return <LoginView onLoginSuccess={setCurrentUser} isMockMode={isMockMode} />; }
 
-  // === 新增：安全過濾各類別表單，避免舊資料造成程式崩壞 ===
+  // === 針對各類別表單做過濾 ===
   // 1. 我發起的流程中案件
   const myPendingList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Pending');
   // 2. 我發起的已結案案件
   const myCompletedList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Completed');
-  // 3. 我的收件匣 (需要我簽核的案件)
+  // 3. 我的收件匣 (只會顯示「剛好輪到我簽核」的案件)
   const inboxList = submittedForms.filter(f => {
-    // 必須是待處理狀態
     if (f.status !== 'Pending') return false; 
-    // 防呆機制：確保 values 存在且 workflowPath 是一個陣列 (這行能防止程式崩壞)
-    if (!f.values || !Array.isArray(f.values.workflowPath)) return false; 
-    // 檢查當前使用者是否在簽核路徑中
-    return f.values.workflowPath.some(step => step.staffId === currentUser?.staffId);
+    // 確保有 workflowPath
+    if (!f.values || !Array.isArray(f.values.workflowPath) || f.values.workflowPath.length === 0) return false; 
+    
+    // 取得目前的簽核關卡，如果沒設定就當作 0
+    const currentStepIndex = f.values.currentStep || 0;
+
+    // 確保進度還在合法範圍內
+    if (currentStepIndex >= f.values.workflowPath.length) return false;
+
+    // ★ 核心修改：只有「目前輪到的簽核者」才可以在收件匣看到！
+    return f.values.workflowPath[currentStepIndex].staffId === currentUser?.staffId;
   });
 
   const renderMainContent = () => {
