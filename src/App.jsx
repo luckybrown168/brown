@@ -64,7 +64,10 @@ import {
   WifiOff,
   LogIn,
   LogOut,
-  User
+  User,
+  MoreHorizontal,
+  ChevronUp,
+  UserCog
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -406,7 +409,7 @@ const LeaveNoticeBlock = () => (
         {[
           { title: "一. 婚假", content: "以日為單位，可分次或連續實施，於結婚之日前10日起三個月內休完。檢附結婚證明。" },
           { title: "二. 喪假", content: "以日為單位，可分次或連續實施。檢附訃文。" },
-          { title: "三. 普通傷病假", content: "以日或時為單位，請假日數超過一日以上，檢附健保醫院或公立醫院 or 公司特約醫院診斷證明(附醫囑建議休息天數)。" },
+          { title: "三. 普通傷病假", content: "以日或時為單位，請假日數超過一日以上，檢附健保醫院 or 公立醫院 or 公司特約醫院診斷證明(附醫囑建議休息天數)。" },
           { title: "四. 事假", content: "以日或時為單位。" },
           { title: "五. 分娩假", content: "以日為單位。檢附診斷證明或出生證明。" },
           { title: "六. 陪產假", content: "以日為單位，於配偶分娩之當日及其前後合計十五日期間內，擇其中之五日請假。檢附診斷證明或出生證明。" },
@@ -647,26 +650,65 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
   );
 };
 
-// --- 組件：預覽校對畫面 ---
+// --- 組件：預覽校對畫面 (修改為動態路徑建構器) ---
 const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
-  const [selectedApprover, setSelectedApprover] = useState("");
-  const [selectedCountersigners, setSelectedCountersigners] = useState([]);
+  const [workflowSteps, setWorkflowSteps] = useState([]);
+  const [selectedStaffId, setSelectedStaffId] = useState("");
+  const [selectedRole, setSelectedRole] = useState("簽核");
 
-  const toggleCountersigner = (id) => {
-    setSelectedCountersigners(prev => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+  // 更新後的簡化名稱角色清單
+  const roles = [
+    { label: "簽核", value: "簽核", color: "bg-indigo-600", icon: CheckCircle },
+    { label: "會簽", value: "會簽", color: "bg-emerald-600", icon: Users },
+    { label: "串會", value: "串會", color: "bg-amber-600", icon: ListOrdered },
+    { label: "交辦", value: "交辦", color: "bg-blue-600", icon: Play }
+  ];
+
+  const addToWorkflow = () => {
+    if (!selectedStaffId) {
+      alert("請先選擇人員");
+      return;
+    }
+    const staff = staffList.find(s => s.staffId === selectedStaffId);
+    if (!staff) return;
+
+    // 檢查是否重複加入
+    if (workflowSteps.some(step => step.staffId === selectedStaffId)) {
+      alert("此人員已在流程中");
+      return;
+    }
+
+    const newStep = {
+      staffId: staff.staffId,
+      name: staff.name,
+      pos: staff.pos,
+      dept: staff.dept,
+      role: selectedRole
+    };
+
+    setWorkflowSteps([...workflowSteps, newStep]);
+    setSelectedStaffId(""); // 重設
+  };
+
+  const removeFromWorkflow = (staffId) => {
+    setWorkflowSteps(workflowSteps.filter(step => step.staffId !== staffId));
+  };
+
+  const moveStep = (index, direction) => {
+    const newSteps = [...workflowSteps];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newSteps.length) return;
+    [newSteps[index], newSteps[targetIndex]] = [newSteps[targetIndex], newSteps[index]];
+    setWorkflowSteps(newSteps);
   };
 
   const handleFinalSubmit = () => {
-    if (!selectedApprover) {
-      alert("請選擇主簽核人");
+    if (workflowSteps.length === 0) {
+      alert("請至少設定一名簽核人員");
       return;
     }
-    onSubmit({
-      approverId: selectedApprover,
-      countersignIds: selectedCountersigners
-    });
+    // 將 workflowSteps 傳遞回主層
+    onSubmit({ workflowPath: workflowSteps });
   };
 
   return (
@@ -674,65 +716,126 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
         <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative font-serif">
           <div className="flex items-center gap-3 mb-8 border-b pb-4 border-blue-50">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><FileText size={24} /></div>
-            <div><h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>簽核表單預覽校對</h2><p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>請確認下方資訊無誤後點擊送出</p></div>
+            <div><h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>簽核表單預覽校對</h2><p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>請確認下方資訊無誤後設定簽核路徑</p></div>
           </div>
-          <div className="flex flex-wrap -mx-2 gap-y-6">
-             {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
+
+          {/* 表單內容摘要 */}
+          <div className="flex flex-wrap -mx-2 gap-y-4 mb-10">
+              {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
                 if (field.dependsOn && !values[field.dependsOn]) return null;
                 const val = values[field.id];
                 const displayVal = field.type === 'file' ? (val?.name ? `📎 ${val.name}` : '(未上傳)') : (val || '(未填寫)');
                 return (
-                  <div key={field.id} className={`${field.width} px-2`}><div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 h-full flex flex-col justify-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-base font-bold text-slate-700" style={mingLiUStyle}>{displayVal}</p></div></div>
+                  <div key={field.id} className={`${field.width} px-2`}><div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col"><p className="text-[9px] font-black text-slate-400 uppercase mb-0.5 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{displayVal}</p></div></div>
                 );
-             })}
+              })}
           </div>
 
-          {/* --- 新增：簽核流程選取介面 --- */}
-          <div className="mt-10 p-8 bg-indigo-50/30 rounded-[2.5rem] border border-indigo-100 border-dashed">
-            <div className="flex items-center gap-2 mb-6 text-indigo-800">
-              <Send size={20} />
-              <h3 className="font-black text-lg" style={mingLiUStyle}>設定簽核路徑</h3>
+          {/* --- 核心修改：動態路徑建構器 --- */}
+          <div className="bg-slate-50/50 rounded-[2.5rem] border border-slate-200 p-8 shadow-inner">
+            <div className="flex items-center gap-2 mb-6">
+              <UserCog size={22} className="text-indigo-600" />
+              <h3 className="font-black text-lg text-slate-800" style={mingLiUStyle}>自定義簽核流程路徑</h3>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* 主簽核人 */}
-              <div>
-                <label className="text-xs font-black text-slate-500 uppercase mb-3 block" style={mingLiUStyle}>1. 選擇主簽核人 (單選)</label>
+
+            {/* 選擇區域 */}
+            <div className="flex flex-col md:flex-row gap-3 mb-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm items-end">
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">1. 選擇人員</label>
                 <select 
-                  className="w-full p-3 bg-white border border-indigo-200 rounded-xl outline-none focus:border-indigo-500 shadow-sm text-sm font-bold"
-                  value={selectedApprover}
-                  onChange={(e) => setSelectedApprover(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-bold text-sm"
+                  value={selectedStaffId}
+                  onChange={(e) => setSelectedStaffId(e.target.value)}
                   style={mingLiUStyle}
                 >
-                  <option value="">-- 請選擇簽核對象 --</option>
+                  <option value="">-- 搜尋/選取簽核人員 --</option>
                   {staffList.map(s => (
-                    <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos})</option>
+                    <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
                   ))}
                 </select>
               </div>
 
-              {/* 會簽人員 */}
-              <div>
-                <label className="text-xs font-black text-slate-500 uppercase mb-3 block" style={mingLiUStyle}>2. 選擇會簽人員 (複選)</label>
-                <div className="bg-white border border-indigo-200 rounded-xl p-3 max-h-40 overflow-y-auto space-y-2 shadow-sm custom-scrollbar">
-                  {staffList.map(s => (
-                    <div 
-                      key={s.staffId} 
-                      onClick={() => toggleCountersigner(s.staffId)}
-                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${selectedCountersigners.includes(s.staffId) ? 'bg-indigo-600 text-white' : 'hover:bg-slate-50 text-slate-600'}`}
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">2. 指派任務角色</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {roles.map(r => (
+                    <button 
+                      key={r.value}
+                      onClick={() => setSelectedRole(r.value)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-black transition-all ${selectedRole === r.value ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'}`}
+                      style={mingLiUStyle}
                     >
-                      <span className="text-xs font-bold" style={mingLiUStyle}>{s.name} <small className="opacity-70">{s.dept}</small></span>
-                      {selectedCountersigners.includes(s.staffId) && <Check size={14} />}
-                    </div>
+                      <r.icon size={14} /> {r.label}
+                    </button>
                   ))}
                 </div>
               </div>
+
+              <button 
+                onClick={addToWorkflow}
+                className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 shadow-lg active:scale-95 flex items-center gap-2 shrink-0 h-[46px]"
+                style={mingLiUStyle}
+              >
+                <Plus size={18} /> 加入流程
+              </button>
+            </div>
+
+            {/* 流程預覽列表 */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-2">3. 簽核順序與角色預覽</label>
+              {workflowSteps.length > 0 ? (
+                <div className="space-y-3">
+                  {workflowSteps.map((step, index) => {
+                    const roleInfo = roles.find(r => r.value === step.role);
+                    return (
+                      <div key={step.staffId} className="flex items-center gap-4 animate-in slide-in-from-left-4 duration-300">
+                        <div className="flex flex-col items-center gap-1">
+                           <div className="w-8 h-8 bg-white border-2 border-indigo-100 rounded-full flex items-center justify-center text-xs font-black text-indigo-600 shadow-sm">{index + 1}</div>
+                           {index < workflowSteps.length - 1 && <div className="w-0.5 h-6 bg-indigo-100"></div>}
+                        </div>
+                        <div className="flex-1 bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm group hover:border-indigo-300 transition-colors">
+                           <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}>
+                                <roleInfo.icon size={20} />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-black text-slate-800" style={mingLiUStyle}>{step.name}</p>
+                                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-black text-white uppercase ${roleInfo.color}`}>{step.role}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p>
+                              </div>
+                           </div>
+                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
+                              <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
+                              <div className="w-px h-6 bg-slate-100 mx-1"></div>
+                              <button onClick={() => removeFromWorkflow(step.staffId)} className="p-1.5 text-slate-300 hover:text-red-500"><X size={16} /></button>
+                           </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-12 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-300 gap-2">
+                  <Activity size={32} className="opacity-30" />
+                  <p className="text-sm font-bold" style={mingLiUStyle}>尚未設定任何簽核步驟，請由上方選取人員加入。</p>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="mt-12 flex gap-4">
-             <button onClick={onEdit} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black text-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2" style={mingLiUStyle}><ChevronLeft size={20} /> 資訊有誤，回填單頁面</button>
-             <button onClick={handleFinalSubmit} className="flex-[2] py-4 bg-[#1677FF] text-white rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-lg active:scale-95" style={mingLiUStyle}><Check size={24} /> 確認無誤，發送申請</button>
+              <button onClick={onEdit} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black text-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2" style={mingLiUStyle}><ChevronLeft size={20} /> 資訊有誤，回填單頁面</button>
+              <button 
+                onClick={handleFinalSubmit} 
+                className={`flex-[2] py-4 text-white rounded-2xl font-black shadow-lg transition-all flex items-center justify-center gap-2 text-lg active:scale-95 ${workflowSteps.length > 0 ? 'bg-[#1677FF] hover:bg-blue-700' : 'bg-slate-300 cursor-not-allowed'}`}
+                style={mingLiUStyle}
+                disabled={workflowSteps.length === 0}
+              >
+                <Check size={24} /> 確認無誤，發送申請
+              </button>
           </div>
         </div>
     </div>
@@ -808,6 +911,25 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
              );
           })}
         </div>
+        
+        {/* 預覽時顯示設定的路徑 */}
+        {safeValues.workflowPath && (
+           <div className="mt-8 pt-6 border-t border-slate-100">
+             <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest" style={mingLiUStyle}>核定路徑 Workflow Path</p>
+             <div className="flex flex-wrap gap-4">
+                {safeValues.workflowPath.map((step, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 flex flex-col items-center">
+                      <span className="text-[9px] font-black text-indigo-600">{step.role}</span>
+                      <span className="text-xs font-black text-slate-700">{step.name}</span>
+                    </div>
+                    {i < safeValues.workflowPath.length - 1 && <ChevronRight size={14} className="text-slate-300" />}
+                  </div>
+                ))}
+             </div>
+           </div>
+        )}
+
         <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 print:hidden">
           <button type="button" onClick={handlePrint} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center gap-2" style={mingLiUStyle}>
             <Printer size={14} /> 列印存根
@@ -838,7 +960,16 @@ const App = () => {
 
   // 從資料庫讀取人員列表 (供簽核選取使用)
   const fetchPersonnel = async () => {
-    if (isMockMode) return;
+    if (isMockMode) {
+      // 模擬一些預設人員
+      setStaffList([
+        { staffId: 'ADMIN-01', name: '系統管理員', pos: 'Administrator', dept: '總經理室' },
+        { staffId: 'FIN-01', name: '王大美', pos: '經理', dept: '財務行政部' },
+        { staffId: 'SAL-01', name: '李小明', pos: '組長', dept: '業務部' },
+        { staffId: 'ENG-01', name: '張技術', pos: '協理', dept: '系統暨工程部' }
+      ]);
+      return;
+    }
     try {
       const res = await fetch(`${API_URL_ROOT}/api/personnel`, { headers: getRequestHeaders() });
       const data = await res.json();
@@ -966,14 +1097,14 @@ const App = () => {
   const handleFinalSubmit = async (approvalFlow) => {
     const newDocId = generateNewDocId();
     
-    // 組合表單數據，加入簽核人與會簽資訊
+    // 組合表單數據，加入自定義簽核路徑
     const submissionData = {
       id: newDocId,
       staffId: currentUser.staffId,
       form_subject: formValues.form_subject || '未命名表單',
       values: {
         ...formValues,
-        ...approvalFlow // 包含 approverId 與 countersignIds
+        ...approvalFlow // 包含 workflowPath (Array)
       }
     };
 
