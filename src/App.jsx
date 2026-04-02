@@ -63,7 +63,8 @@ import {
   Lock,
   WifiOff,
   LogIn,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -647,7 +648,27 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
 };
 
 // --- 組件：預覽校對畫面 ---
-const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
+const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
+  const [selectedApprover, setSelectedApprover] = useState("");
+  const [selectedCountersigners, setSelectedCountersigners] = useState([]);
+
+  const toggleCountersigner = (id) => {
+    setSelectedCountersigners(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleFinalSubmit = () => {
+    if (!selectedApprover) {
+      alert("請選擇主簽核人");
+      return;
+    }
+    onSubmit({
+      approverId: selectedApprover,
+      countersignIds: selectedCountersigners
+    });
+  };
+
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500" style={mingLiUStyle}>
         <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative font-serif">
@@ -665,16 +686,60 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit }) => {
                 );
              })}
           </div>
+
+          {/* --- 新增：簽核流程選取介面 --- */}
+          <div className="mt-10 p-8 bg-indigo-50/30 rounded-[2.5rem] border border-indigo-100 border-dashed">
+            <div className="flex items-center gap-2 mb-6 text-indigo-800">
+              <Send size={20} />
+              <h3 className="font-black text-lg" style={mingLiUStyle}>設定簽核路徑</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* 主簽核人 */}
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase mb-3 block" style={mingLiUStyle}>1. 選擇主簽核人 (單選)</label>
+                <select 
+                  className="w-full p-3 bg-white border border-indigo-200 rounded-xl outline-none focus:border-indigo-500 shadow-sm text-sm font-bold"
+                  value={selectedApprover}
+                  onChange={(e) => setSelectedApprover(e.target.value)}
+                  style={mingLiUStyle}
+                >
+                  <option value="">-- 請選擇簽核對象 --</option>
+                  {staffList.map(s => (
+                    <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 會簽人員 */}
+              <div>
+                <label className="text-xs font-black text-slate-500 uppercase mb-3 block" style={mingLiUStyle}>2. 選擇會簽人員 (複選)</label>
+                <div className="bg-white border border-indigo-200 rounded-xl p-3 max-h-40 overflow-y-auto space-y-2 shadow-sm custom-scrollbar">
+                  {staffList.map(s => (
+                    <div 
+                      key={s.staffId} 
+                      onClick={() => toggleCountersigner(s.staffId)}
+                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${selectedCountersigners.includes(s.staffId) ? 'bg-indigo-600 text-white' : 'hover:bg-slate-50 text-slate-600'}`}
+                    >
+                      <span className="text-xs font-bold" style={mingLiUStyle}>{s.name} <small className="opacity-70">{s.dept}</small></span>
+                      {selectedCountersigners.includes(s.staffId) && <Check size={14} />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-12 flex gap-4">
              <button onClick={onEdit} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black text-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2" style={mingLiUStyle}><ChevronLeft size={20} /> 資訊有誤，回填單頁面</button>
-             <button onClick={onSubmit} className="flex-[2] py-4 bg-[#1677FF] text-white rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-lg active:scale-95" style={mingLiUStyle}><Check size={24} /> 確認無誤，正式提交申請</button>
+             <button onClick={handleFinalSubmit} className="flex-[2] py-4 bg-[#1677FF] text-white rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-lg active:scale-95" style={mingLiUStyle}><Check size={24} /> 確認無誤，發送申請</button>
           </div>
         </div>
     </div>
   );
 };
 
-// --- 組件：提交後的存根 (增加檔案檢視功能) ---
+// --- 組件：提交後的存根 ---
 const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, onBack, currentUser }) => {
   const handlePrint = () => {
     const originalTitle = document.title;
@@ -683,16 +748,11 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
     document.title = originalTitle;
   };
 
-  // 處理附件下載與檢視的邏輯
   const handleViewFile = (fileObj) => {
     if (!fileObj || !fileObj.base64) return;
-    
-    // 建立一個臨時的下載連結
     const link = document.createElement('a');
     link.href = fileObj.base64;
     link.download = fileObj.name || "attachment";
-    
-    // 如果是圖片或 PDF，嘗試在新分頁開啟
     if (fileObj.type?.match(/image|pdf/i)) {
       const newTab = window.open();
       if (newTab) {
@@ -700,8 +760,6 @@ const SubmissionSummary = ({ schema, values, onReset, currentDocId, isViewOnly, 
         return;
       }
     }
-    
-    // 否則直接下載
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -776,6 +834,17 @@ const App = () => {
   const [currentDocId, setCurrentDocId] = useState('');
   const [viewingForm, setViewingForm] = useState(null);
   const [formValues, setFormValues] = useState({});
+  const [staffList, setStaffList] = useState([]);
+
+  // 從資料庫讀取人員列表 (供簽核選取使用)
+  const fetchPersonnel = async () => {
+    if (isMockMode) return;
+    try {
+      const res = await fetch(`${API_URL_ROOT}/api/personnel`, { headers: getRequestHeaders() });
+      const data = await res.json();
+      setStaffList(data);
+    } catch (err) { console.error("人員列表讀取失敗"); }
+  };
 
   // 從資料庫讀取該使用者的表單資料
   const fetchMyForms = async (userId) => {
@@ -821,6 +890,7 @@ const App = () => {
   useEffect(() => {
     if (currentUser) {
       fetchMyForms(currentUser.staffId);
+      fetchPersonnel();
     }
   }, [currentUser, activeTab]);
 
@@ -875,24 +945,17 @@ const App = () => {
     });
   };
 
-  /**
-   * 【新功能：生成年月日付序號單號】
-   * 格式：YYYYMMDD_XXX (例如 20231027_001)
-   */
   const generateNewDocId = () => {
     const now = new Date();
     const dateStr = now.getFullYear().toString() + 
                     (now.getMonth() + 1).toString().padStart(2, '0') + 
                     now.getDate().toString().padStart(2, '0');
     
-    // 從現有的已提交單據中尋找今天的最後一個序號
-    // 註：這會基於 fetchMyForms 抓回來的資料做比對
     const todayPrefix = dateStr + "_";
     const todayForms = submittedForms.filter(f => f.id && f.id.startsWith(todayPrefix));
     
     let nextNum = 1;
     if (todayForms.length > 0) {
-      // 找出序號最大的數字
       const nums = todayForms.map(f => parseInt(f.id.split('_')[1]) || 0);
       nextNum = Math.max(...nums) + 1;
     }
@@ -900,15 +963,23 @@ const App = () => {
     return `${todayPrefix}${nextNum.toString().padStart(3, '0')}`;
   };
 
-  const handleFinalSubmit = async () => {
-    // 使用新的邏輯生成單號
+  const handleFinalSubmit = async (approvalFlow) => {
     const newDocId = generateNewDocId();
     
+    // 組合表單數據，加入簽核人與會簽資訊
+    const submissionData = {
+      id: newDocId,
+      staffId: currentUser.staffId,
+      form_subject: formValues.form_subject || '未命名表單',
+      values: {
+        ...formValues,
+        ...approvalFlow // 包含 approverId 與 countersignIds
+      }
+    };
+
     if (isMockMode) {
       setSubmittedForms([...submittedForms, { 
-        id: newDocId, 
-        values: { ...formValues }, 
-        form_subject: formValues.form_subject,
+        ...submissionData,
         submitDate: new Date().toISOString(), 
         status: 'Pending' 
       }]);
@@ -918,12 +989,7 @@ const App = () => {
         const response = await fetch(`${API_URL_ROOT}/api/forms`, {
           method: 'POST',
           headers: getRequestHeaders(),
-          body: JSON.stringify({
-            id: newDocId,
-            staffId: currentUser.staffId,
-            form_subject: formValues.form_subject || '未命名表單',
-            values: formValues
-          })
+          body: JSON.stringify(submissionData)
         });
         
         const contentType = response.headers.get("content-type");
@@ -1019,7 +1085,7 @@ const App = () => {
           <div className="h-full flex justify-center animate-in fade-in duration-500">
             <div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
               {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} onReset={resetForm} currentDocId={currentDocId} currentUser={currentUser} /> : 
-                isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} /> : 
+                isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} staffList={staffList} /> : 
                 <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} />}
             </div>
           </div>
