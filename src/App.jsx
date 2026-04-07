@@ -712,7 +712,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                 const val = values[field.id];
                 const displayVal = field.type === 'file' ? (val?.name ? `📎 ${val.name}` : '(未上傳)') : (val || '(未填寫)');
                 return (
-                  <div key={field.id} className={`${field.width} px-2`}><div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col"><p className="text-[9px] font-black text-slate-400 uppercase mb-0.5 tracking-widest">{field.label}</p><p className="text-sm font-bold text-slate-700">{displayVal}</p></div></div>
+                  <div key={field.id} className={`${field.width} px-2`}><div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col"><p className="text-[12px] font-black text-slate-400 uppercase mb-0.5 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-sm font-bold text-slate-700">{displayVal}</p></div></div>
                 );
               })}
           </div>
@@ -824,9 +824,8 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         </div>
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
-            {/* 修正單號字型 */}
-            <div><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
-            <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p></div>
+            <div><p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
+            <div className="text-right"><p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p></div>
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
           {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
@@ -834,7 +833,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
              if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              return (
               <div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}>
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{field.label}</p>
+                <p className="text-[12px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
                 <div className="flex items-center gap-2">
                   {field.type === 'file' ? (
                     val?.base64 ? (
@@ -1237,7 +1236,11 @@ const App = () => {
                 { id: 'draft_stat', label: '草稿匣', value: draftList.length, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
                 { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX, targetTab: 'rejected' },
                 { id: 'trash_stat', label: '垃圾桶', value: trashList.length, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
-              ].map((stat, idx) => (<div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group"><div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div></div>))}
+              ].map((stat, idx) => (
+                <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group">
+                  <div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
+                </div>
+              ))}
             </div>
           </div>
         );
