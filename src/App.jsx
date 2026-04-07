@@ -192,7 +192,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
   );
 };
 
-// --- 輔助組件：列表視圖 (新增刪除功能與草稿狀態渲染) ---
+// --- 輔助組件：列表視圖 ---
 const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
@@ -701,10 +701,13 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500" style={mingLiUStyle}>
-        <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative font-serif">
+        <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative">
           <div className="flex items-center gap-3 mb-8 border-b pb-4 border-blue-50">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><FileText size={24} /></div>
-            <div><h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>簽核表單預覽校對</h2><p className="text-xs text-slate-400 font-bold">請確認下方資訊無誤後設定簽核路徑</p></div>
+            <div>
+              <h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>簽核表單預覽校對</h2>
+              <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>請確認下方資訊無誤後設定簽核路徑</p>
+            </div>
           </div>
           <div className="flex flex-wrap -mx-2 gap-y-4 mb-10">
               {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
@@ -712,20 +715,26 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                 const val = values[field.id];
                 const displayVal = field.type === 'file' ? (val?.name ? `📎 ${val.name}` : '(未上傳)') : (val || '(未填寫)');
                 return (
-                  <div key={field.id} className={`${field.width} px-2`}><div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col"><p className="text-[12px] font-black text-slate-400 uppercase mb-0.5 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-sm font-bold text-slate-700">{displayVal}</p></div></div>
+                  <div key={field.id} className={`${field.width} px-2`}>
+                    <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col">
+                      {/* 核心修正：字型大小設為 12PX 並套用新細明體 */}
+                      <p className="text-[12px] font-black text-slate-400 uppercase mb-0.5 tracking-widest" style={mingLiUStyle}>{field.label}</p>
+                      <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{displayVal}</p>
+                    </div>
+                  </div>
                 );
               })}
           </div>
           <div className="bg-slate-50/50 rounded-[2.5rem] border border-slate-200 p-8 shadow-inner">
             <div className="flex items-center gap-2 mb-6"><UserCog size={22} className="text-indigo-600" /><h3 className="font-black text-lg text-slate-800" style={mingLiUStyle}>自定義簽核流程路徑</h3></div>
             <div className="flex flex-col md:flex-row gap-3 mb-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm items-end">
-              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">1. 選擇人員</label>
+              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1" style={mingLiUStyle}>1. 選擇人員</label>
                 <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-bold text-sm" value={selectedStaffId} onChange={(e) => setSelectedStaffId(e.target.value)} style={mingLiUStyle}>
                   <option value="">-- 搜尋/選取簽核人員 --</option>
                   {staffList.map(s => (<option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>))}
                 </select>
               </div>
-              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">2. 指派任務角色</label>
+              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1" style={mingLiUStyle}>2. 指派任務角色</label>
                 <div className="grid grid-cols-2 gap-2">
                   {roles.map(r => (<button key={r.value} onClick={() => setSelectedRole(r.value)} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-black transition-all ${selectedRole === r.value ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'}`} style={mingLiUStyle}><r.icon size={14} /> {r.label}</button>))}
                 </div>
@@ -733,7 +742,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
               <button onClick={addToWorkflow} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 shadow-lg active:scale-95 flex items-center gap-2 shrink-0 h-[46px]" style={mingLiUStyle}><Plus size={18} /> 加入流程</button>
             </div>
             <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-2">3. 簽核順序與角色預覽</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-2" style={mingLiUStyle}>3. 簽核順序與角色預覽</label>
               {workflowSteps.length > 0 ? (
                 <div className="space-y-3">
                   {workflowSteps.map((step, index) => {
@@ -742,7 +751,16 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                       <div key={step.staffId} className="flex items-center gap-4 animate-in slide-in-from-left-4 duration-300">
                         <div className="flex flex-col items-center gap-1"><div className="w-8 h-8 bg-white border-2 border-indigo-100 rounded-full flex items-center justify-center text-xs font-black text-indigo-600 shadow-sm">{index + 1}</div>{index < workflowSteps.length - 1 && <div className="w-0.5 h-6 bg-indigo-100"></div>}</div>
                         <div className="flex-1 bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm group hover:border-indigo-300 transition-colors">
-                           <div className="flex items-center gap-4"><div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}><roleInfo.icon size={20} /></div><div><div className="flex items-center gap-2"><p className="font-black text-slate-800" style={mingLiUStyle}>{step.name}</p><span className={`px-2 py-0.5 rounded-md text-[9px] font-black text-white uppercase ${roleInfo.color}`} style={mingLiUStyle}>{step.role}</span></div><p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p></div></div>
+                           <div className="flex items-center gap-4">
+                             <div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}><roleInfo.icon size={20} /></div>
+                             <div>
+                               <div className="flex items-center gap-2">
+                                 <p className="font-black text-slate-800" style={mingLiUStyle}>{step.name}</p>
+                                 <span className={`px-2 py-0.5 rounded-md text-[9px] font-black text-white uppercase ${roleInfo.color}`} style={mingLiUStyle}>{step.role}</span>
+                               </div>
+                               <p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p>
+                             </div>
+                           </div>
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
                               <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
@@ -816,7 +834,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         )}
       </div>
 
-      <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif print:shadow-none print:border-slate-400">
+      <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative print:shadow-none print:border-slate-400">
         <div className={`absolute top-10 right-10 w-32 h-32 border-4 rounded-full flex flex-col items-center justify-center rotate-12 opacity-80 pointer-events-none font-black ${currentStatus.borderClass} ${currentStatus.colorClass}`}>
           <span className="text-xs" style={mingLiUStyle}>先啟智慧表單件</span>
           <span className={`text-lg border-y-2 my-1 ${currentStatus.borderClass}`} style={mingLiUStyle}>{currentStatus.text}</span>
@@ -824,8 +842,15 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         </div>
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
-            <div><p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
-            <div className="text-right"><p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p></div>
+            <div>
+              {/* 核心修正：欄位標題設為 12PX 並套用新細明體 */}
+              <p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p>
+              <p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p>
+              <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p>
+            </div>
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
           {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
@@ -833,6 +858,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
              if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              return (
               <div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}>
+                {/* 核心修正：欄位標題設為 12PX */}
                 <p className="text-[12px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
                 <div className="flex items-center gap-2">
                   {field.type === 'file' ? (
@@ -850,7 +876,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         
         {safeValues.workflowPath && (
            <div className="mt-8 pt-6 border-t border-slate-100">
-             <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">簽核歷程與意見 Workflow History</p>
+             <p className="text-[12px] font-black text-slate-400 uppercase mb-4 tracking-widest" style={mingLiUStyle}>簽核歷程與意見 Workflow History</p>
              <div className="space-y-4">
                 {safeValues.workflowPath.map((step, i) => {
                   const isCurrentStep = (safeValues.currentStep || 0) === i;
@@ -958,10 +984,10 @@ const App = () => {
     setFormValues({}); 
   };
 
-  // 核心修正：明確的登入成功處理函數，確保回到首頁
+  // 明確的登入成功處理函數，確保回到首頁
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
-    setActiveTab('dashboard'); // 確保登入後回到首頁
+    setActiveTab('dashboard'); 
     setFormValues({});
     setCurrentDocId('');
     setIsSubmitted(false);
@@ -1126,7 +1152,7 @@ const App = () => {
     } catch (err) { alert(`操作失敗：${err.message}`); }
   };
 
-  // 核心功能：刪除單據 (優化為兩段式刪除：先移至垃圾桶，從垃圾桶刪除才是真正刪除)
+  // 軟/硬 兩段式刪除單據
   const handleDeleteForm = async (formItem) => {
     const isAlreadyInTrash = formItem.status === 'Deleted';
     const confirmMsg = isAlreadyInTrash 
@@ -1137,7 +1163,6 @@ const App = () => {
 
     try {
       if (isAlreadyInTrash) {
-        // 真正從資料庫永久刪除
         if (isMockMode) {
           setSubmittedForms(prev => prev.filter(f => f.id !== formItem.id));
         } else {
@@ -1153,7 +1178,6 @@ const App = () => {
         }
         alert('單據已永久刪除');
       } else {
-        // 軟刪除：更新狀態為 'Deleted'，使其出現在垃圾桶
         const updatedItem = { 
           ...formItem, 
           status: 'Deleted'
@@ -1184,7 +1208,6 @@ const App = () => {
     setViewingForm(null);
   };
 
-  // 核心修正：將 LoginView 的回調改為 handleLoginSuccess
   if (!currentUser) return <LoginView onLoginSuccess={handleLoginSuccess} isMockMode={isMockMode} />;
 
   const myPendingList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Pending');
