@@ -192,7 +192,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
   );
 };
 
-// --- 輔助組件：列表視圖 ---
+// --- 輔助組件：列表視圖 (新增刪除功能與草稿狀態渲染) ---
 const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
@@ -231,9 +231,12 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => 
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
                     item.status === 'Pending' ? 'bg-amber-50 text-amber-600' : 
                     item.status === 'Completed' ? 'bg-green-50 text-green-600' : 
-                    item.status === 'Deleted' ? 'bg-slate-100 text-slate-500' : 'bg-red-50 text-red-600'
+                    item.status === 'Deleted' ? 'bg-slate-100 text-slate-500' : 
+                    item.status === 'Draft' ? 'bg-indigo-50 text-indigo-600' : 'bg-red-50 text-red-600'
                   }`} style={mingLiUStyle}>
-                    {item.status === 'Pending' ? '待簽核' : item.status === 'Deleted' ? '已刪除' : item.status}
+                    {item.status === 'Pending' ? '待簽核' : 
+                     item.status === 'Deleted' ? '已刪除' : 
+                     item.status === 'Draft' ? '草稿' : item.status}
                   </span>
                 </td>
                 <td className="px-8 py-5 text-right">
@@ -665,8 +668,8 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
 };
 
 // --- 組件：預覽校對畫面 ---
-const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
-  const [workflowSteps, setWorkflowSteps] = useState([]);
+const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staffList }) => {
+  const [workflowSteps, setWorkflowSteps] = useState(values.workflowPath || []);
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [selectedRole, setSelectedRole] = useState("簽核");
 
@@ -756,6 +759,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
           </div>
           <div className="mt-12 flex gap-4">
               <button onClick={onEdit} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black text-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2" style={mingLiUStyle}><ChevronLeft size={20} /> 資訊有誤，回填單頁面</button>
+              <button onClick={() => onSaveDraft({ workflowPath: workflowSteps })} className="flex-1 py-4 bg-indigo-50 text-indigo-600 border-2 border-indigo-100 rounded-2xl font-black hover:bg-indigo-100 transition-all flex items-center justify-center gap-2 text-lg active:scale-95" style={mingLiUStyle}><Save size={24} /> 儲存草稿</button>
               <button onClick={() => { if (workflowSteps.length === 0) return alert("請至少設定一名簽核人員"); onSubmit({ workflowPath: workflowSteps }); }} className={`flex-[2] py-4 text-white rounded-2xl font-black shadow-lg transition-all flex items-center justify-center gap-2 text-lg active:scale-95 ${workflowSteps.length > 0 ? 'bg-[#1677FF] hover:bg-blue-700' : 'bg-slate-300 cursor-not-allowed'}`} style={mingLiUStyle} disabled={workflowSteps.length === 0}><Check size={24} /> 確認無誤，發送申請</button>
           </div>
         </div>
@@ -997,20 +1001,76 @@ const App = () => {
   };
 
   const handleFinalSubmit = async (approvalFlow) => {
-    const now = new Date();
-    const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
-    const todayForms = submittedForms.filter(f => f.id && f.id.startsWith(dateStr));
-    const newDocId = `${dateStr}_${(todayForms.length + 1).toString().padStart(3, '0')}`;
-    const submissionData = { id: newDocId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單', values: { ...formValues, ...approvalFlow, currentStep: 0 } };
+    let docId = currentDocId;
+    let isNew = false;
+    
+    if (!docId) {
+      const now = new Date();
+      const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+      const todayForms = submittedForms.filter(f => f.id && f.id.startsWith(dateStr));
+      docId = `${dateStr}_${(todayForms.length + 1).toString().padStart(3, '0')}`;
+      isNew = true;
+    }
+
+    const submissionData = { id: docId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單', values: { ...formValues, ...approvalFlow, currentStep: 0 }, status: 'Pending' };
 
     try {
-      if (isMockMode) { setSubmittedForms([...submittedForms, { ...submissionData, submitDate: new Date().toISOString(), status: 'Pending' }]); } 
+      if (isMockMode) {
+        if (isNew) {
+          setSubmittedForms([...submittedForms, { ...submissionData, submitDate: new Date().toISOString() }]);
+        } else {
+          setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...submissionData } : f));
+        }
+      } 
       else {
-        const response = await fetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(submissionData) });
-        if (!response.ok) throw new Error("提交失敗");
+        if (isNew) {
+          const response = await fetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(submissionData) });
+          if (!response.ok) throw new Error("提交失敗");
+        } else {
+          const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(submissionData) });
+          if (!response.ok) throw new Error("伺服器更新失敗");
+        }
         await fetchMyForms(currentUser.staffId);
       }
-      setCurrentDocId(newDocId); setIsPreviewing(false); setIsSubmitted(true);
+      setCurrentDocId(docId); setIsPreviewing(false); setIsSubmitted(true);
+    } catch (err) { alert(err.message); }
+  };
+
+  const handleSaveDraft = async (approvalFlow) => {
+    let docId = currentDocId;
+    let isNew = false;
+    
+    if (!docId) {
+      const now = new Date();
+      const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+      const todayForms = submittedForms.filter(f => f.id && f.id.startsWith(dateStr));
+      docId = `${dateStr}_${(todayForms.length + 1).toString().padStart(3, '0')}`;
+      isNew = true;
+    }
+
+    const draftData = { id: docId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單(草稿)', values: { ...formValues, ...approvalFlow, currentStep: 0 }, status: 'Draft' };
+
+    try {
+      if (isMockMode) {
+        if (isNew) {
+          setSubmittedForms([...submittedForms, { ...draftData, submitDate: new Date().toISOString() }]);
+        } else {
+          setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...draftData } : f));
+        }
+      } else {
+        if (isNew) {
+          await fetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(draftData) });
+          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(draftData) });
+        } else {
+          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(draftData) });
+        }
+        await fetchMyForms(currentUser.staffId);
+      }
+      alert('已成功儲存至草稿匣！');
+      setFormValues({});
+      setCurrentDocId('');
+      setIsPreviewing(false);
+      setActiveTab('draft_list');
     } catch (err) { alert(err.message); }
   };
 
@@ -1046,7 +1106,7 @@ const App = () => {
         if (!response.ok) throw new Error("伺服器更新失敗");
         await fetchMyForms(currentUser.staffId);
       }
-      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已處理完畢！');
+      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已退回申請！');
       setViewingForm(null);
     } catch (err) { alert(`操作失敗：${err.message}`); }
   };
@@ -1070,7 +1130,10 @@ const App = () => {
             method: 'DELETE',
             headers: getRequestHeaders()
           });
-          if (!response.ok) throw new Error("伺服器刪除失敗");
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`伺服器回傳錯誤 (${response.status}): ${errorData.message || '無法刪除'}`);
+          }
           await fetchMyForms(currentUser.staffId);
         }
         alert('單據已永久刪除');
@@ -1097,10 +1160,21 @@ const App = () => {
     } catch (err) { alert(`操作失敗：${err.message}`); }
   };
 
+  const handleEditDraft = (draft) => {
+    setFormValues(draft.values || {});
+    setCurrentDocId(draft.id);
+    setIsSubmitted(false);
+    setIsPreviewing(false);
+    setActiveTab('inbox');
+    setViewingForm(null);
+  };
+
   if (!currentUser) return <LoginView onLoginSuccess={setCurrentUser} isMockMode={isMockMode} />;
 
   const myPendingList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Pending');
   const myCompletedList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Completed');
+  const draftList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Draft');
+  
   const inboxList = submittedForms.filter(f => {
     if (f.status !== 'Pending') return false; 
     const step = f.values?.currentStep || 0;
@@ -1127,7 +1201,7 @@ const App = () => {
             <div className="flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                   <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
-                  <div className="relative z-10"><h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，{currentUser.name} {currentUser.pos}</h2><p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p><button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg mt-8" style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button></div>
+                  <div className="relative z-10"><h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，{currentUser.name} {currentUser.pos}</h2><p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p><button onClick={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setIsPreviewing(false); setActiveTab('inbox'); }} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg mt-8" style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button></div>
                 </div>
                 <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase" style={mingLiUStyle}>Balance</span></div>
@@ -1142,7 +1216,7 @@ const App = () => {
                 { id: 'inbox_stat', label: '收件匣', value: inboxList.length, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
                 { id: 'pending_stat', label: '流程中案件', value: myPendingList.length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
                 { id: 'completed_stat', label: '已結案', value: myCompletedList.length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
-                { id: 'draft_stat', label: '草稿匣', value: 0, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
+                { id: 'draft_stat', label: '草稿匣', value: draftList.length, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
                 { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX, targetTab: 'rejected' },
                 { id: 'trash_stat', label: '垃圾桶', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted').length, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
               ].map((stat, idx) => (<div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group"><div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div></div>))}
@@ -1153,8 +1227,8 @@ const App = () => {
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
-            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setIsSubmitted(false); setActiveTab('dashboard'); }} /> : 
-              isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} staffList={staffList} /> : 
+            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} /> : 
+              isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} /> : 
               <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} />}
           </div></div>
         );
@@ -1162,7 +1236,7 @@ const App = () => {
       case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" data={myPendingList} onItemClick={setViewingForm} />;
       case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={myCompletedList} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       case 'rejected': return <ListView title="退回/抽單" icon={FileX} color="bg-red-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
-      case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={[]} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
+      case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={draftList} onItemClick={handleEditDraft} onDelete={handleDeleteForm} />;
       case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       default: return null;
     }
