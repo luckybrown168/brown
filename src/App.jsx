@@ -885,6 +885,17 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500" style={mingLiUStyle}>
+      {/* 核心新增：頂部返回上一頁按鈕 (所有角色皆可見) */}
+      <div className="flex justify-start print:hidden">
+        <button 
+          onClick={onBack || onReset}
+          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 font-black text-sm hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm active:scale-95"
+          style={mingLiUStyle}
+        >
+          <ArrowLeft size={18} /> 返回上一頁
+        </button>
+      </div>
+
       <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif print:shadow-none print:border-slate-400">
         <div className={`absolute top-10 right-10 w-32 h-32 border-4 rounded-full flex flex-col items-center justify-center rotate-12 opacity-80 pointer-events-none font-black ${currentStatus.borderClass} ${currentStatus.colorClass}`}>
           <span className="text-xs" style={mingLiUStyle}>先啟智慧表單件</span>
@@ -1222,7 +1233,7 @@ const App = () => {
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500">
             <div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
-              {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} /> : 
+              {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setIsSubmitted(false); setActiveTab('dashboard'); }} /> : 
                 isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} staffList={staffList} /> : 
                 <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} />}
             </div>
