@@ -192,7 +192,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
   );
 };
 
-// --- 輔助組件：列表視圖 (新增刪除功能) ---
+// --- 輔助組件：列表視圖 ---
 const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
@@ -230,17 +230,17 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => 
                 <td className="px-6 py-5">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
                     item.status === 'Pending' ? 'bg-amber-50 text-amber-600' : 
-                    item.status === 'Completed' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                    item.status === 'Completed' ? 'bg-green-50 text-green-600' : 
+                    item.status === 'Deleted' ? 'bg-slate-100 text-slate-500' : 'bg-red-50 text-red-600'
                   }`} style={mingLiUStyle}>
-                    {item.status === 'Pending' ? '待簽核' : item.status}
+                    {item.status === 'Pending' ? '待簽核' : item.status === 'Deleted' ? '已刪除' : item.status}
                   </span>
                 </td>
                 <td className="px-8 py-5 text-right">
                   <div className="flex justify-end items-center gap-2">
-                    {/* 核心新增：刪除按鈕 (位於檢視左側) */}
                     {onDelete && (
                       <button 
-                        onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} 
+                        onClick={(e) => { e.stopPropagation(); onDelete(item); }} 
                         className="p-2 text-slate-300 hover:text-red-500 transition-all active:scale-90"
                         title="刪除單據"
                       >
@@ -1014,25 +1014,6 @@ const App = () => {
     } catch (err) { alert(err.message); }
   };
 
-  // 核心功能：刪除單據
-  const handleDeleteForm = async (docId) => {
-    if (!window.confirm(`確定要刪除單據 [${docId}] 嗎？此操作不可還原。`)) return;
-    try {
-      if (isMockMode) {
-        setSubmittedForms(prev => prev.filter(f => f.id !== docId));
-        alert('單據已刪除');
-      } else {
-        const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, {
-          method: 'DELETE',
-          headers: getRequestHeaders()
-        });
-        if (!response.ok) throw new Error("伺服器刪除失敗");
-        await fetchMyForms(currentUser.staffId);
-        alert('單據已刪除');
-      }
-    } catch (err) { alert(`刪除失敗：${err.message}`); }
-  };
-
   const handleProcessForm = async (docId, action, comment) => {
     const formToProcess = submittedForms.find(f => f.id === docId);
     if (!formToProcess) return;
@@ -1067,6 +1048,52 @@ const App = () => {
       }
       alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已處理完畢！');
       setViewingForm(null);
+    } catch (err) { alert(`操作失敗：${err.message}`); }
+  };
+
+  // 核心功能：刪除單據 (優化為兩段式刪除：先移至垃圾桶，從垃圾桶刪除才是真正刪除)
+  const handleDeleteForm = async (formItem) => {
+    const isAlreadyInTrash = formItem.status === 'Deleted';
+    const confirmMsg = isAlreadyInTrash 
+      ? `確定要永久刪除單據 [${formItem.id}] 嗎？此操作不可還原。` 
+      : `確定要將單據 [${formItem.id}] 移至垃圾桶嗎？`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      if (isAlreadyInTrash) {
+        // 真正從資料庫永久刪除
+        if (isMockMode) {
+          setSubmittedForms(prev => prev.filter(f => f.id !== formItem.id));
+        } else {
+          const response = await fetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
+            method: 'DELETE',
+            headers: getRequestHeaders()
+          });
+          if (!response.ok) throw new Error("伺服器刪除失敗");
+          await fetchMyForms(currentUser.staffId);
+        }
+        alert('單據已永久刪除');
+      } else {
+        // 軟刪除：更新狀態為 'Deleted'，使其出現在垃圾桶
+        const updatedItem = { 
+          ...formItem, 
+          status: 'Deleted'
+        };
+        
+        if (isMockMode) {
+          setSubmittedForms(prev => prev.map(f => f.id === formItem.id ? updatedItem : f));
+        } else {
+          const response = await fetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
+            method: 'PUT',
+            headers: getRequestHeaders(),
+            body: JSON.stringify(updatedItem)
+          });
+          if (!response.ok) throw new Error("移至垃圾桶失敗");
+          await fetchMyForms(currentUser.staffId);
+        }
+        alert('單據已移至垃圾桶');
+      }
     } catch (err) { alert(`操作失敗：${err.message}`); }
   };
 
@@ -1117,7 +1144,7 @@ const App = () => {
                 { id: 'completed_stat', label: '已結案', value: myCompletedList.length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
                 { id: 'draft_stat', label: '草稿匣', value: 0, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
                 { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX, targetTab: 'rejected' },
-                { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
+                { id: 'trash_stat', label: '垃圾桶', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted').length, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
               ].map((stat, idx) => (<div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group"><div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div></div>))}
             </div>
           </div>
@@ -1136,7 +1163,7 @@ const App = () => {
       case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={myCompletedList} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       case 'rejected': return <ListView title="退回/抽單" icon={FileX} color="bg-red-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={[]} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
-      case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={[]} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
+      case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       default: return null;
     }
   };
