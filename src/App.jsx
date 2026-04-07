@@ -68,7 +68,8 @@ import {
   MoreHorizontal,
   ChevronUp,
   UserCog,
-  MessageSquare
+  MessageSquare,
+  Undo2
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -843,8 +844,8 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
   );
 };
 
-// --- 組件：提交後的存根 (包含簽核意見功能與交辦限制) ---
-const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject }) => {
+// --- 組件：提交後的存根 (包含簽核意見功能、交辦限制與抽單功能) ---
+const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw }) => {
   const [comment, setComment] = useState("");
 
   const handlePrint = () => {
@@ -885,8 +886,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500" style={mingLiUStyle}>
-      {/* 核心新增：頂部返回上一頁按鈕 (所有角色皆可見) */}
-      <div className="flex justify-start print:hidden">
+      <div className="flex justify-between items-center print:hidden">
         <button 
           onClick={onBack || onReset}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 font-black text-sm hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm active:scale-95"
@@ -894,6 +894,17 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         >
           <ArrowLeft size={18} /> 返回上一頁
         </button>
+
+        {/* 新增：申請人抽單功能 */}
+        {canWithdraw && (
+          <button 
+            onClick={() => { if(window.confirm('確定要撤回此項表單申請（抽單）嗎？')) onWithdraw(currentDocId); }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-100 rounded-2xl text-red-500 font-black text-sm hover:bg-red-50 transition-all shadow-sm active:scale-95"
+            style={mingLiUStyle}
+          >
+            <Undo2 size={18} /> 撤回申請 (抽單)
+          </button>
+        )}
       </div>
 
       <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif print:shadow-none print:border-slate-400">
@@ -1123,7 +1134,8 @@ const App = () => {
     let newStepIndex = formToProcess.values.currentStep || 0;
     const workflow = [...(formToProcess.values.workflowPath || [])];
 
-    if (workflow[newStepIndex]) {
+    // 如果是簽核動作，記錄意見
+    if (workflow[newStepIndex] && action !== 'withdraw') {
       workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
     }
 
@@ -1132,13 +1144,20 @@ const App = () => {
       else newStatus = 'Completed';
     } else if (action === 'reject') {
       newStatus = 'Rejected';
+    } else if (action === 'withdraw') {
+      // 抽單動作：直接將狀態設為 Rejected (對應首頁 退回/抽單)
+      newStatus = 'Rejected';
+      // 可選擇在簽核歷程中留下一筆撤回紀錄
+      if (workflow[newStepIndex]) {
+        workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "申請人自行撤回 (抽單)", processedDate: new Date().toISOString() };
+      }
     }
 
     const updatedData = { ...formToProcess, status: newStatus, values: { ...formToProcess.values, workflowPath: workflow, currentStep: newStepIndex } };
 
     if (isMockMode) {
       setSubmittedForms(prev => prev.map(f => f.id === docId ? updatedData : f));
-      alert(action === 'approve' ? '已核准！' : '已退回！');
+      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准！' : '已退回！');
       setViewingForm(null);
     } else {
       try {
@@ -1164,6 +1183,9 @@ const App = () => {
     if (viewingForm) { 
       const step = viewingForm.values?.currentStep || 0;
       const canApprove = viewingForm.status === 'Pending' && viewingForm.values?.workflowPath?.[step]?.staffId === currentUser?.staffId;
+      // 新增：判斷是否可以抽單 (只有申請人且表單處於 Pending 狀態)
+      const canWithdraw = viewingForm.staffId === currentUser?.staffId && viewingForm.status === 'Pending';
+
       return (
         <SubmissionSummary 
           schema={myFormSchema} values={viewingForm.values} status={viewingForm.status}
@@ -1171,6 +1193,8 @@ const App = () => {
           currentUser={currentUser} canApprove={canApprove}
           onApprove={(id, comm) => handleProcessForm(id, 'approve', comm)}
           onReject={(id, comm) => handleProcessForm(id, 'reject', comm)}
+          canWithdraw={canWithdraw}
+          onWithdraw={(id) => handleProcessForm(id, 'withdraw', '申請人自行抽單')}
         />
       ); 
     }
