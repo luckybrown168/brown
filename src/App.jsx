@@ -824,6 +824,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         </div>
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
+            {/* 修正單號字型 */}
             <div><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
             <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p></div>
         </div>
@@ -952,7 +953,22 @@ const App = () => {
     if (currentUser) { fetchMyForms(currentUser.staffId); fetchPersonnel(); }
   }, [currentUser, activeTab]);
 
-  const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); setFormValues({}); };
+  const handleLogout = () => { 
+    setCurrentUser(null); 
+    setActiveTab('dashboard'); 
+    setFormValues({}); 
+  };
+
+  // 核心修正：明確的登入成功處理函數，確保回到首頁
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    setActiveTab('dashboard'); // 確保登入後回到首頁
+    setFormValues({});
+    setCurrentDocId('');
+    setIsSubmitted(false);
+    setIsPreviewing(false);
+    setViewingForm(null);
+  };
 
   const TEAM_OPTIONS = ["總經理室", "北區營業組", "中區營業組", "南區營業組", "客服組", "產品組", "工程組", "系統組"];
   const LEAVE_TYPES = ["特休", "事假", "病假", "喪假", "補休", "婚假", "公假", "產假", "家庭照顧假"];
@@ -1106,7 +1122,7 @@ const App = () => {
         if (!response.ok) throw new Error("伺服器更新失敗");
         await fetchMyForms(currentUser.staffId);
       }
-      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已退回申請！');
+      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已處理完畢！');
       setViewingForm(null);
     } catch (err) { alert(`操作失敗：${err.message}`); }
   };
@@ -1169,11 +1185,13 @@ const App = () => {
     setViewingForm(null);
   };
 
-  if (!currentUser) return <LoginView onLoginSuccess={setCurrentUser} isMockMode={isMockMode} />;
+  // 核心修正：將 LoginView 的回調改為 handleLoginSuccess
+  if (!currentUser) return <LoginView onLoginSuccess={handleLoginSuccess} isMockMode={isMockMode} />;
 
   const myPendingList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Pending');
   const myCompletedList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Completed');
   const draftList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Draft');
+  const trashList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted');
   
   const inboxList = submittedForms.filter(f => {
     if (f.status !== 'Pending') return false; 
@@ -1218,7 +1236,7 @@ const App = () => {
                 { id: 'completed_stat', label: '已結案', value: myCompletedList.length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
                 { id: 'draft_stat', label: '草稿匣', value: draftList.length, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
                 { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX, targetTab: 'rejected' },
-                { id: 'trash_stat', label: '垃圾桶', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted').length, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
+                { id: 'trash_stat', label: '垃圾桶', value: trashList.length, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
               ].map((stat, idx) => (<div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group"><div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div></div>))}
             </div>
           </div>
@@ -1237,7 +1255,7 @@ const App = () => {
       case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={myCompletedList} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       case 'rejected': return <ListView title="退回/抽單" icon={FileX} color="bg-red-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={draftList} onItemClick={handleEditDraft} onDelete={handleDeleteForm} />;
-      case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
+      case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={trashList} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       default: return null;
     }
   };
