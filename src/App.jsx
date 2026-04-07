@@ -33,7 +33,7 @@ import {
   Moon,
   Printer,
   Home,
-  FileCheck,
+  FileCheck, 
   UserCheck,
   Play,
   Sliders,
@@ -652,13 +652,12 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
   );
 };
 
-// --- 組件：預覽校對畫面 (修改為動態路徑建構器) ---
+// --- 組件：預覽校對畫面 ---
 const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
   const [workflowSteps, setWorkflowSteps] = useState([]);
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [selectedRole, setSelectedRole] = useState("簽核");
 
-  // 更新後的簡化名稱角色清單
   const roles = [
     { label: "簽核", value: "簽核", color: "bg-indigo-600", icon: CheckCircle },
     { label: "會簽", value: "會簽", color: "bg-emerald-600", icon: Users },
@@ -667,34 +666,15 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
   ];
 
   const addToWorkflow = () => {
-    if (!selectedStaffId) {
-      alert("請先選擇人員");
-      return;
-    }
+    if (!selectedStaffId) { alert("請先選擇人員"); return; }
     const staff = staffList.find(s => s.staffId === selectedStaffId);
     if (!staff) return;
-
-    // 檢查是否重複加入
-    if (workflowSteps.some(step => step.staffId === selectedStaffId)) {
-      alert("此人員已在流程中");
-      return;
-    }
-
-    const newStep = {
-      staffId: staff.staffId,
-      name: staff.name,
-      pos: staff.pos,
-      dept: staff.dept,
-      role: selectedRole
-    };
-
-    setWorkflowSteps([...workflowSteps, newStep]);
-    setSelectedStaffId(""); // 重設
+    if (workflowSteps.some(step => step.staffId === selectedStaffId)) { alert("此人員已在流程中"); return; }
+    setWorkflowSteps([...workflowSteps, { staffId: staff.staffId, name: staff.name, pos: staff.pos, dept: staff.dept, role: selectedRole }]);
+    setSelectedStaffId("");
   };
 
-  const removeFromWorkflow = (staffId) => {
-    setWorkflowSteps(workflowSteps.filter(step => step.staffId !== staffId));
-  };
+  const removeFromWorkflow = (staffId) => setWorkflowSteps(workflowSteps.filter(step => step.staffId !== staffId));
 
   const moveStep = (index, direction) => {
     const newSteps = [...workflowSteps];
@@ -704,15 +684,6 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
     setWorkflowSteps(newSteps);
   };
 
-  const handleFinalSubmit = () => {
-    if (workflowSteps.length === 0) {
-      alert("請至少設定一名簽核人員");
-      return;
-    }
-    // 將 workflowSteps 傳遞回主層
-    onSubmit({ workflowPath: workflowSteps });
-  };
-
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500" style={mingLiUStyle}>
         <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative font-serif">
@@ -720,8 +691,6 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><FileText size={24} /></div>
             <div><h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>簽核表單預覽校對</h2><p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>請確認下方資訊無誤後設定簽核路徑</p></div>
           </div>
-
-          {/* 表單內容摘要 */}
           <div className="flex flex-wrap -mx-2 gap-y-4 mb-10">
               {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
                 if (field.dependsOn && !values[field.dependsOn]) return null;
@@ -732,57 +701,22 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
                 );
               })}
           </div>
-
-          {/* --- 核心修改：動態路徑建構器 --- */}
           <div className="bg-slate-50/50 rounded-[2.5rem] border border-slate-200 p-8 shadow-inner">
-            <div className="flex items-center gap-2 mb-6">
-              <UserCog size={22} className="text-indigo-600" />
-              <h3 className="font-black text-lg text-slate-800" style={mingLiUStyle}>自定義簽核流程路徑</h3>
-            </div>
-
-            {/* 選擇區域 */}
+            <div className="flex items-center gap-2 mb-6"><UserCog size={22} className="text-indigo-600" /><h3 className="font-black text-lg text-slate-800" style={mingLiUStyle}>自定義簽核流程路徑</h3></div>
             <div className="flex flex-col md:flex-row gap-3 mb-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm items-end">
-              <div className="flex-1 space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">1. 選擇人員</label>
-                <select 
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-bold text-sm"
-                  value={selectedStaffId}
-                  onChange={(e) => setSelectedStaffId(e.target.value)}
-                  style={mingLiUStyle}
-                >
+              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">1. 選擇人員</label>
+                <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-bold text-sm" value={selectedStaffId} onChange={(e) => setSelectedStaffId(e.target.value)} style={mingLiUStyle}>
                   <option value="">-- 搜尋/選取簽核人員 --</option>
-                  {staffList.map(s => (
-                    <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
-                  ))}
+                  {staffList.map(s => (<option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>))}
                 </select>
               </div>
-
-              <div className="flex-1 space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">2. 指派任務角色</label>
+              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">2. 指派任務角色</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {roles.map(r => (
-                    <button 
-                      key={r.value}
-                      onClick={() => setSelectedRole(r.value)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-black transition-all ${selectedRole === r.value ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'}`}
-                      style={mingLiUStyle}
-                    >
-                      <r.icon size={14} /> {r.label}
-                    </button>
-                  ))}
+                  {roles.map(r => (<button key={r.value} onClick={() => setSelectedRole(r.value)} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-black transition-all ${selectedRole === r.value ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'}`} style={mingLiUStyle}><r.icon size={14} /> {r.label}</button>))}
                 </div>
               </div>
-
-              <button 
-                onClick={addToWorkflow}
-                className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 shadow-lg active:scale-95 flex items-center gap-2 shrink-0 h-[46px]"
-                style={mingLiUStyle}
-              >
-                <Plus size={18} /> 加入流程
-              </button>
+              <button onClick={addToWorkflow} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 shadow-lg active:scale-95 flex items-center gap-2 shrink-0 h-[46px]" style={mingLiUStyle}><Plus size={18} /> 加入流程</button>
             </div>
-
-            {/* 流程預覽列表 */}
             <div className="space-y-3">
               <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-2">3. 簽核順序與角色預覽</label>
               {workflowSteps.length > 0 ? (
@@ -791,23 +725,9 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
                     const roleInfo = roles.find(r => r.value === step.role);
                     return (
                       <div key={step.staffId} className="flex items-center gap-4 animate-in slide-in-from-left-4 duration-300">
-                        <div className="flex flex-col items-center gap-1">
-                           <div className="w-8 h-8 bg-white border-2 border-indigo-100 rounded-full flex items-center justify-center text-xs font-black text-indigo-600 shadow-sm">{index + 1}</div>
-                           {index < workflowSteps.length - 1 && <div className="w-0.5 h-6 bg-indigo-100"></div>}
-                        </div>
+                        <div className="flex flex-col items-center gap-1"><div className="w-8 h-8 bg-white border-2 border-indigo-100 rounded-full flex items-center justify-center text-xs font-black text-indigo-600 shadow-sm">{index + 1}</div>{index < workflowSteps.length - 1 && <div className="w-0.5 h-6 bg-indigo-100"></div>}</div>
                         <div className="flex-1 bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm group hover:border-indigo-300 transition-colors">
-                           <div className="flex items-center gap-4">
-                              <div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}>
-                                <roleInfo.icon size={20} />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="font-black text-slate-800" style={mingLiUStyle}>{step.name}</p>
-                                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-black text-white uppercase ${roleInfo.color}`}>{step.role}</span>
-                                </div>
-                                <p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p>
-                              </div>
-                           </div>
+                           <div className="flex items-center gap-4"><div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}><roleInfo.icon size={20} /></div><div><div className="flex items-center gap-2"><p className="font-black text-slate-800" style={mingLiUStyle}>{step.name}</p><span className={`px-2 py-0.5 rounded-md text-[9px] font-black text-white uppercase ${roleInfo.color}`} style={mingLiUStyle}>{step.role}</span></div><p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p></div></div>
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
                               <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
@@ -819,32 +739,19 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
                     );
                   })}
                 </div>
-              ) : (
-                <div className="py-12 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-300 gap-2">
-                  <Activity size={32} className="opacity-30" />
-                  <p className="text-sm font-bold" style={mingLiUStyle}>尚未設定任何簽核步驟，請由上方選取人員加入。</p>
-                </div>
-              )}
+              ) : (<div className="py-12 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-300 gap-2"><Activity size={32} className="opacity-30" /><p className="text-sm font-bold" style={mingLiUStyle}>尚未設定任何簽核步驟，請由上方選取人員加入。</p></div>)}
             </div>
           </div>
-
           <div className="mt-12 flex gap-4">
               <button onClick={onEdit} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black text-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2" style={mingLiUStyle}><ChevronLeft size={20} /> 資訊有誤，回填單頁面</button>
-              <button 
-                onClick={handleFinalSubmit} 
-                className={`flex-[2] py-4 text-white rounded-2xl font-black shadow-lg transition-all flex items-center justify-center gap-2 text-lg active:scale-95 ${workflowSteps.length > 0 ? 'bg-[#1677FF] hover:bg-blue-700' : 'bg-slate-300 cursor-not-allowed'}`}
-                style={mingLiUStyle}
-                disabled={workflowSteps.length === 0}
-              >
-                <Check size={24} /> 確認無誤，發送申請
-              </button>
+              <button onClick={() => { if (workflowSteps.length === 0) return alert("請至少設定一名簽核人員"); onSubmit({ workflowPath: workflowSteps }); }} className={`flex-[2] py-4 text-white rounded-2xl font-black shadow-lg transition-all flex items-center justify-center gap-2 text-lg active:scale-95 ${workflowSteps.length > 0 ? 'bg-[#1677FF] hover:bg-blue-700' : 'bg-slate-300 cursor-not-allowed'}`} style={mingLiUStyle} disabled={workflowSteps.length === 0}><Check size={24} /> 確認無誤，發送申請</button>
           </div>
         </div>
     </div>
   );
 };
 
-// --- 組件：提交後的存根 (包含簽核意見功能、交辦限制與抽單功能) ---
+// --- 組件：提交後的存根 (修正單號字型) ---
 const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw }) => {
   const [comment, setComment] = useState("");
 
@@ -887,23 +794,9 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500" style={mingLiUStyle}>
       <div className="flex justify-between items-center print:hidden">
-        <button 
-          onClick={onBack || onReset}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 font-black text-sm hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm active:scale-95"
-          style={mingLiUStyle}
-        >
-          <ArrowLeft size={18} /> 返回上一頁
-        </button>
-
-        {/* 新增：申請人抽單功能 */}
+        <button onClick={onBack || onReset} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 font-black text-sm hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm active:scale-95" style={mingLiUStyle}><ArrowLeft size={18} /> 返回上一頁</button>
         {canWithdraw && (
-          <button 
-            onClick={() => { if(window.confirm('確定要撤回此項表單申請（抽單）嗎？')) onWithdraw(currentDocId); }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-100 rounded-2xl text-red-500 font-black text-sm hover:bg-red-50 transition-all shadow-sm active:scale-95"
-            style={mingLiUStyle}
-          >
-            <Undo2 size={18} /> 撤回申請 (抽單)
-          </button>
+          <button onClick={() => { if(window.confirm('確定要撤回此項表單申請（抽單）嗎？')) onWithdraw(currentDocId); }} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-100 rounded-2xl text-red-500 font-black text-sm hover:bg-red-50 transition-all shadow-sm active:scale-95" style={mingLiUStyle}><Undo2 size={18} /> 撤回申請 (抽單)</button>
         )}
       </div>
 
@@ -913,9 +806,9 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
           <span className={`text-lg border-y-2 my-1 ${currentStatus.borderClass}`} style={mingLiUStyle}>{currentStatus.text}</span>
           <span className="text-[10px]" style={mingLiUStyle}>{new Date().toLocaleDateString()}</span>
         </div>
-
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
+            {/* 核心修正：套用新細明體樣式 */}
             <div><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
             <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p></div>
         </div>
@@ -929,16 +822,11 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                 <div className="flex items-center gap-2">
                   {field.type === 'file' ? (
                     val?.base64 ? (
-                      <div className="flex flex-col gap-2">
-                        <p className="text-sm font-bold text-slate-700">📎 {val.name}</p>
-                        <button type="button" onClick={() => handleViewFile(val)} className="print:hidden flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-black hover:bg-blue-100 transition-colors">
-                          <DownloadCloud size={14} /> 點擊下載/檢視附件
-                        </button>
+                      <div className="flex flex-col gap-2"><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>📎 {val.name}</p>
+                        <button type="button" onClick={() => handleViewFile(val)} className="print:hidden flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-black hover:bg-blue-100 transition-colors" style={mingLiUStyle}><DownloadCloud size={14} /> 點擊下載/檢視附件</button>
                       </div>
-                    ) : <p className="text-sm font-bold text-slate-400 italic">(無附件)</p>
-                  ) : (
-                    <p className="text-sm font-bold text-slate-700">{val || '(未填寫)'}</p>
-                  )}
+                    ) : <p className="text-sm font-bold text-slate-400 italic" style={mingLiUStyle}>(無附件)</p>
+                  ) : (<p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{val || '(未填寫)'}</p>)}
                 </div>
               </div>
              );
@@ -956,14 +844,9 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                     <div key={i} className={`flex gap-4 p-4 rounded-2xl border transition-all ${isCurrentStep ? 'bg-indigo-50 border-indigo-200 ring-4 ring-indigo-50' : isProcessed ? 'bg-slate-50/50 border-slate-100' : 'bg-transparent border-dashed border-slate-200 opacity-50'}`}>
                       <div className="shrink-0"><div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${isProcessed ? 'bg-green-500' : isCurrentStep ? 'bg-indigo-600 animate-pulse' : 'bg-slate-300'}`}>{isProcessed ? <Check size={20} /> : <User size={20} />}</div></div>
                       <div className="flex-1">
-                         <div className="flex items-center justify-between mb-1"><span className="text-sm font-black text-slate-800" style={mingLiUStyle}>{step.name} <small className="text-slate-400">({step.pos})</small></span><span className="text-[9px] font-black px-2 py-0.5 bg-white border rounded text-indigo-600 uppercase">{step.role}</span></div>
-                         {step.processedDate && <p className="text-[10px] text-slate-400 font-bold mb-2">處理時間：{new Date(step.processedDate).toLocaleString()}</p>}
-                         {step.comment ? (
-                            <div className="bg-white p-3 rounded-xl border border-slate-200 relative mt-2">
-                               <div className="absolute -top-2 left-4 px-1 bg-white text-[9px] font-black text-slate-400 flex items-center gap-1"><MessageSquare size={10} /> 簽核意見</div>
-                               <p className="text-xs font-bold text-slate-600 italic">「 {step.comment} 」</p>
-                            </div>
-                         ) : isProcessed ? <p className="text-xs text-slate-400 italic">無填寫意見</p> : isCurrentStep ? <p className="text-xs text-indigo-600 font-black animate-pulse">等待簽核中...</p> : null}
+                         <div className="flex items-center justify-between mb-1"><span className="text-sm font-black text-slate-800" style={mingLiUStyle}>{step.name} <small className="text-slate-400">({step.pos})</small></span><span className="text-[9px] font-black px-2 py-0.5 bg-white border rounded text-indigo-600 uppercase" style={mingLiUStyle}>{step.role}</span></div>
+                         {step.processedDate && <p className="text-[10px] text-slate-400 font-bold mb-2" style={mingLiUStyle}>處理時間：{new Date(step.processedDate).toLocaleString()}</p>}
+                         {step.comment ? (<div className="bg-white p-3 rounded-xl border border-slate-200 relative mt-2"><div className="absolute -top-2 left-4 px-1 bg-white text-[9px] font-black text-slate-400 flex items-center gap-1"><MessageSquare size={10} /> 簽核意見</div><p className="text-xs font-bold text-slate-600 italic" style={mingLiUStyle}>「 {step.comment} 」</p></div>) : isProcessed ? <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isCurrentStep ? <p className="text-xs text-indigo-600 font-black animate-pulse" style={mingLiUStyle}>等待簽核中...</p> : null}
                       </div>
                     </div>
                   );
@@ -974,19 +857,19 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
         {canApprove && (
           <div className="mt-8 p-6 bg-indigo-50/50 border-2 border-indigo-200 rounded-[2rem] animate-in slide-in-from-bottom-4">
-            <div className="flex items-center gap-2 mb-4 text-indigo-700"><MessageSquare size={18} /><h4 className="font-black text-sm">{isAssignee ? "填寫交辦執行意見" : "填寫簽核意見 / 退回理由"}</h4></div>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder={isAssignee ? "請輸入交辦任務的執行狀況..." : "請在此輸入您的簽核意見..."} className="w-full h-24 p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold" />
+            <div className="flex items-center gap-2 mb-4 text-indigo-700"><MessageSquare size={18} /><h4 className="font-black text-sm" style={mingLiUStyle}>{isAssignee ? "填寫交辦執行意見" : "填寫簽核意見 / 退回理由"}</h4></div>
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder={isAssignee ? "請輸入交辦任務的執行狀況..." : "請在此輸入您的簽核意見..."} className="w-full h-24 p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold" style={mingLiUStyle} />
             <div className="mt-6 flex gap-3">
-                {!isAssignee && <button type="button" onClick={() => onReject(currentDocId, comment)} className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 flex items-center justify-center gap-2"><X size={14} /> 退回申請</button>}
-                <button type="button" onClick={() => onApprove(currentDocId, comment)} className={`${isAssignee ? 'w-full' : 'flex-[2]'} py-3 bg-green-600 text-white rounded-xl text-xs font-black shadow-md hover:bg-green-700 flex items-center justify-center gap-2`}><Check size={14} /> {isAssignee ? "確認交辦完成" : "核准通過"}</button>
+                {!isAssignee && <button type="button" onClick={() => onReject(currentDocId, comment)} className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 flex items-center justify-center gap-2" style={mingLiUStyle}><X size={14} /> 退回申請</button>}
+                <button type="button" onClick={() => onApprove(currentDocId, comment)} className={`${isAssignee ? 'w-full' : 'flex-[2]'} py-3 bg-green-600 text-white rounded-xl text-xs font-black shadow-md hover:bg-green-700 flex items-center justify-center gap-2`} style={mingLiUStyle}><Check size={14} /> {isAssignee ? "確認交辦完成" : "核准通過"}</button>
             </div>
           </div>
         )}
 
         {!canApprove && (
           <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 items-center print:hidden">
-            <button type="button" onClick={handlePrint} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 flex items-center gap-2"><Printer size={14} /> 列印存根</button>
-            <button type="button" onClick={onBack || onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 flex items-center gap-2">{isViewOnly ? <ArrowLeft size={14} /> : null} {isViewOnly ? "返回列表" : "完成返回"}</button>
+            <button type="button" onClick={handlePrint} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 flex items-center gap-2" style={mingLiUStyle}><Printer size={14} /> 列印存根</button>
+            <button type="button" onClick={onBack || onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 flex items-center gap-2" style={mingLiUStyle}>{isViewOnly ? <ArrowLeft size={14} /> : null} {isViewOnly ? "返回列表" : "完成返回"}</button>
           </div>
         )}
       </div>
@@ -1051,10 +934,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (currentUser) {
-      fetchMyForms(currentUser.staffId);
-      fetchPersonnel();
-    }
+    if (currentUser) { fetchMyForms(currentUser.staffId); fetchPersonnel(); }
   }, [currentUser, activeTab]);
 
   const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); setFormValues({}); };
@@ -1110,20 +990,17 @@ const App = () => {
     const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
     const todayForms = submittedForms.filter(f => f.id && f.id.startsWith(dateStr));
     const newDocId = `${dateStr}_${(todayForms.length + 1).toString().padStart(3, '0')}`;
-    
     const submissionData = { id: newDocId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單', values: { ...formValues, ...approvalFlow, currentStep: 0 } };
 
-    if (isMockMode) {
-      setSubmittedForms([...submittedForms, { ...submissionData, submitDate: new Date().toISOString(), status: 'Pending' }]);
-      setCurrentDocId(newDocId); setIsPreviewing(false); setIsSubmitted(true);
-    } else {
-      try {
+    try {
+      if (isMockMode) { setSubmittedForms([...submittedForms, { ...submissionData, submitDate: new Date().toISOString(), status: 'Pending' }]); } 
+      else {
         const response = await fetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(submissionData) });
         if (!response.ok) throw new Error("提交失敗");
         await fetchMyForms(currentUser.staffId);
-        setCurrentDocId(newDocId); setIsPreviewing(false); setIsSubmitted(true);
-      } catch (err) { alert(err.message); }
-    }
+      }
+      setCurrentDocId(newDocId); setIsPreviewing(false); setIsSubmitted(true);
+    } catch (err) { alert(err.message); }
   };
 
   const handleProcessForm = async (docId, action, comment) => {
@@ -1134,7 +1011,6 @@ const App = () => {
     let newStepIndex = formToProcess.values.currentStep || 0;
     const workflow = [...(formToProcess.values.workflowPath || [])];
 
-    // 如果是簽核動作，記錄意見
     if (workflow[newStepIndex] && action !== 'withdraw') {
       workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
     }
@@ -1142,31 +1018,26 @@ const App = () => {
     if (action === 'approve') {
       if (newStepIndex < workflow.length - 1) newStepIndex += 1;
       else newStatus = 'Completed';
-    } else if (action === 'reject') {
+    } else if (action === 'reject') { newStatus = 'Rejected'; } 
+    else if (action === 'withdraw') {
       newStatus = 'Rejected';
-    } else if (action === 'withdraw') {
-      // 抽單動作：直接將狀態設為 Rejected (對應首頁 退回/抽單)
-      newStatus = 'Rejected';
-      // 可選擇在簽核歷程中留下一筆撤回紀錄
       if (workflow[newStepIndex]) {
-        workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "申請人自行撤回 (抽單)", processedDate: new Date().toISOString() };
+        workflow[newStepIndex] = { ...workflow[newStepIndex], comment: "申請人自行撤回 (抽單)", processedDate: new Date().toISOString() };
       }
     }
 
     const updatedData = { ...formToProcess, status: newStatus, values: { ...formToProcess.values, workflowPath: workflow, currentStep: newStepIndex } };
 
-    if (isMockMode) {
-      setSubmittedForms(prev => prev.map(f => f.id === docId ? updatedData : f));
-      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准！' : '已退回！');
-      setViewingForm(null);
-    } else {
-      try {
+    try {
+      if (isMockMode) { setSubmittedForms(prev => prev.map(f => f.id === docId ? updatedData : f)); } 
+      else {
         const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(updatedData) });
-        if (!response.ok) throw new Error("處理失敗");
+        if (!response.ok) throw new Error("伺服器更新失敗");
         await fetchMyForms(currentUser.staffId);
-        setViewingForm(null);
-      } catch (err) { alert(err.message); }
-    }
+      }
+      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已處理完畢！');
+      setViewingForm(null);
+    } catch (err) { alert(`操作失敗：${err.message}`); }
   };
 
   if (!currentUser) return <LoginView onLoginSuccess={setCurrentUser} isMockMode={isMockMode} />;
@@ -1183,18 +1054,11 @@ const App = () => {
     if (viewingForm) { 
       const step = viewingForm.values?.currentStep || 0;
       const canApprove = viewingForm.status === 'Pending' && viewingForm.values?.workflowPath?.[step]?.staffId === currentUser?.staffId;
-      // 新增：判斷是否可以抽單 (只有申請人且表單處於 Pending 狀態)
       const canWithdraw = viewingForm.staffId === currentUser?.staffId && viewingForm.status === 'Pending';
-
       return (
         <SubmissionSummary 
-          schema={myFormSchema} values={viewingForm.values} status={viewingForm.status}
-          currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)}
-          currentUser={currentUser} canApprove={canApprove}
-          onApprove={(id, comm) => handleProcessForm(id, 'approve', comm)}
-          onReject={(id, comm) => handleProcessForm(id, 'reject', comm)}
-          canWithdraw={canWithdraw}
-          onWithdraw={(id) => handleProcessForm(id, 'withdraw', '申請人自行抽單')}
+          schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} canApprove={canApprove}
+          onApprove={(id, comm) => handleProcessForm(id, 'approve', comm)} onReject={(id, comm) => handleProcessForm(id, 'reject', comm)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
         />
       ); 
     }
@@ -1206,33 +1070,13 @@ const App = () => {
             <div className="flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                   <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
-                  <div className="relative z-10">
-                    <h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，{currentUser.name} {currentUser.pos}</h2>
-                    <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p>
-                    <button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg mt-8" style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button>
-                  </div>
+                  <div className="relative z-10"><h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，{currentUser.name} {currentUser.pos}</h2><p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p><button onClick={() => setActiveTab('inbox')} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg mt-8" style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button></div>
                 </div>
                 <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Balance</span></div>
+                  <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase" style={mingLiUStyle}>Balance</span></div>
                   <div className="space-y-6">
-                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
-                      <div className="flex justify-between items-end mb-2">
-                        <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span>
-                        <span className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-[10px] text-slate-400">hr</small></span>
-                      </div>
-                      <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 720) * 100, 100)}%` }}></div>
-                      </div>
-                    </div>
-                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
-                      <div className="flex justify-between items-end mb-2">
-                        <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span>
-                        <span className="text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-[10px] text-slate-400">hr</small></span>
-                      </div>
-                      <div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((currentUser?.compLeave || 0) * 2, 100)}%` }}></div>
-                      </div>
-                    </div>
+                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span><span className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 720) * 100, 100)}%` }}></div></div></div>
+                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span><span className="text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((currentUser?.compLeave || 0) * 2, 100)}%` }}></div></div></div>
                   </div>
                 </div>
             </div>
@@ -1241,32 +1085,28 @@ const App = () => {
                 { id: 'inbox_stat', label: '收件匣', value: inboxList.length, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
                 { id: 'pending_stat', label: '流程中案件', value: myPendingList.length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
                 { id: 'completed_stat', label: '已結案', value: myCompletedList.length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
-                { id: 'draft_stat', label: '草稿匣', value: 0, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'dashboard' },
+                { id: 'draft_stat', label: '草稿匣', value: 0, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
                 { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX, targetTab: 'rejected' },
-                { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'dashboard' },
-              ].map((stat, idx) => (
-                <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group">
-                  <div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold">{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
-                </div>
-              ))}
+                { id: 'trash_stat', label: '垃圾桶', value: 0, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
+              ].map((stat, idx) => (<div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group"><div className="flex justify-between items-start"><div><p className="text-[10px] text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div></div>))}
             </div>
           </div>
         );
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} />;
       case 'inbox':
         return (
-          <div className="h-full flex justify-center animate-in fade-in duration-500">
-            <div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
-              {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setIsSubmitted(false); setActiveTab('dashboard'); }} /> : 
-                isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} staffList={staffList} /> : 
-                <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} />}
-            </div>
-          </div>
+          <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
+            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setIsSubmitted(false); setActiveTab('dashboard'); }} /> : 
+              isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} staffList={staffList} /> : 
+              <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} />}
+          </div></div>
         );
       case 'inbox_list': return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" data={inboxList} onItemClick={setViewingForm} />;
       case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" data={myPendingList} onItemClick={setViewingForm} />;
       case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={myCompletedList} onItemClick={setViewingForm} />;
       case 'rejected': return <ListView title="退回/抽單" icon={FileX} color="bg-red-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected')} onItemClick={setViewingForm} />;
+      case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={[]} onItemClick={setViewingForm} />;
+      case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={[]} onItemClick={setViewingForm} />;
       default: return null;
     }
   };
@@ -1274,35 +1114,16 @@ const App = () => {
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
       <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
-        <div className="p-8 flex items-center justify-between">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl text-white shrink-0"><Layers size={24} /></div>
-            {!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2">先啟智慧表單</span>)}
-          </div>
-        </div>
+        <div className="p-8 flex items-center justify-between"><div className="flex items-center gap-3 overflow-hidden"><div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl text-white shrink-0"><Layers size={24} /></div>{!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2" style={mingLiUStyle}>先啟智慧表單</span>)}</div></div>
         <nav className="flex-1 px-4 space-y-1 mt-6">
-          {[
-            { id: 'dashboard', label: '首頁', icon: LayoutDashboard }, 
-            { id: 'personnel_management', label: '人員管理', icon: Users }
-          ].map((item) => (
-            <button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`}>
-              <item.icon size={20} /> {!isSidebarCollapsed && <span>{item.label}</span>}
-            </button>
-          ))}
-          <div className="pt-8 mt-8 border-t border-slate-100">
-            <button onClick={handleLogout} className={`w-full flex items-center px-5 py-3.5 rounded-2xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-all font-black text-sm ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
-              <LogOut size={20} /> {!isSidebarCollapsed && <span>登出系統</span>}
-            </button>
-          </div>
+          {[{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'personnel_management', label: '人員管理', icon: Users }].map((item) => (<button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}><item.icon size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>{item.label}</span>}</button>))}
+          <div className="pt-8 mt-8 border-t border-slate-100"><button onClick={handleLogout} className={`w-full flex items-center px-5 py-3.5 rounded-2xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-all font-black text-sm ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`} style={mingLiUStyle}><LogOut size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>登出系統</span>}</button></div>
         </nav>
       </aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
-          <div className="text-slate-800 font-black text-lg">{activeTab === 'dashboard' ? '數位儀表板' : '智慧管理系統'}</div>
-          <div className="flex items-center gap-4 border-l border-gray-100 pl-6">
-            <div className="text-right"><p className="text-xs font-black text-slate-800">{currentUser.name}</p><p className="text-[10px] text-slate-400 font-black uppercase">{currentUser.pos}</p></div>
-            <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.name}`} alt="avatar" /></div>
-          </div>
+          <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : '智慧管理系統'}</div>
+          <div className="flex items-center gap-4 border-l border-gray-100 pl-6"><div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>{currentUser.name}</p><p className="text-[10px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p></div><div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.name}`} alt="avatar" /></div></div>
         </header>
         <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white">{renderMainContent()}</div>
       </main>
