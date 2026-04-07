@@ -192,8 +192,8 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
   );
 };
 
-// --- 輔助組件：列表視圖 ---
-const ListView = ({ title, icon: Icon, color, data, onItemClick }) => {
+// --- 輔助組件：列表視圖 (新增刪除功能) ---
+const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
       <div className="flex items-center gap-4 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -214,7 +214,7 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick }) => {
               <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>主旨</th>
               <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>提交日期</th>
               <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>狀態</th>
-              <th className="px-8 py-4 text-right" style={mingLiUStyle}>操作</th>
+              <th className="px-8 py-4 text-right font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>檢視</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -236,9 +236,21 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick }) => {
                   </span>
                 </td>
                 <td className="px-8 py-5 text-right">
-                  <button onClick={() => onItemClick(item)} className="p-2 text-slate-300 hover:text-blue-600 transition-all">
-                    <Eye size={18} />
-                  </button>
+                  <div className="flex justify-end items-center gap-2">
+                    {/* 核心新增：刪除按鈕 (位於檢視左側) */}
+                    {onDelete && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} 
+                        className="p-2 text-slate-300 hover:text-red-500 transition-all active:scale-90"
+                        title="刪除單據"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    )}
+                    <button onClick={() => onItemClick(item)} className="p-2 text-slate-300 hover:text-blue-600 transition-all active:scale-90">
+                      <Eye size={18} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             )) : (
@@ -689,7 +701,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
         <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative font-serif">
           <div className="flex items-center gap-3 mb-8 border-b pb-4 border-blue-50">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><FileText size={24} /></div>
-            <div><h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>簽核表單預覽校對</h2><p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>請確認下方資訊無誤後設定簽核路徑</p></div>
+            <div><h2 className="text-xl font-black text-slate-800" style={mingLiUStyle}>簽核表單預覽校對</h2><p className="text-xs text-slate-400 font-bold">請確認下方資訊無誤後設定簽核路徑</p></div>
           </div>
           <div className="flex flex-wrap -mx-2 gap-y-4 mb-10">
               {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
@@ -697,7 +709,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
                 const val = values[field.id];
                 const displayVal = field.type === 'file' ? (val?.name ? `📎 ${val.name}` : '(未上傳)') : (val || '(未填寫)');
                 return (
-                  <div key={field.id} className={`${field.width} px-2`}><div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col"><p className="text-[9px] font-black text-slate-400 uppercase mb-0.5 tracking-widest" style={mingLiUStyle}>{field.label}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{displayVal}</p></div></div>
+                  <div key={field.id} className={`${field.width} px-2`}><div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col"><p className="text-[9px] font-black text-slate-400 uppercase mb-0.5 tracking-widest">{field.label}</p><p className="text-sm font-bold text-slate-700">{displayVal}</p></div></div>
                 );
               })}
           </div>
@@ -751,7 +763,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, staffList }) => {
   );
 };
 
-// --- 組件：提交後的存根 (修正單號字型) ---
+// --- 組件：提交後的存根 ---
 const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw }) => {
   const [comment, setComment] = useState("");
 
@@ -808,7 +820,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         </div>
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
-            {/* 核心修正：套用新細明體樣式 */}
             <div><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p><p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p></div>
             <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p></div>
         </div>
@@ -818,7 +829,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
              if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              return (
               <div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}>
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{field.label}</p>
                 <div className="flex items-center gap-2">
                   {field.type === 'file' ? (
                     val?.base64 ? (
@@ -835,7 +846,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         
         {safeValues.workflowPath && (
            <div className="mt-8 pt-6 border-t border-slate-100">
-             <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest" style={mingLiUStyle}>簽核歷程與意見 Workflow History</p>
+             <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">簽核歷程與意見 Workflow History</p>
              <div className="space-y-4">
                 {safeValues.workflowPath.map((step, i) => {
                   const isCurrentStep = (safeValues.currentStep || 0) === i;
@@ -1003,6 +1014,25 @@ const App = () => {
     } catch (err) { alert(err.message); }
   };
 
+  // 核心功能：刪除單據
+  const handleDeleteForm = async (docId) => {
+    if (!window.confirm(`確定要刪除單據 [${docId}] 嗎？此操作不可還原。`)) return;
+    try {
+      if (isMockMode) {
+        setSubmittedForms(prev => prev.filter(f => f.id !== docId));
+        alert('單據已刪除');
+      } else {
+        const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, {
+          method: 'DELETE',
+          headers: getRequestHeaders()
+        });
+        if (!response.ok) throw new Error("伺服器刪除失敗");
+        await fetchMyForms(currentUser.staffId);
+        alert('單據已刪除');
+      }
+    } catch (err) { alert(`刪除失敗：${err.message}`); }
+  };
+
   const handleProcessForm = async (docId, action, comment) => {
     const formToProcess = submittedForms.find(f => f.id === docId);
     if (!formToProcess) return;
@@ -1103,10 +1133,10 @@ const App = () => {
         );
       case 'inbox_list': return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" data={inboxList} onItemClick={setViewingForm} />;
       case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" data={myPendingList} onItemClick={setViewingForm} />;
-      case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={myCompletedList} onItemClick={setViewingForm} />;
-      case 'rejected': return <ListView title="退回/抽單" icon={FileX} color="bg-red-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected')} onItemClick={setViewingForm} />;
-      case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={[]} onItemClick={setViewingForm} />;
-      case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={[]} onItemClick={setViewingForm} />;
+      case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={myCompletedList} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
+      case 'rejected': return <ListView title="退回/抽單" icon={FileX} color="bg-red-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
+      case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={[]} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
+      case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={[]} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       default: return null;
     }
   };
