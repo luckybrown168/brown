@@ -396,7 +396,7 @@ const LeaveDurationPicker = ({ id, value, onChange }) => {
   return (
     <div className="flex items-center gap-4 bg-blue-50/30 p-4 border border-blue-100 rounded-xl" style={mingLiUStyle}>
       <div className="flex items-center gap-2"><select style={mingLiUStyle} value={d} onChange={(e) => { setD(e.target.value); updateDuration(e.target.value, h); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 32}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>日</span></div>
-      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={h} onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>時</span></div>
+      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={h} onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value, m); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>時</span></div>
       <div className="ml-auto text-blue-600 opacity-30"><ClipboardList size={20} /></div>
     </div>
   );
@@ -749,7 +749,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                   {staffList.map(s => (<option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>))}
                 </select>
               </div>
-              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">2. 指派任務角色</label>
+              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1" style={mingLiUStyle}>2. 指派任務角色</label>
                 <div className="grid grid-cols-2 gap-2">
                   {roles.map(r => (<button key={r.value} onClick={() => setSelectedRole(r.value)} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-black transition-all ${selectedRole === r.value ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'}`} style={mingLiUStyle}><r.icon size={14} /> {r.label}</button>))}
                 </div>
@@ -858,7 +858,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
             <div>
-              {/* 核心修正：欄位標題設為 12PX 並套用新細明體 */}
+              {/* 欄位標題設為 12PX 並套用新細明體 */}
               <p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p>
               <p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p>
             </div>
@@ -873,7 +873,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
              if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              return (
               <div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}>
-                {/* 核心修正：欄位標題設為 12PX */}
+                {/* 欄位標題設為 12PX */}
                 <p className="text-[12px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
                 <div className="flex items-center gap-2">
                   {field.type === 'file' ? (
@@ -1156,13 +1156,54 @@ const App = () => {
     const updatedData = { ...formToProcess, status: newStatus, values: { ...formToProcess.values, workflowPath: workflow, currentStep: newStepIndex } };
 
     try {
-      if (isMockMode) { setSubmittedForms(prev => prev.map(f => f.id === docId ? updatedData : f)); } 
+      if (isMockMode) { 
+        setSubmittedForms(prev => prev.map(f => f.id === docId ? updatedData : f)); 
+      } 
       else {
         const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(updatedData) });
         if (!response.ok) throw new Error("伺服器更新失敗");
         await fetchMyForms(currentUser.staffId);
       }
-      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已處理完畢！');
+
+      // --- 【新增】自動扣假邏輯 ---
+      if (newStatus === 'Completed' && updatedData.values?.category === '差勤類') {
+        const leaveType = updatedData.values.leave_type;
+        if (leaveType === '特休' || leaveType === '補休') {
+          const leaveTotalStr = updatedData.values.leave_total || "0 日 0 時";
+          const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
+          if (match) {
+            const totalDeductHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
+            const applicant = staffList.find(s => s.staffId === updatedData.staffId);
+            
+            if (applicant && totalDeductHours > 0) {
+              const updatedApplicant = { ...applicant };
+              if (leaveType === '特休') {
+                updatedApplicant.annualLeave = Math.max(0, parseFloat(((parseFloat(updatedApplicant.annualLeave) || 0) - totalDeductHours).toFixed(1)));
+              } else if (leaveType === '補休') {
+                updatedApplicant.compLeave = Math.max(0, parseFloat(((parseFloat(updatedApplicant.compLeave) || 0) - totalDeductHours).toFixed(1)));
+              }
+              
+              if (isMockMode) {
+                setStaffList(prev => prev.map(s => s.staffId === updatedApplicant.staffId ? updatedApplicant : s));
+                if (currentUser.staffId === updatedApplicant.staffId) setCurrentUser(updatedApplicant);
+              } else {
+                await fetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, {
+                  method: 'PUT',
+                  headers: getRequestHeaders(),
+                  body: JSON.stringify(updatedApplicant)
+                });
+                await fetchPersonnel();
+                if (currentUser.staffId === updatedApplicant.staffId) {
+                  setCurrentUser(prev => ({...prev, annualLeave: updatedApplicant.annualLeave, compLeave: updatedApplicant.compLeave}));
+                }
+              }
+            }
+          }
+        }
+      }
+      // ---------------------------
+
+      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已退回申請！');
       setViewingForm(null);
     } catch (err) { alert(`操作失敗：${err.message}`); }
   };
@@ -1178,6 +1219,7 @@ const App = () => {
 
     try {
       if (isAlreadyInTrash) {
+        // 真正從資料庫永久刪除
         if (isMockMode) {
           setSubmittedForms(prev => prev.filter(f => f.id !== formItem.id));
         } else {
@@ -1193,6 +1235,7 @@ const App = () => {
         }
         alert('單據已永久刪除');
       } else {
+        // 軟刪除：更新狀態為 'Deleted'，使其出現在垃圾桶
         const updatedItem = { 
           ...formItem, 
           status: 'Deleted'
@@ -1315,12 +1358,10 @@ const App = () => {
           <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : '智慧管理系統'}</div>
           <div className="flex items-center gap-4 border-l border-gray-100 pl-6">
             <div className="text-right">
-              {/* 核心修正：姓名與職稱字體設為 14PX 並套用新細明體 */}
               <p className="text-[14px] font-black text-slate-800 leading-tight" style={mingLiUStyle}>{currentUser.name}</p>
               <p className="text-[14px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p>
             </div>
             <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden">
-              {/* 卡通動物頭像 (Kittens) */}
               <img src={`https://robohash.org/${encodeURIComponent(currentUser.name)}?set=set4`} alt="avatar" />
             </div>
           </div>
