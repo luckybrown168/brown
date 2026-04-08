@@ -192,7 +192,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
   );
 };
 
-// --- 輔助組件：列表視圖 ---
+// --- 輔助組件：列表視圖 (新增刪除功能與草稿狀態渲染) ---
 const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
@@ -567,7 +567,15 @@ const PersonnelManagementView = ({ isMockMode }) => {
           <tbody className="divide-y divide-slate-50">
             {staffList.length > 0 ? staffList.map((person, idx) => (
               <tr key={person.staffId || idx} className="hover:bg-indigo-50/20 transition-colors group">
-                <td className="px-8 py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-slate-100 rounded-full border border-white shadow-sm overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${person.name}`} alt="avatar" /></div><div><p className="text-[10px] font-bold text-indigo-600 mb-0.5" style={mingLiUStyle}>{person.staffId}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{person.name}</p></div></div></td>
+                <td className="px-8 py-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-100 rounded-full border border-white shadow-sm overflow-hidden">
+                      {/* 卡通動物頭像 (Kittens) */}
+                      <img src={`https://robohash.org/${encodeURIComponent(person.name)}?set=set4`} alt="avatar" />
+                    </div>
+                    <div><p className="text-[10px] font-bold text-indigo-600 mb-0.5" style={mingLiUStyle}>{person.staffId}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{person.name}</p></div>
+                  </div>
+                </td>
                 <td className="px-6 py-5 text-xs font-bold text-slate-600" style={mingLiUStyle}>{person.dept} {person.team ? `/ ${person.team}` : ''}</td>
                 <td className="px-6 py-5 text-xs font-bold text-slate-600" style={mingLiUStyle}>{person.pos}</td>
                 <td className="px-6 py-5 flex items-center gap-1.5 text-slate-500" style={mingLiUStyle}><Mail size={12} className="text-slate-300" /><span className="text-[11px] font-bold">{person.email}</span></td>
@@ -717,7 +725,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                 return (
                   <div key={field.id} className={`${field.width} px-2`}>
                     <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col">
-                      {/* 核心修正：字型大小設為 12PX 並套用新細明體 */}
+                      {/* 字型大小設為 12PX 並套用新細明體 */}
                       <p className="text-[12px] font-black text-slate-400 uppercase mb-0.5 tracking-widest" style={mingLiUStyle}>{field.label}</p>
                       <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{displayVal}</p>
                     </div>
@@ -734,7 +742,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                   {staffList.map(s => (<option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>))}
                 </select>
               </div>
-              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1" style={mingLiUStyle}>2. 指派任務角色</label>
+              <div className="flex-1 space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">2. 指派任務角色</label>
                 <div className="grid grid-cols-2 gap-2">
                   {roles.map(r => (<button key={r.value} onClick={() => setSelectedRole(r.value)} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-black transition-all ${selectedRole === r.value ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'}`} style={mingLiUStyle}><r.icon size={14} /> {r.label}</button>))}
                 </div>
@@ -843,7 +851,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
             <div>
-              {/* 核心修正：欄位標題設為 12PX 並套用新細明體 */}
+              {/* 欄位標題設為 12PX 並套用新細明體 */}
               <p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p>
               <p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p>
             </div>
@@ -858,7 +866,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
              if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              return (
               <div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}>
-                {/* 核心修正：欄位標題設為 12PX */}
+                {/* 欄位標題設為 12PX */}
                 <p className="text-[12px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
                 <div className="flex items-center gap-2">
                   {field.type === 'file' ? (
@@ -1298,7 +1306,12 @@ const App = () => {
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
           <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : '智慧管理系統'}</div>
-          <div className="flex items-center gap-4 border-l border-gray-100 pl-6"><div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>{currentUser.name}</p><p className="text-[10px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p></div><div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.name}`} alt="avatar" /></div></div>
+          <div className="flex items-center gap-4 border-l border-gray-100 pl-6"><div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>{currentUser.name}</p></div>
+            <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden">
+              {/* 卡通動物頭像 (Kittens) */}
+              <img src={`https://robohash.org/${encodeURIComponent(currentUser.name)}?set=set4`} alt="avatar" />
+            </div>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white">{renderMainContent()}</div>
       </main>
