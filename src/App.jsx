@@ -192,7 +192,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
   );
 };
 
-// --- 輔助組件：列表視圖 (新增刪除功能與草稿狀態渲染) ---
+// --- 輔助組件：列表視圖 ---
 const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
@@ -858,7 +858,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
             <div>
-              {/* 欄位標題設為 12PX 並套用新細明體 */}
+              {/* 核心修正：欄位標題設為 12PX 並套用新細明體 */}
               <p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p>
               <p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p>
             </div>
@@ -873,7 +873,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
              if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              return (
               <div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}>
-                {/* 欄位標題設為 12PX */}
+                {/* 核心修正：欄位標題設為 12PX */}
                 <p className="text-[12px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
                 <div className="flex items-center gap-2">
                   {field.type === 'file' ? (
@@ -1313,7 +1313,12 @@ const App = () => {
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
           <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : '智慧管理系統'}</div>
-          <div className="flex items-center gap-4 border-l border-gray-100 pl-6"><div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>{currentUser.name}</p><p className="text-[10px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p></div>
+          <div className="flex items-center gap-4 border-l border-gray-100 pl-6">
+            <div className="text-right">
+              {/* 核心修正：姓名與職稱字體設為 14PX 並套用新細明體 */}
+              <p className="text-[14px] font-black text-slate-800 leading-tight" style={mingLiUStyle}>{currentUser.name}</p>
+              <p className="text-[14px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p>
+            </div>
             <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden">
               {/* 卡通動物頭像 (Kittens) */}
               <img src={`https://robohash.org/${encodeURIComponent(currentUser.name)}?set=set4`} alt="avatar" />
