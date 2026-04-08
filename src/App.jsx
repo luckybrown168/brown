@@ -192,7 +192,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
   );
 };
 
-// --- 輔助組件：列表視圖 ---
+// --- 輔助組件：列表視圖 (新增刪除功能與草稿狀態渲染) ---
 const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
@@ -396,7 +396,7 @@ const LeaveDurationPicker = ({ id, value, onChange }) => {
   return (
     <div className="flex items-center gap-4 bg-blue-50/30 p-4 border border-blue-100 rounded-xl" style={mingLiUStyle}>
       <div className="flex items-center gap-2"><select style={mingLiUStyle} value={d} onChange={(e) => { setD(e.target.value); updateDuration(e.target.value, h); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 32}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>日</span></div>
-      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={h} onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value, m); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>時</span></div>
+      <div className="flex items-center gap-2"><select style={mingLiUStyle} value={h} onChange={(e) => { setH(e.target.value); updateDuration(d, e.target.value); }} className="border rounded px-2 py-1 text-sm">{Array.from({length: 24}, (_, i) => i).map(num => <option key={num} value={num}>{num}</option>)}</select><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>時</span></div>
       <div className="ml-auto text-blue-600 opacity-30"><ClipboardList size={20} /></div>
     </div>
   );
@@ -716,7 +716,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500" style={mingLiUStyle}>
-        <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative">
+        <div className="bg-white border-2 border-blue-100 rounded-3xl p-10 shadow-xl relative font-serif">
           <div className="flex items-center gap-3 mb-8 border-b pb-4 border-blue-50">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><FileText size={24} /></div>
             <div>
@@ -732,7 +732,6 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                 return (
                   <div key={field.id} className={`${field.width} px-2`}>
                     <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col">
-                      {/* 欄位標題設為 12PX 並套用新細明體 */}
                       <p className="text-[12px] font-black text-slate-400 uppercase mb-0.5 tracking-widest" style={mingLiUStyle}>{field.label}</p>
                       <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{displayVal}</p>
                     </div>
@@ -766,16 +765,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                       <div key={step.staffId} className="flex items-center gap-4 animate-in slide-in-from-left-4 duration-300">
                         <div className="flex flex-col items-center gap-1"><div className="w-8 h-8 bg-white border-2 border-indigo-100 rounded-full flex items-center justify-center text-xs font-black text-indigo-600 shadow-sm">{index + 1}</div>{index < workflowSteps.length - 1 && <div className="w-0.5 h-6 bg-indigo-100"></div>}</div>
                         <div className="flex-1 bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm group hover:border-indigo-300 transition-colors">
-                           <div className="flex items-center gap-4">
-                             <div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}><roleInfo.icon size={20} /></div>
-                             <div>
-                               <div className="flex items-center gap-2">
-                                 <p className="font-black text-slate-800" style={mingLiUStyle}>{step.name}</p>
-                                 <span className={`px-2 py-0.5 rounded-md text-[9px] font-black text-white uppercase ${roleInfo.color}`} style={mingLiUStyle}>{step.role}</span>
-                               </div>
-                               <p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p>
-                             </div>
-                           </div>
+                           <div className="flex items-center gap-4"><div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}><roleInfo.icon size={20} /></div><div><div className="flex items-center gap-2"><p className="font-black text-slate-800" style={mingLiUStyle}>{step.name}</p><span className={`px-2 py-0.5 rounded-md text-[9px] font-black text-white uppercase ${roleInfo.color}`} style={mingLiUStyle}>{step.role}</span></div><p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p></div></div>
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
                               <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
@@ -849,7 +839,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         )}
       </div>
 
-      <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative print:shadow-none print:border-slate-400">
+      <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif print:shadow-none print:border-slate-400">
         <div className={`absolute top-10 right-10 w-32 h-32 border-4 rounded-full flex flex-col items-center justify-center rotate-12 opacity-80 pointer-events-none font-black ${currentStatus.borderClass} ${currentStatus.colorClass}`}>
           <span className="text-xs" style={mingLiUStyle}>先啟智慧表單件</span>
           <span className={`text-lg border-y-2 my-1 ${currentStatus.borderClass}`} style={mingLiUStyle}>{currentStatus.text}</span>
@@ -858,7 +848,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
             <div>
-              {/* 欄位標題設為 12PX 並套用新細明體 */}
               <p className="text-[12px] font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p>
               <p className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentDocId}</p>
             </div>
@@ -873,7 +862,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
              if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              return (
               <div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}>
-                {/* 欄位標題設為 12PX */}
                 <p className="text-[12px] font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
                 <div className="flex items-center gap-2">
                   {field.type === 'file' ? (
@@ -1020,22 +1008,32 @@ const App = () => {
       { id: "employee_id", label: "員工編號", type: "text", width: "w-1/2" },
       { id: "department", label: "組別", type: "select", options: TEAM_OPTIONS, width: "w-1/2" },
       { id: "category", label: "選擇類別", type: "select", options: ["行政類", "銷售類", "差勤類", "系統類"], width: "w-full" },
-      { id: "leave_type", label: "假單類別", type: "select", options: [...LEAVE_TYPES, "加班"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
+      
+      // --- 【核心修改】新增：表單種類 下拉選單，相依於 category 為 "差勤類" 時顯示 ---
+      { id: "form_kind", label: "表單種類", type: "select", options: ["出勤異常單", "銷假單", "加班單", "請假單"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
+      
+      // --- 【核心修改】假單與加班相依條件變更 ---
+      // 假單類別現在取決於 form_kind 為 "請假單" 或 "銷假單" 
+      { id: "leave_type", label: "假單類別", type: "select", options: LEAVE_TYPES, dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
+      
       { id: "agent", label: "代理人", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_start_time", label: "請假開始日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_end_time", label: "請假結束日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_total", label: "共計", type: "leave_duration", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
-      { id: "leave_reason", label: "請假事由", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
+      { id: "leave_reason", label: "請假/銷假事由", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_comment", label: "意見", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_attachment", label: "附加檔案", type: "file", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_rules_notice", type: "notice", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
-      { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "leave_type", showIf: "加班", width: "w-full" },
+      
+      // 加班選項現在直接取決於 form_kind 為 "加班單"
+      { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
-      { id: "ot_rules_notice", type: "ot_notice", dependsOn: "leave_type", showIf: "加班", width: "w-full" },
+      { id: "ot_rules_notice", type: "ot_notice", dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
+      
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
   };
@@ -1165,8 +1163,8 @@ const App = () => {
         await fetchMyForms(currentUser.staffId);
       }
 
-      // --- 【新增】自動扣假邏輯 ---
-      if (newStatus === 'Completed' && updatedData.values?.category === '差勤類') {
+      // --- 【新增】自動扣假邏輯：現在還需要檢查表單種類是否為"請假單" ---
+      if (newStatus === 'Completed' && updatedData.values?.category === '差勤類' && updatedData.values?.form_kind === '請假單') {
         const leaveType = updatedData.values.leave_type;
         if (leaveType === '特休' || leaveType === '補休') {
           const leaveTotalStr = updatedData.values.leave_total || "0 日 0 時";
