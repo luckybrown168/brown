@@ -573,13 +573,20 @@ const PersonnelManagementView = ({ isMockMode }) => {
                       {/* 卡通動物頭像 (Kittens) */}
                       <img src={`https://robohash.org/${encodeURIComponent(person.name)}?set=set4`} alt="avatar" />
                     </div>
-                    <div><p className="text-[10px] font-bold text-indigo-600 mb-0.5" style={mingLiUStyle}>{person.staffId}</p><p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{person.name}</p></div>
+                    <div>
+                      <p className="text-[12px] font-bold text-indigo-600 mb-0.5" style={mingLiUStyle}>{person.staffId}</p>
+                      {/* 姓名調整為 18PX */}
+                      <p className="text-[18px] font-bold text-slate-700 leading-tight" style={mingLiUStyle}>{person.name}</p>
+                    </div>
                   </div>
                 </td>
-                <td className="px-6 py-5 text-xs font-bold text-slate-600" style={mingLiUStyle}>{person.dept} {person.team ? `/ ${person.team}` : ''}</td>
-                <td className="px-6 py-5 text-xs font-bold text-slate-600" style={mingLiUStyle}>{person.pos}</td>
-                <td className="px-6 py-5 flex items-center gap-1.5 text-slate-500" style={mingLiUStyle}><Mail size={12} className="text-slate-300" /><span className="text-[11px] font-bold">{person.email}</span></td>
-                <td className="px-8 py-5 text-right"><div className="flex justify-end gap-2"><button onClick={() => { setEditingStaff(person); setIsModalOpen(true); }} className="p-2 text-slate-300 hover:text-indigo-600 transition-all"><Edit size={18} /></button><button onClick={() => handleDeleteStaff(person.staffId)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash size={18} /></button></div></td>
+                {/* 部門組別調整為 18PX */}
+                <td className="px-6 py-5 text-[18px] font-bold text-slate-600" style={mingLiUStyle}>{person.dept} {person.team ? `/ ${person.team}` : ''}</td>
+                {/* 職稱調整為 18PX */}
+                <td className="px-6 py-5 text-[18px] font-bold text-slate-600" style={mingLiUStyle}>{person.pos}</td>
+                {/* 電子郵件調整為 18PX */}
+                <td className="px-6 py-5 flex items-center gap-1.5 text-slate-500" style={mingLiUStyle}><Mail size={16} className="text-slate-300" /><span className="text-[18px] font-bold">{person.email}</span></td>
+                <td className="px-8 py-5 text-right"><div className="flex justify-end gap-2"><button onClick={() => { setEditingStaff(person); setIsModalOpen(true); }} className="p-2 text-slate-300 hover:text-indigo-600 transition-all"><Edit size={22} /></button><button onClick={() => handleDeleteStaff(person.staffId)} className="p-2 text-slate-300 hover:text-red-500 transition-all"><Trash size={22} /></button></div></td>
               </tr>
             )) : <tr><td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>{isLoading ? "正在讀取資料..." : "目前資料庫尚無資料。"}</td></tr>}
           </tbody>
@@ -725,7 +732,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                 return (
                   <div key={field.id} className={`${field.width} px-2`}>
                     <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col">
-                      {/* 字型大小設為 12PX 並套用新細明體 */}
+                      {/* 欄位標題設為 12PX 並套用新細明體 */}
                       <p className="text-[12px] font-black text-slate-400 uppercase mb-0.5 tracking-widest" style={mingLiUStyle}>{field.label}</p>
                       <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{displayVal}</p>
                     </div>
@@ -1306,7 +1313,7 @@ const App = () => {
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
           <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : '智慧管理系統'}</div>
-          <div className="flex items-center gap-4 border-l border-gray-100 pl-6"><div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>{currentUser.name}</p></div>
+          <div className="flex items-center gap-4 border-l border-gray-100 pl-6"><div className="text-right"><p className="text-xs font-black text-slate-800" style={mingLiUStyle}>{currentUser.name}</p><p className="text-[10px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p></div>
             <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden">
               {/* 卡通動物頭像 (Kittens) */}
               <img src={`https://robohash.org/${encodeURIComponent(currentUser.name)}?set=set4`} alt="avatar" />
