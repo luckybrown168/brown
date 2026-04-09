@@ -434,6 +434,17 @@ const LeaveDurationPicker = ({ id, value, onChange }) => {
 };
 
 // --- 規章備註區塊 ---
+const AnomalyNoticeBlock = () => (
+  <div className="bg-red-50/40 border border-red-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
+    <div className="flex items-center gap-2 mb-4 text-red-800 border-b border-red-200 pb-2"><Info size={18} /><span className="font-black text-base" style={mingLiUStyle}>出勤異常單備註</span></div>
+    <div className="space-y-3 text-[13px] text-slate-700 leading-relaxed">
+      <div className="flex gap-3"><span className="font-black text-red-600 shrink-0" style={mingLiUStyle}>1.</span><div style={mingLiUStyle}>請盡量避免因電腦未登出或未關機而補單。</div></div>
+      <div className="flex gap-3"><span className="font-black text-red-600 shrink-0" style={mingLiUStyle}>2.</span><div style={mingLiUStyle}>出勤異常確認單請於出勤日期隔日前交付財務行政部辦理。</div></div>
+      <div className="flex gap-3"><span className="font-black text-red-600 shrink-0" style={mingLiUStyle}>3.</span><div style={mingLiUStyle}>加班事後申請請於加班後七個工作日內交至財務行政部辦理，逾期視同無加班事實。</div></div>
+    </div>
+  </div>
+);
+
 const LeaveNoticeBlock = () => (
   <div className="bg-amber-50/40 border border-amber-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
     <div className="flex items-center gap-2 mb-4 text-amber-800 border-b border-amber-200 pb-2"><Info size={18} /><span className="font-black text-base" style={mingLiUStyle}>請假規章與簽核流程說明</span></div>
@@ -669,7 +680,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
             }
             return (
               <div key={field.id} className={`${field.width} px-2 animate-in fade-in slide-in-from-top-2 duration-300`}>
-                {field.type !== "button" && field.type !== "notice" && field.type !== "ot_notice" && (
+                {field.type !== "button" && field.type !== "notice" && field.type !== "ot_notice" && field.type !== "anomaly_notice" && (
                   <div className="flex items-center gap-2 mb-2"><div className="w-1.5 h-1.5 bg-[#1677FF] rounded-full"></div><label className="text-sm font-bold text-slate-700 underline decoration-slate-200 underline-offset-4" style={mingLiUStyle}>{field.label}：</label></div>
                 )}
                 {field.type === "select" && <select style={mingLiUStyle} value={formValues[field.id] || ""} onChange={(e) => onInputChange(field.id, e.target.value)} className="w-full border border-slate-400 p-2 rounded text-sm outline-none focus:border-blue-500 bg-white shadow-sm"><option value="">-- 請選擇 --</option>{field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>}
@@ -700,6 +711,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview }) => {
 
                 {field.type === "notice" && <LeaveNoticeBlock />}
                 {field.type === "ot_notice" && <OvertimeNoticeBlock />}
+                {field.type === "anomaly_notice" && <AnomalyNoticeBlock />}
                 {field.type === "button" && <div className="w-full mt-4"><button type="button" onClick={onPreview} className="w-full bg-[#1677FF] text-white py-4 rounded-xl font-black shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-lg" style={mingLiUStyle}><Eye size={20} /> 預覽填寫內容</button></div>}
               </div>
             );
@@ -753,7 +765,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
             </div>
           </div>
           <div className="flex flex-wrap -mx-2 gap-y-4 mb-10">
-              {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
+              {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice' && f.type !== 'anomaly_notice').map(field => {
                 if (field.dependsOn && !values[field.dependsOn]) return null;
                 const val = values[field.id];
                 const displayVal = field.type === 'file' ? (val?.name ? `📎 ${val.name}` : '(未上傳)') : (val || '(未填寫)');
@@ -894,7 +906,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
             </div>
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
-          {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice').map(field => {
+          {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice' && f.type !== 'anomaly_notice').map(field => {
              const val = safeValues[field.id];
              if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              return (
@@ -1049,10 +1061,10 @@ const App = () => {
       
       { id: "anomaly_reason", label: "異常原因", type: "select", options: ["公務外出", "逾時登出，無加班申請事實", "其他"], dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
       
-      // --- 【新增】選擇「其他」時的延伸欄位 ---
       { id: "anomaly_detail", label: "請詳述", type: "text", dependsOn: "anomaly_reason", showIf: "其他", width: "w-full" },
       { id: "anomaly_clock_in", label: "上班時間", type: "time_picker", dependsOn: "anomaly_reason", showIf: ["公務外出", "逾時登出，無加班申請事實", "其他"], width: "w-1/2" },
       { id: "anomaly_clock_out", label: "下班時間", type: "time_picker", dependsOn: "anomaly_reason", showIf: ["公務外出", "逾時登出，無加班申請事實", "其他"], width: "w-1/2" },
+      { id: "anomaly_rules_notice", type: "anomaly_notice", dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
 
       { id: "leave_type", label: "假單類別", type: "select", options: LEAVE_TYPES, dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
       
