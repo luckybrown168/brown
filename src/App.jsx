@@ -20,7 +20,7 @@ import {
   Trash,
   Edit, 
   Type,
-  Paperclip,
+  Paperclip, 
   ArrowRight,
   ChevronRight,
   ChevronLeft,
@@ -488,7 +488,7 @@ const LeaveNoticeBlock = () => (
 const OvertimeNoticeBlock = () => (
   <div className="bg-blue-50/40 border border-blue-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
     <div className="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-200 pb-2"><Info size={18} /><span className="font-black text-base" style={mingLiUStyle}>加班申請規則與備註</span></div>
-    <div className="space-y-4 text-[13px] text-slate-700執行任務後的意見 leading-relaxed">
+    <div className="space-y-4 text-[13px] text-slate-700 leading-relaxed">
       <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>A.</span><div style={mingLiUStyle}>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</div></div>
       <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>B.</span><div style={mingLiUStyle}>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</div></div>
       <div className="flex gap-3">
@@ -666,6 +666,9 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
     reader.readAsDataURL(file);
   };
 
+  // ★ 新增：檢查必填欄位 (主旨與員編)
+  const isRequiredMissing = !formValues.form_subject || !formValues.employee_id;
+
   return (
     <div className="space-y-6" style={mingLiUStyle}>
       <div className="bg-white border border-slate-300 rounded-xl p-8 shadow-sm font-serif relative overflow-hidden">
@@ -709,7 +712,6 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                       {formValues[field.id] && !isUploading && (
                         <div className="flex items-center gap-2">
                           <CheckCircle className="text-green-500" size={24} />
-                          {/* 新增：移除附件按鈕 */}
                           <button 
                             type="button" 
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onInputChange(field.id, null); }} 
@@ -729,9 +731,21 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                 {field.type === "anomaly_notice" && <AnomalyNoticeBlock />}
                 {field.type === "button" && (
                   <div className="w-full mt-4">
-                    <button type="button" disabled={isProcessing} onClick={onPreview} className="w-full bg-[#1677FF] text-white py-4 rounded-xl font-black shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-lg disabled:opacity-50" style={mingLiUStyle}>
+                    <button 
+                      type="button" 
+                      disabled={isProcessing || isRequiredMissing} 
+                      onClick={onPreview} 
+                      title={isRequiredMissing ? "請先填寫「單據主旨」與「員工編號」" : "點擊進入預覽與設定簽核"}
+                      className={`w-full py-4 rounded-xl font-black shadow-lg transition-all flex items-center justify-center gap-2 text-lg ${isRequiredMissing ? 'bg-slate-300 text-slate-500 cursor-not-allowed grayscale' : 'bg-[#1677FF] text-white hover:bg-blue-700 active:scale-[0.99]'}`} 
+                      style={mingLiUStyle}
+                    >
                       <Eye size={20} /> 預覽填寫內容
                     </button>
+                    {isRequiredMissing && (
+                      <p className="text-center text-xs text-red-500 font-bold mt-2 animate-pulse" style={mingLiUStyle}>
+                        * 請務必輸入單據主旨與員工編號方可進行下一步
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
