@@ -1214,47 +1214,66 @@ const App = () => {
         await fetchMyForms(currentUser.staffId);
       }
 
-      if (newStatus === 'Completed' && updatedData.values?.category === '差勤類' && updatedData.values?.form_kind === '請假單') {
-        const leaveType = updatedData.values.leave_type;
-        if (leaveType === '特休' || leaveType === '補休') {
-          const leaveTotalStr = updatedData.values.leave_total || "0 日 0 時";
-          const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
-          if (match) {
-            const totalDeductHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
-            const applicant = staffList.find(s => s.staffId === updatedData.staffId);
+      // --- 【修改】自動扣假與銷假歸還邏輯 ---
+      if (newStatus === 'Completed' && updatedData.values?.category === '差勤類') {
+        const formKind = updatedData.values?.form_kind;
+        
+        // 若表單種類是"請假單"或"銷假單"才執行連動
+        if (formKind === '請假單' || formKind === '銷假單') {
+          const leaveType = updatedData.values.leave_type;
+          
+          if (leaveType === '特休' || leaveType === '補休') {
+            const leaveTotalStr = updatedData.values.leave_total || "0 日 0 時";
+            const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
             
-            if (applicant && totalDeductHours > 0) {
-              const updatedApplicant = { ...applicant };
-              if (leaveType === '特休') {
-                updatedApplicant.annualLeave = Math.max(0, parseFloat(((parseFloat(updatedApplicant.annualLeave) || 0) - totalDeductHours).toFixed(1)));
-              } else if (leaveType === '補休') {
-                updatedApplicant.compLeave = Math.max(0, parseFloat(((parseFloat(updatedApplicant.compLeave) || 0) - totalDeductHours).toFixed(1)));
-              }
+            if (match) {
+              // 換算總時數 (1日 = 8小時)
+              const totalProcessHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
+              const applicant = staffList.find(s => s.staffId === updatedData.staffId);
               
-              if (isMockMode) {
-                setStaffList(prev => prev.map(s => s.staffId === updatedApplicant.staffId ? updatedApplicant : s));
-                if (currentUser.staffId === updatedApplicant.staffId) setCurrentUser(updatedApplicant);
-              } else {
-                await fetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, {
-                  method: 'PUT',
-                  headers: getRequestHeaders(),
-                  body: JSON.stringify(updatedApplicant)
-                });
-                await fetchPersonnel();
-                if (currentUser.staffId === updatedApplicant.staffId) {
-                  setCurrentUser(prev => ({...prev, annualLeave: updatedApplicant.annualLeave, compLeave: updatedApplicant.compLeave}));
+              if (applicant && totalProcessHours > 0) {
+                const updatedApplicant = { ...applicant };
+                const isDeducting = formKind === '請假單'; // 請假扣除，銷假加回
+                
+                if (leaveType === '特休') {
+                  const currentAnnual = parseFloat(updatedApplicant.annualLeave) || 0;
+                  updatedApplicant.annualLeave = isDeducting 
+                    ? Math.max(0, parseFloat((currentAnnual - totalProcessHours).toFixed(1)))
+                    : parseFloat((currentAnnual + totalProcessHours).toFixed(1));
+                } else if (leaveType === '補休') {
+                  const currentComp = parseFloat(updatedApplicant.compLeave) || 0;
+                  updatedApplicant.compLeave = isDeducting
+                    ? Math.max(0, parseFloat((currentComp - totalProcessHours).toFixed(1)))
+                    : parseFloat((currentComp + totalProcessHours).toFixed(1));
+                }
+                
+                if (isMockMode) {
+                  setStaffList(prev => prev.map(s => s.staffId === updatedApplicant.staffId ? updatedApplicant : s));
+                  if (currentUser.staffId === updatedApplicant.staffId) setCurrentUser(updatedApplicant);
+                } else {
+                  await fetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, {
+                    method: 'PUT',
+                    headers: getRequestHeaders(),
+                    body: JSON.stringify(updatedApplicant)
+                  });
+                  await fetchPersonnel();
+                  if (currentUser.staffId === updatedApplicant.staffId) {
+                    setCurrentUser(prev => ({...prev, annualLeave: updatedApplicant.annualLeave, compLeave: updatedApplicant.compLeave}));
+                  }
                 }
               }
             }
           }
         }
       }
+      // ---------------------------
 
       alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已退回申請！');
       setViewingForm(null);
     } catch (err) { alert(`操作失敗：${err.message}`); }
   };
 
+  // 軟/硬 兩段式刪除單據
   const handleDeleteForm = async (formItem) => {
     const isAlreadyInTrash = formItem.status === 'Deleted';
     const confirmMsg = isAlreadyInTrash 
