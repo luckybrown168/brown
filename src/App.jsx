@@ -1271,7 +1271,11 @@ const App = () => {
             const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
             if (match) {
               const totalProcessHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
-              const applicant = staffList.find(s => s.staffId === formToProcess.staffId);
+              
+              // 改為抓取表單內填寫的「員工編號」(employee_id) 欄位來判定實際請假人，若未填寫則預設退回填單人
+              const targetStaffId = updatedValues.employee_id || formToProcess.staffId;
+              const applicant = staffList.find(s => s.staffId === targetStaffId);
+              
               if (applicant && totalProcessHours > 0) {
                 const updatedApplicant = { ...applicant };
                 const isDeducting = formKind === '請假單'; 
