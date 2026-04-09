@@ -1108,17 +1108,43 @@ const App = () => {
     });
   };
 
+  /**
+   * 改良版單號產生邏輯：F + YYYYMMDD + 員編 + 流水號
+   * 讀取當前列表內相同前綴的最高序號並 +1
+   */
+  const generateSequentialId = () => {
+    const now = new Date();
+    const dateStr = now.getFullYear().toString() + 
+                    (now.getMonth() + 1).toString().padStart(2, '0') + 
+                    now.getDate().toString().padStart(2, '0');
+    
+    // 前綴包含日期與員編，確保即使多人同時操作，只要員編不同就不會碰撞
+    const prefix = `F${dateStr}-${currentUser.staffId}-`;
+    
+    // 從現有的表單中找出今天、且屬於自己的單據最高序號
+    const todaySerials = submittedForms
+      .filter(f => f.id && f.id.startsWith(prefix))
+      .map(f => {
+        const parts = f.id.split('-');
+        const serial = parseInt(parts[parts.length - 1], 10);
+        return isNaN(serial) ? 0 : serial;
+      });
+
+    const maxSerial = todaySerials.length > 0 ? Math.max(...todaySerials) : 0;
+    const nextSerial = (maxSerial + 1).toString().padStart(3, '0');
+    
+    return `${prefix}${nextSerial}`;
+  };
+
   // 對接 server.js 的提交表單 API
   const handleFinalSubmit = async (approvalFlow) => {
     let docId = currentDocId;
     let isNew = false;
     
     if (!docId) {
-      const now = new Date();
-      const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
-      // 使用員工編號與亂數確保單號唯一性，避免多位員工產生相同 ID 導致 DB (500) 主鍵衝突
-      const uniqueId = Math.random().toString(36).substr(2, 4).toUpperCase();
-      docId = `F${dateStr}-${currentUser.staffId}-${uniqueId}`;
+      // 在提交前先刷新一次表單列表，確保取得最新的序號
+      await fetchMyForms(currentUser.staffId);
+      docId = generateSequentialId();
       isNew = true;
     }
 
@@ -1172,11 +1198,8 @@ const App = () => {
     let isNew = false;
     
     if (!docId) {
-      const now = new Date();
-      const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
-      // 使用員工編號與亂數確保單號唯一性
-      const uniqueId = Math.random().toString(36).substr(2, 4).toUpperCase();
-      docId = `F${dateStr}-${currentUser.staffId}-${uniqueId}`;
+      await fetchMyForms(currentUser.staffId);
+      docId = generateSequentialId();
       isNew = true;
     }
 
@@ -1447,7 +1470,7 @@ const App = () => {
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
-      <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
+      <aside className={`bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
         <div className="p-8 flex items-center justify-between"><div className="flex items-center gap-3 overflow-hidden"><div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl text-white shrink-0"><Layers size={24} /></div>{!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2" style={mingLiUStyle}>先啟智慧表單</span>)}</div></div>
         <nav className="flex-1 px-4 space-y-1 mt-6">
           {[{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'personnel_management', label: '人員管理', icon: Users }].map((item) => (<button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}><item.icon size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>{item.label}</span>}</button>))}
