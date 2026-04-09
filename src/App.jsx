@@ -694,18 +694,33 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                 {field.type === "file" && (
                   <div className="relative group">
                     <input type="file" className="hidden" id={`file-${field.id}`} onChange={(e) => handleFileChange(field.id, e)} />
-                    <label htmlFor={`file-${field.id}`} className={`flex items-center gap-3 w-full border-2 border-dashed ${formValues[field.id] ? 'border-green-400 bg-green-50/30' : 'border-slate-300 bg-transparent'} p-4 rounded-xl cursor-pointer hover:border-blue-400 transition-all group`}>
-                      <div className={`w-10 h-10 ${formValues[field.id] ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'} rounded-lg flex items-center justify-center transition-colors`}>
-                        {isUploading ? <RotateCcw size={20} className="animate-spin" /> : <Paperclip size={20} />}
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-bold text-slate-600 truncate" style={mingLiUStyle}>
-                          {isUploading ? "正在處理檔案..." : (formValues[field.id]?.name || "點擊或拖曳檔案至此處上傳")}
-                        </p>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-tight" style={mingLiUStyle}>支援 PDF, JPG, PNG (最大 5MB)</p>
-                      </div>
-                      {formValues[field.id] && !isUploading && <CheckCircle className="text-green-500" size={24} />}
-                    </label>
+                    <div className={`flex items-center gap-3 w-full border-2 border-dashed ${formValues[field.id] ? 'border-green-400 bg-green-50/30' : 'border-slate-300 bg-transparent'} p-4 rounded-xl transition-all group`}>
+                      <label htmlFor={`file-${field.id}`} className="flex flex-1 items-center gap-3 cursor-pointer">
+                        <div className={`w-10 h-10 ${formValues[field.id] ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'} rounded-lg flex items-center justify-center transition-colors`}>
+                          {isUploading ? <RotateCcw size={20} className="animate-spin" /> : <Paperclip size={20} />}
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <p className="text-sm font-bold text-slate-600 truncate" style={mingLiUStyle}>
+                            {isUploading ? "正在處理檔案..." : (formValues[field.id]?.name || "點擊或拖曳檔案至此處上傳")}
+                          </p>
+                          <p className="text-xs text-slate-400 font-bold uppercase tracking-tight" style={mingLiUStyle}>支援 PDF, JPG, PNG (最大 5MB)</p>
+                        </div>
+                      </label>
+                      {formValues[field.id] && !isUploading && (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="text-green-500" size={24} />
+                          {/* 新增：移除附件按鈕 */}
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onInputChange(field.id, null); }} 
+                            className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                            title="移除附件"
+                          >
+                            <Trash size={18} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -973,8 +988,8 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
         {!canApprove && (
           <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end gap-3 items-center print:hidden">
-            <button type="button" disabled={isProcessing} onClick={handlePrint} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 flex items-center gap-2 disabled:opacity-50" style={mingLiUStyle}><Printer size={14} /> 列印存根</button>
-            <button type="button" disabled={isProcessing} onClick={onBack || onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50" style={mingLiUStyle}>{isViewOnly ? <ArrowLeft size={14} /> : null} {isViewOnly ? "返回列表" : "完成返回"}</button>
+            <button type="button" onClick={handlePrint} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 flex items-center gap-2 disabled:opacity-50" style={mingLiUStyle}><Printer size={14} /> 列印存根</button>
+            <button type="button" onClick={onBack || onReset} className="px-8 py-2 bg-[#1677FF] text-white rounded-xl text-xs font-black shadow-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50" style={mingLiUStyle}>{isViewOnly ? <ArrowLeft size={14} /> : null} {isViewOnly ? "返回列表" : "完成返回"}</button>
           </div>
         )}
       </div>
@@ -1325,6 +1340,8 @@ const App = () => {
             const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
             if (match) {
               const totalProcessHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
+              
+              // 改為抓取表單內填寫的「員工編號」(employee_id) 欄位來判定實際請假人，若未填寫則預設退回填單人
               const targetStaffId = updatedValues.employee_id || formToProcess.staffId;
               const applicant = staffList.find(s => s.staffId === targetStaffId);
               
@@ -1490,7 +1507,7 @@ const App = () => {
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
-            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} /> : 
+            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} /> : 
               isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} /> : 
               <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} />}
           </div></div>
