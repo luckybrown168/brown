@@ -69,7 +69,8 @@ import {
   ChevronUp,
   UserCog,
   MessageSquare,
-  Undo2
+  Undo2,
+  UserPlus2
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -488,8 +489,8 @@ const LeaveNoticeBlock = () => (
 const OvertimeNoticeBlock = () => (
   <div className="bg-blue-50/40 border border-blue-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
     <div className="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-200 pb-2"><Info size={18} /><span className="font-black text-base" style={mingLiUStyle}>加班申請規則與備註</span></div>
-    <div className="space-y-4 text-[13px] text-slate-700 leading-relaxed">
-      <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>A.</span><div style={mingLiUStyle}>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈主管審核確認。</div></div>
+    <div className="space-y-4 text-[13px] text-slate-700執行任務後的意見 leading-relaxed">
+      <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>A.</span><div style={mingLiUStyle}>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈現主管審核確認。</div></div>
       <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>B.</span><div style={mingLiUStyle}>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</div></div>
       <div className="flex gap-3">
         <span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>C.</span>
@@ -666,7 +667,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
     reader.readAsDataURL(file);
   };
 
-  // ★ 新增：檢查必填欄位 (主旨與員編)
+  // ★ 檢查必填欄位 (主旨與員編)
   const isRequiredMissing = !formValues.form_subject || !formValues.employee_id;
 
   return (
@@ -879,8 +880,12 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 };
 
 // --- 組件：提交後的存根 ---
-const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing }) => {
+const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList }) => {
   const [comment, setComment] = useState("");
+  // ★ 加簽相關狀態
+  const [extraStaffId, setExtraStaffId] = useState("");
+  const [extraRole, setExtraRole] = useState("簽核");
+  const [showAddStep, setShowAddStep] = useState(false);
 
   const handlePrint = () => {
     const originalTitle = document.title;
@@ -904,6 +909,36 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // ★ 處理加簽邏輯
+  const handleAddReviewerAndSubmit = () => {
+    if (!extraStaffId) return alert("請先選擇加簽人員");
+    const staff = staffList.find(s => s.staffId === extraStaffId);
+    if (!staff) return;
+
+    // 複製簽核路徑並插入新的人員
+    const newWorkflow = [...(values.workflowPath || [])];
+    const currentStep = values.currentStep || 0;
+    
+    // 檢查是否已在後續流程中
+    if (newWorkflow.some((step, idx) => idx > currentStep && step.staffId === extraStaffId)) {
+      return alert("此人員已在後續簽核流程中，無需重複加簽");
+    }
+
+    const newStep = { 
+      staffId: staff.staffId, 
+      name: staff.name, 
+      pos: staff.pos, 
+      dept: staff.dept, 
+      role: extraRole 
+    };
+
+    // 在目前的下一步插入
+    newWorkflow.splice(currentStep + 1, 0, newStep);
+
+    // 執行核准並夾帶新的路徑
+    onApprove(currentDocId, comment || "加簽主管核核", newWorkflow);
   };
 
   const safeValues = values || {};
@@ -989,13 +1024,77 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
         {canApprove && (
           <div className="mt-8 p-6 bg-indigo-50/50 border-2 border-indigo-200 rounded-[2rem] animate-in slide-in-from-bottom-4">
-            <div className="flex items-center gap-2 mb-4 text-indigo-700"><MessageSquare size={18} /><h4 className="font-black text-sm" style={mingLiUStyle}>{isAssignee ? "填寫交辦執行意見" : "填寫簽核意見 / 退回理由"}</h4></div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-indigo-700">
+                <MessageSquare size={18} />
+                <h4 className="font-black text-sm" style={mingLiUStyle}>{isAssignee ? "填寫交辦執行意見" : "填寫簽核意見 / 退回理由"}</h4>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowAddStep(!showAddStep)} 
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all ${showAddStep ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50'}`}
+                style={mingLiUStyle}
+              >
+                <UserPlus2 size={14} /> {showAddStep ? "隱藏加簽" : "加簽/改派給上級主管"}
+              </button>
+            </div>
+
+            {/* ★ 加簽面板 */}
+            {showAddStep && (
+              <div className="mb-6 p-5 bg-white border border-indigo-100 rounded-2xl shadow-sm animate-in slide-in-from-top-2">
+                <p className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5">
+                  <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 設定加簽對象 (核准後將先送至此人)
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <select 
+                    className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-bold text-sm"
+                    value={extraStaffId}
+                    onChange={(e) => setExtraStaffId(e.target.value)}
+                    style={mingLiUStyle}
+                  >
+                    <option value="">-- 選取加簽主管人員 --</option>
+                    {staffList.filter(s => s.staffId !== currentUser.staffId).map(s => (
+                      <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    {["簽核", "會簽"].map(r => (
+                      <button 
+                        key={r}
+                        type="button"
+                        onClick={() => setExtraRole(r)}
+                        className={`flex-1 py-2 rounded-xl text-xs font-black border transition-all ${extraRole === r ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300'}`}
+                        style={mingLiUStyle}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-3 italic">* 加簽後，原有的後續簽核人員將排在該位主管之後。</p>
+              </div>
+            )}
+
             <textarea value={comment} disabled={isProcessing} onChange={(e) => setComment(e.target.value)} placeholder={isAssignee ? "請輸入交辦任務的執行狀況..." : "請在此輸入您的簽核意見..."} className="w-full h-24 p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50" style={mingLiUStyle} />
+            
             <div className="mt-6 flex gap-3">
                 {!isAssignee && <button type="button" disabled={isProcessing} onClick={() => onReject(currentDocId, comment)} className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 flex items-center justify-center gap-2 disabled:opacity-50" style={mingLiUStyle}><X size={14} /> 退回申請</button>}
-                <button type="button" disabled={isProcessing} onClick={() => onApprove(currentDocId, comment)} className={`${isAssignee ? 'w-full' : 'flex-[2]'} py-3 bg-green-600 text-white rounded-xl text-xs font-black shadow-md hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-50`} style={mingLiUStyle}>
-                  {isProcessing ? <RotateCcw className="animate-spin" size={14} /> : <Check size={14} />} {isAssignee ? "確認交辦完成" : "核准通過"}
-                </button>
+                
+                {showAddStep ? (
+                  <button 
+                    type="button" 
+                    disabled={isProcessing || !extraStaffId} 
+                    onClick={handleAddReviewerAndSubmit} 
+                    className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-md hover:bg-indigo-700 flex items-center justify-center gap-2 disabled:opacity-50"
+                    style={mingLiUStyle}
+                  >
+                    {isProcessing ? <RotateCcw className="animate-spin" size={14} /> : <UserPlus2 size={14} />} 核准並加簽傳送
+                  </button>
+                ) : (
+                  <button type="button" disabled={isProcessing} onClick={() => onApprove(currentDocId, comment)} className={`${isAssignee ? 'w-full' : 'flex-[2]'} py-3 bg-green-600 text-white rounded-xl text-xs font-black shadow-md hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-50`} style={mingLiUStyle}>
+                    {isProcessing ? <RotateCcw className="animate-spin" size={14} /> : <Check size={14} />} {isAssignee ? "確認交辦完成" : "核准通過"}
+                  </button>
+                )}
             </div>
           </div>
         )}
@@ -1304,13 +1403,16 @@ const App = () => {
   };
 
   // 對接 server.js 的簽核更新 API
-  const handleProcessForm = async (docId, action, comment) => {
+  // ★ 修改：新增傳入 optionalNewWorkflow 參數，支持加簽功能
+  const handleProcessForm = async (docId, action, comment, optionalNewWorkflow = null) => {
     const formToProcess = submittedForms.find(f => f.id === docId);
     if (!formToProcess) return;
 
     let newStatus = formToProcess.status;
     let newStepIndex = formToProcess.values.currentStep || 0;
-    const workflow = [...(formToProcess.values.workflowPath || [])];
+    
+    // 如果有傳入加簽後的新路徑則採用之，否則使用原路徑
+    const workflow = optionalNewWorkflow ? [...optionalNewWorkflow] : [...(formToProcess.values.workflowPath || [])];
 
     setIsProcessing(true);
     try {
@@ -1478,8 +1580,8 @@ const App = () => {
       return (
         <SubmissionSummary 
           schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} canApprove={canApprove}
-          onApprove={(id, comm) => handleProcessForm(id, 'approve', comm)} onReject={(id, comm) => handleProcessForm(id, 'reject', comm)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
-          isProcessing={isProcessing}
+          onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm) => handleProcessForm(id, 'reject', comm)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
+          isProcessing={isProcessing} staffList={staffList}
         />
       ); 
     }
@@ -1521,7 +1623,7 @@ const App = () => {
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
-            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} /> : 
+            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} staffList={staffList} /> : 
               isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} /> : 
               <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} />}
           </div></div>
@@ -1538,7 +1640,7 @@ const App = () => {
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
-      <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
+      <aside className={`bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
         <div className="p-8 flex items-center justify-between"><div className="flex items-center gap-3 overflow-hidden"><div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl text-white shrink-0"><Layers size={24} /></div>{!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2" style={mingLiUStyle}>先啟智慧表單</span>)}</div></div>
         <nav className="flex-1 px-4 space-y-1 mt-6">
           {[{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'personnel_management', label: '人員管理', icon: Users }].map((item) => (<button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}><item.icon size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>{item.label}</span>}</button>))}
