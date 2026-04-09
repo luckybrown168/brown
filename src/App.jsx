@@ -1116,8 +1116,9 @@ const App = () => {
     if (!docId) {
       const now = new Date();
       const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
-      const todayForms = submittedForms.filter(f => f.id && f.id.startsWith(dateStr));
-      docId = `${dateStr}_${(todayForms.length + 1).toString().padStart(3, '0')}`;
+      // 使用員工編號與亂數確保單號唯一性，避免多位員工產生相同 ID 導致 DB (500) 主鍵衝突
+      const uniqueId = Math.random().toString(36).substr(2, 4).toUpperCase();
+      docId = `F${dateStr}-${currentUser.staffId}-${uniqueId}`;
       isNew = true;
     }
 
@@ -1144,7 +1145,10 @@ const App = () => {
             headers: getRequestHeaders(), 
             body: JSON.stringify(submissionData) 
           });
-          if (!response.ok) throw new Error("提交失敗");
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(`提交失敗: ${errData.details || response.statusText}`);
+          }
         } else {
           const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
             method: 'PUT', 
@@ -1170,8 +1174,9 @@ const App = () => {
     if (!docId) {
       const now = new Date();
       const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
-      const todayForms = submittedForms.filter(f => f.id && f.id.startsWith(dateStr));
-      docId = `${dateStr}_${(todayForms.length + 1).toString().padStart(3, '0')}`;
+      // 使用員工編號與亂數確保單號唯一性
+      const uniqueId = Math.random().toString(36).substr(2, 4).toUpperCase();
+      docId = `F${dateStr}-${currentUser.staffId}-${uniqueId}`;
       isNew = true;
     }
 
@@ -1192,18 +1197,15 @@ const App = () => {
         }
       } else {
         if (isNew) {
-          // 提交草稿，先 POST 再 PUT (或直接帶 Draft 狀態 POST，取決於後端邏輯，這裡配合 server.js)
-          await fetch(`${API_URL_ROOT}/api/forms`, { 
+          const response = await fetch(`${API_URL_ROOT}/api/forms`, { 
             method: 'POST', 
             headers: getRequestHeaders(), 
             body: JSON.stringify(draftData) 
           });
-          // 因 server.js POST 預設為 Pending，需補一個 PUT 改為 Draft
-          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-            method: 'PUT', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
-          });
+          if (!response.ok) {
+             const errData = await response.json().catch(() => ({}));
+             throw new Error(`草稿儲存失敗: ${errData.details || response.statusText}`);
+          }
         } else {
           await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
             method: 'PUT', 
