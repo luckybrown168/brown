@@ -489,7 +489,7 @@ const LeaveNoticeBlock = () => (
 const OvertimeNoticeBlock = () => (
   <div className="bg-blue-50/40 border border-blue-200 rounded-2xl p-6 mt-4 shadow-inner" style={mingLiUStyle}>
     <div className="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-200 pb-2"><Info size={18} /><span className="font-black text-base" style={mingLiUStyle}>加班申請規則與備註</span></div>
-    <div className="space-y-4 text-[13px] text-slate-700執行任務後的意見 leading-relaxed">
+    <div className="space-y-4 text-[13px] text-slate-700 leading-relaxed">
       <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>A.</span><div style={mingLiUStyle}>加班申請須事前由直屬主管核准，始得進行加班，並於事後呈現主管審核確認。</div></div>
       <div className="flex gap-3"><span className="font-black text-blue-600 shrink-0" style={mingLiUStyle}>B.</span><div style={mingLiUStyle}>此單由各部門編序號並於加班後七個工作日內交至財務行政部辦理，逾期不受理。</div></div>
       <div className="flex gap-3">
@@ -1029,18 +1029,21 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                 <MessageSquare size={18} />
                 <h4 className="font-black text-sm" style={mingLiUStyle}>{isAssignee ? "填寫交辦執行意見" : "填寫簽核意見 / 退回理由"}</h4>
               </div>
-              <button 
-                type="button" 
-                onClick={() => setShowAddStep(!showAddStep)} 
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all ${showAddStep ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50'}`}
-                style={mingLiUStyle}
-              >
-                <UserPlus2 size={14} /> {showAddStep ? "隱藏加簽" : "加簽/改派給上級主管"}
-              </button>
+              {/* ★ 修改：僅非交辦人員顯示加簽按鈕 */}
+              {!isAssignee && (
+                <button 
+                  type="button" 
+                  onClick={() => setShowAddStep(!showAddStep)} 
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all ${showAddStep ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50'}`}
+                  style={mingLiUStyle}
+                >
+                  <UserPlus2 size={14} /> {showAddStep ? "隱藏加簽" : "加簽/改派給上級主管"}
+                </button>
+              )}
             </div>
 
-            {/* ★ 加簽面板 */}
-            {showAddStep && (
+            {/* ★ 加簽面板：僅非交辦人員且開啟時顯示 */}
+            {!isAssignee && showAddStep && (
               <div className="mb-6 p-5 bg-white border border-indigo-100 rounded-2xl shadow-sm animate-in slide-in-from-top-2">
                 <p className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5">
                   <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 設定加簽對象 (核准後將先送至此人)
@@ -1080,7 +1083,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
             <div className="mt-6 flex gap-3">
                 {!isAssignee && <button type="button" disabled={isProcessing} onClick={() => onReject(currentDocId, comment)} className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 flex items-center justify-center gap-2 disabled:opacity-50" style={mingLiUStyle}><X size={14} /> 退回申請</button>}
                 
-                {showAddStep ? (
+                {!isAssignee && showAddStep ? (
                   <button 
                     type="button" 
                     disabled={isProcessing || !extraStaffId} 
@@ -1403,7 +1406,6 @@ const App = () => {
   };
 
   // 對接 server.js 的簽核更新 API
-  // ★ 修改：新增傳入 optionalNewWorkflow 參數，支持加簽功能
   const handleProcessForm = async (docId, action, comment, optionalNewWorkflow = null) => {
     const formToProcess = submittedForms.find(f => f.id === docId);
     if (!formToProcess) return;
