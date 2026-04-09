@@ -80,6 +80,7 @@ const isLocalhost = window.location.hostname === 'localhost' || window.location.
 
 /**
  * 【連線設定】
+ * 這裡已經對接您的 server.js (預設 port 3001)
  */
 const PROD_API_URL = "https://subdiapasonic-raylan-cheerless.ngrok-free.dev";
 const API_URL_ROOT = isLocalhost ? `http://localhost:3001` : PROD_API_URL;
@@ -985,6 +986,7 @@ const App = () => {
   const [formValues, setFormValues] = useState({});
   const [staffList, setStaffList] = useState([]);
 
+  // 對接 server.js 的獲取人員列表 API
   const fetchPersonnel = async () => {
     if (isMockMode) {
       setStaffList([
@@ -1002,6 +1004,7 @@ const App = () => {
     } catch (err) { console.error("人員列表讀取失敗"); }
   };
 
+  // 對接 server.js 的獲取表單列表 API
   const fetchMyForms = async (userId) => {
     if (isMockMode || !userId) return;
     try {
@@ -1016,6 +1019,7 @@ const App = () => {
     } catch (err) { console.error("無法載入表單資料:", err.message); }
   };
 
+  // 初始化檢查後端連線
   useEffect(() => {
     const checkConnection = async () => {
       try {
@@ -1105,6 +1109,7 @@ const App = () => {
     });
   };
 
+  // 對接 server.js 的提交表單 API
   const handleFinalSubmit = async (approvalFlow) => {
     let docId = currentDocId;
     let isNew = false;
@@ -1117,7 +1122,13 @@ const App = () => {
       isNew = true;
     }
 
-    const submissionData = { id: docId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單', values: { ...formValues, ...approvalFlow, currentStep: 0 }, status: 'Pending' };
+    const submissionData = { 
+      id: docId, 
+      staffId: currentUser.staffId, 
+      form_subject: formValues.form_subject || '未命名表單', 
+      values: { ...formValues, ...approvalFlow, currentStep: 0 }, 
+      status: 'Pending' 
+    };
 
     try {
       if (isMockMode) {
@@ -1129,10 +1140,21 @@ const App = () => {
       } 
       else {
         if (isNew) {
-          const response = await fetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(submissionData) });
+          const response = await fetch(`${API_URL_ROOT}/api/forms`, { 
+            method: 'POST', 
+            headers: getRequestHeaders(), 
+            body: JSON.stringify(submissionData) 
+          });
           if (!response.ok) throw new Error("提交失敗");
         } else {
-          const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(submissionData) });
+          const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+            method: 'PUT', 
+            headers: getRequestHeaders(), 
+            body: JSON.stringify({
+              status: submissionData.status,
+              values: submissionData.values
+            }) 
+          });
           if (!response.ok) throw new Error("伺服器更新失敗");
         }
         await fetchMyForms(currentUser.staffId);
@@ -1141,6 +1163,7 @@ const App = () => {
     } catch (err) { alert(err.message); }
   };
 
+  // 草稿儲存對接
   const handleSaveDraft = async (approvalFlow) => {
     let docId = currentDocId;
     let isNew = false;
@@ -1153,7 +1176,13 @@ const App = () => {
       isNew = true;
     }
 
-    const draftData = { id: docId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單(草稿)', values: { ...formValues, ...approvalFlow, currentStep: 0 }, status: 'Draft' };
+    const draftData = { 
+      id: docId, 
+      staffId: currentUser.staffId, 
+      form_subject: formValues.form_subject || '未命名表單(草稿)', 
+      values: { ...formValues, ...approvalFlow, currentStep: 0 }, 
+      status: 'Draft' 
+    };
 
     try {
       if (isMockMode) {
@@ -1164,10 +1193,24 @@ const App = () => {
         }
       } else {
         if (isNew) {
-          await fetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(draftData) });
-          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(draftData) });
+          // 提交草稿，先 POST 再 PUT (或直接帶 Draft 狀態 POST，取決於後端邏輯，這裡配合 server.js)
+          await fetch(`${API_URL_ROOT}/api/forms`, { 
+            method: 'POST', 
+            headers: getRequestHeaders(), 
+            body: JSON.stringify(draftData) 
+          });
+          // 因 server.js POST 預設為 Pending，需補一個 PUT 改為 Draft
+          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+            method: 'PUT', 
+            headers: getRequestHeaders(), 
+            body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
+          });
         } else {
-          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(draftData) });
+          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+            method: 'PUT', 
+            headers: getRequestHeaders(), 
+            body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
+          });
         }
         await fetchMyForms(currentUser.staffId);
       }
@@ -1179,6 +1222,7 @@ const App = () => {
     } catch (err) { alert(err.message); }
   };
 
+  // 對接 server.js 的簽核更新 API
   const handleProcessForm = async (docId, action, comment) => {
     const formToProcess = submittedForms.find(f => f.id === docId);
     if (!formToProcess) return;
@@ -1202,39 +1246,36 @@ const App = () => {
       }
     }
 
-    const updatedData = { ...formToProcess, status: newStatus, values: { ...formToProcess.values, workflowPath: workflow, currentStep: newStepIndex } };
+    const updatedValues = { ...formToProcess.values, workflowPath: workflow, currentStep: newStepIndex };
 
     try {
       if (isMockMode) { 
-        setSubmittedForms(prev => prev.map(f => f.id === docId ? updatedData : f)); 
+        setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, status: newStatus, values: updatedValues } : f)); 
       } 
       else {
-        const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(updatedData) });
+        const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+          method: 'PUT', 
+          headers: getRequestHeaders(), 
+          body: JSON.stringify({ status: newStatus, values: updatedValues }) 
+        });
         if (!response.ok) throw new Error("伺服器更新失敗");
         await fetchMyForms(currentUser.staffId);
       }
 
-      // --- 【修改】自動扣假與銷假歸還邏輯 ---
-      if (newStatus === 'Completed' && updatedData.values?.category === '差勤類') {
-        const formKind = updatedData.values?.form_kind;
-        
-        // 若表單種類是"請假單"或"銷假單"才執行連動
+      // --- 自動扣假與銷假歸還邏輯 ---
+      if (newStatus === 'Completed' && updatedValues.category === '差勤類') {
+        const formKind = updatedValues.form_kind;
         if (formKind === '請假單' || formKind === '銷假單') {
-          const leaveType = updatedData.values.leave_type;
-          
+          const leaveType = updatedValues.leave_type;
           if (leaveType === '特休' || leaveType === '補休') {
-            const leaveTotalStr = updatedData.values.leave_total || "0 日 0 時";
+            const leaveTotalStr = updatedValues.leave_total || "0 日 0 時";
             const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
-            
             if (match) {
-              // 換算總時數 (1日 = 8小時)
               const totalProcessHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
-              const applicant = staffList.find(s => s.staffId === updatedData.staffId);
-              
+              const applicant = staffList.find(s => s.staffId === formToProcess.staffId);
               if (applicant && totalProcessHours > 0) {
                 const updatedApplicant = { ...applicant };
-                const isDeducting = formKind === '請假單'; // 請假扣除，銷假加回
-                
+                const isDeducting = formKind === '請假單'; 
                 if (leaveType === '特休') {
                   const currentAnnual = parseFloat(updatedApplicant.annualLeave) || 0;
                   updatedApplicant.annualLeave = isDeducting 
@@ -1266,14 +1307,13 @@ const App = () => {
           }
         }
       }
-      // ---------------------------
 
       alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已退回申請！');
       setViewingForm(null);
     } catch (err) { alert(`操作失敗：${err.message}`); }
   };
 
-  // 軟/硬 兩段式刪除單據
+  // 對接 server.js 的刪除表單 API
   const handleDeleteForm = async (formItem) => {
     const isAlreadyInTrash = formItem.status === 'Deleted';
     const confirmMsg = isAlreadyInTrash 
@@ -1291,26 +1331,19 @@ const App = () => {
             method: 'DELETE',
             headers: getRequestHeaders()
           });
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`伺服器回傳錯誤 (${response.status}): ${errorData.message || '無法刪除'}`);
-          }
+          if (!response.ok) throw new Error("資料庫刪除失敗");
           await fetchMyForms(currentUser.staffId);
         }
         alert('單據已永久刪除');
       } else {
-        const updatedItem = { 
-          ...formItem, 
-          status: 'Deleted'
-        };
-        
+        const updatedItem = { ...formItem, status: 'Deleted' };
         if (isMockMode) {
           setSubmittedForms(prev => prev.map(f => f.id === formItem.id ? updatedItem : f));
         } else {
           const response = await fetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
             method: 'PUT',
             headers: getRequestHeaders(),
-            body: JSON.stringify(updatedItem)
+            body: JSON.stringify({ status: 'Deleted', values: formItem.values })
           });
           if (!response.ok) throw new Error("移至垃圾桶失敗");
           await fetchMyForms(currentUser.staffId);
@@ -1368,7 +1401,7 @@ const App = () => {
                   <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase" style={mingLiUStyle}>Balance</span></div>
                   <div className="space-y-6">
                     <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span><span className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 240) * 100, 100)}%` }}></div></div></div>
-                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span><span className="text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((currentUser?.compLeave || 0) / 80) * 100, 100)}%` }}></div></div></div>
+                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span><span className="text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-[10px] text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.compLeave || 0) / 80) * 100, 100)}%` }}></div></div></div>
                   </div>
                 </div>
             </div>
