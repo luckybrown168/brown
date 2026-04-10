@@ -70,7 +70,8 @@ import {
   UserCog,
   MessageSquare,
   Undo2,
-  UserPlus2
+  UserPlus2,
+  ShieldCheck
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -106,17 +107,23 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
 
     try {
       if (isMockMode) {
-        if (staffId === 'admin' && password === '123456') {
+        // 測試模式下，允許預設的 admin 或 0338 登入並給予最高權限
+        if ((staffId === 'admin' || staffId === '0338') && password === '123456') {
           onLoginSuccess({ 
-            name: '系統管理員', 
+            name: staffId === '0338' ? '預設管理員' : '系統管理員', 
             pos: 'Administrator', 
             dept: '總經理室', 
-            staffId: 'ADMIN-01',
+            staffId: staffId === '0338' ? '0338' : 'ADMIN-01',
             annualLeave: 56.0,
-            compLeave: 12.5
+            compLeave: 12.5,
+            isAdmin: true // 賦予系統管理員註記
+          });
+        } else if (staffId === 'user' && password === '123456') {
+          onLoginSuccess({ 
+            name: '一般測試員', pos: '專員', dept: '業務部', staffId: 'USER-01', annualLeave: 10, compLeave: 5, isAdmin: false 
           });
         } else {
-          setError('連線中斷或測試模式請輸入 admin / 123456');
+          setError('連線中斷或測試模式請輸入 admin(或0338) / 123456');
         }
       } else {
         const response = await fetch(`${API_URL_ROOT}/api/login`, {
@@ -274,24 +281,24 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => 
 // --- 核心組件：人員編輯/新增彈出視窗 ---
 const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   const [formData, setFormData] = useState({
-    staffId: '', name: '', dept: '', team: '', pos: '', hireDate: '', email: '', password: '', annualLeave: '0', compLeave: '0'
+    staffId: '', name: '', dept: '', team: '', pos: '', hireDate: '', email: '', password: '', annualLeave: '0', compLeave: '0', isAdmin: false
   });
 
   useEffect(() => {
     if (initialData) { 
       const formattedDate = initialData.hireDate ? initialData.hireDate.split('T')[0] : '';
-      setFormData({ ...initialData, hireDate: formattedDate }); 
+      setFormData({ ...initialData, hireDate: formattedDate, isAdmin: !!initialData.isAdmin }); 
     } 
     else { 
-      setFormData({ staffId: '', name: '', dept: '', team: '', pos: '', hireDate: '', email: '', password: '', annualLeave: '0', compLeave: '0' }); 
+      setFormData({ staffId: '', name: '', dept: '', team: '', pos: '', hireDate: '', email: '', password: '', annualLeave: '0', compLeave: '0', isAdmin: false }); 
     }
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const labelClass = "text-[12px] font-black text-slate-500 mb-1.5 block";
@@ -339,6 +346,26 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div><label className={labelClass} style={mingLiUStyle}>電子郵件</label><input name="email" value={formData.email} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
             <div><label className={labelClass} style={mingLiUStyle}>登入密碼</label><input type="password" name="password" value={formData.password} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
           </div>
+          
+          {/* 系統管理員設定區塊 */}
+          <div className="col-span-2 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                name="isAdmin" 
+                checked={formData.isAdmin} 
+                onChange={handleChange} 
+                className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer" 
+              />
+              <div className="flex flex-col">
+                <span className="text-sm font-black text-indigo-800 flex items-center gap-1.5" style={mingLiUStyle}>
+                  <ShieldCheck size={16} /> 設為系統管理員
+                </span>
+                <span className="text-[11px] text-indigo-500 font-bold mt-0.5" style={mingLiUStyle}>開啟後，該人員可於左側選單進入「人員管理」介面。</span>
+              </div>
+            </label>
+          </div>
+
           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
             <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100"><label className={`${labelClass} text-blue-600`} style={mingLiUStyle}>剩餘特休 (hr)</label><input type="number" name="annualLeave" value={formData.annualLeave} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
             <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100"><label className={`${labelClass} text-emerald-600`} style={mingLiUStyle}>剩餘補休 (hr)</label><input type="number" name="compLeave" value={formData.compLeave} onChange={handleChange} className={inputClass} style={mingLiUStyle} /></div>
@@ -594,12 +621,12 @@ const PersonnelManagementView = ({ isMockMode }) => {
       <div className="flex items-center justify-between bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg text-white"><Users size={28} /></div>
-          <div><h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>人員資料管理</h2><p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>檢視及維護公司成員的基本資訊</p></div>
+          <div><h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>人員資料管理</h2><p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>檢視及維護公司成員的基本資訊與系統管理員權限</p></div>
         </div>
         <div className="flex gap-3">
           <div className={`px-4 py-3 rounded-2xl border flex items-center gap-2 transition-colors ${isMockMode ? 'bg-slate-100 border-slate-200' : 'bg-emerald-50 border-emerald-100'}`}>
               <div className={`w-2 h-2 rounded-full ${isMockMode ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></div>
-              <span className={`text-xs font-black uppercase tracking-widest ${isMockMode ? text-slate-500 : 'text-emerald-600'}`} style={mingLiUStyle}>{isMockMode ? 'Mock Mode' : 'Tunnel Active'}</span>
+              <span className={`text-xs font-black uppercase tracking-widest ${isMockMode ? 'text-slate-500' : 'text-emerald-600'}`} style={mingLiUStyle}>{isMockMode ? 'Mock Mode' : 'Tunnel Active'}</span>
           </div>
           <button onClick={() => { setEditingStaff(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg active:scale-95" style={mingLiUStyle}><UserPlus size={18} /> 新增人員</button>
         </div>
@@ -616,8 +643,18 @@ const PersonnelManagementView = ({ isMockMode }) => {
                       <img src={`https://robohash.org/${encodeURIComponent(person.name)}?set=set4`} alt="avatar" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-indigo-600 mb-0.5" style={mingLiUStyle}>{person.staffId}</p>
-                      <p className="text-[18px] font-bold text-slate-700 leading-tight" style={mingLiUStyle}>{person.name}</p>
+                      <p className="text-xs font-bold text-indigo-600 mb-0.5 flex items-center gap-1.5" style={mingLiUStyle}>
+                        {person.staffId}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[18px] font-bold text-slate-700 leading-tight" style={mingLiUStyle}>{person.name}</p>
+                        {/* 顯示系統管理員標籤 */}
+                        {(person.isAdmin || person.staffId === '0338' || person.staffId === 'ADMIN-01') && (
+                          <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[10px] font-black tracking-widest flex items-center gap-1" style={mingLiUStyle}>
+                            <ShieldCheck size={10} /> 管理員
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -1001,9 +1038,9 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         </div>
         
         {safeValues.workflowPath && (
-           <div className="mt-8 pt-6 border-t border-slate-100">
-             <p className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest" style={mingLiUStyle}>簽核歷程與意見 Workflow History</p>
-             <div className="space-y-4">
+            <div className="mt-8 pt-6 border-t border-slate-100">
+              <p className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest" style={mingLiUStyle}>簽核歷程與意見 Workflow History</p>
+              <div className="space-y-4">
                 {safeValues.workflowPath.map((step, i) => {
                   const isCurrentStep = (safeValues.currentStep || 0) === i;
                   const isProcessed = (safeValues.currentStep || 0) > i || status === 'Completed' || (status === 'Rejected' && step.comment);
@@ -1018,8 +1055,8 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                     </div>
                   );
                 })}
-             </div>
-           </div>
+              </div>
+            </div>
         )}
 
         {canApprove && (
@@ -1132,10 +1169,11 @@ const App = () => {
   const fetchPersonnel = async () => {
     if (isMockMode) {
       setStaffList([
-        { staffId: 'ADMIN-01', name: '系統管理員', pos: 'Administrator', dept: '總經理室' },
-        { staffId: 'FIN-01', name: '王大美', pos: '經理', dept: '財務行政部' },
-        { staffId: 'SAL-01', name: '李小明', pos: '組長', dept: '業務部' },
-        { staffId: 'ENG-01', name: '張技術', pos: '協理', dept: '系統暨工程部' }
+        { staffId: 'ADMIN-01', name: '系統管理員', pos: 'Administrator', dept: '總經理室', isAdmin: true },
+        { staffId: '0338', name: '王管理', pos: '系統總監', dept: '總經理室', isAdmin: true },
+        { staffId: 'FIN-01', name: '王大美', pos: '經理', dept: '財務行政部', isAdmin: false },
+        { staffId: 'SAL-01', name: '李小明', pos: '組長', dept: '業務部', isAdmin: false },
+        { staffId: 'ENG-01', name: '張技術', pos: '協理', dept: '系統暨工程部', isAdmin: false }
       ]);
       return;
     }
@@ -1572,6 +1610,9 @@ const App = () => {
     return f.values?.workflowPath?.[step]?.staffId === currentUser?.staffId;
   });
 
+  // 判斷是否為系統管理員
+  const isUserAdmin = currentUser?.isAdmin || currentUser?.staffId === '0338' || currentUser?.staffId === 'ADMIN-01';
+
   const renderMainContent = () => {
     if (viewingForm) { 
       const step = viewingForm.values?.currentStep || 0;
@@ -1586,6 +1627,12 @@ const App = () => {
       ); 
     }
 
+    // 若非管理員且切換到人員管理時，強制切換回 dashboard 避免繞過檢查
+    if (activeTab === 'personnel_management' && !isUserAdmin) {
+      setActiveTab('dashboard');
+      return null;
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return (
@@ -1593,7 +1640,14 @@ const App = () => {
             <div className="flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                   <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
-                  <div className="relative z-10"><h2 className="text-3xl font-black mb-3" style={mingLiUStyle}>早安，{currentUser.name} {currentUser.pos}</h2><p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p><button onClick={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setIsPreviewing(false); setActiveTab('inbox'); }} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg mt-8" style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button></div>
+                  <div className="relative z-10">
+                    <h2 className="text-3xl font-black mb-3 flex items-center gap-2" style={mingLiUStyle}>
+                      早安，{currentUser.name} {currentUser.pos}
+                      {isUserAdmin && <span className="px-2 py-1 bg-white/20 text-xs rounded border border-white/30 backdrop-blur-md">系統管理員</span>}
+                    </h2>
+                    <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p>
+                    <button onClick={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setIsPreviewing(false); setActiveTab('inbox'); }} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg mt-8" style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button>
+                  </div>
                 </div>
                 <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-xs font-bold text-slate-400 tracking-widest uppercase" style={mingLiUStyle}>Balance</span></div>
@@ -1638,21 +1692,32 @@ const App = () => {
     }
   };
 
+  // 左側導覽列的選項，依照權限呈現
+  const navItems = [
+    { id: 'dashboard', label: '首頁', icon: LayoutDashboard }
+  ];
+  if (isUserAdmin) {
+    navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users });
+  }
+
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
       <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
         <div className="p-8 flex items-center justify-between"><div className="flex items-center gap-3 overflow-hidden"><div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl text-white shrink-0"><Layers size={24} /></div>{!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2" style={mingLiUStyle}>先啟智慧表單</span>)}</div></div>
         <nav className="flex-1 px-4 space-y-1 mt-6">
-          {[{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'personnel_management', label: '人員管理', icon: Users }].map((item) => (<button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}><item.icon size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>{item.label}</span>}</button>))}
+          {navItems.map((item) => (<button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}><item.icon size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>{item.label}</span>}</button>))}
           <div className="pt-8 mt-8 border-t border-slate-100"><button onClick={handleLogout} className={`w-full flex items-center px-5 py-3.5 rounded-2xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-all font-black text-sm ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`} style={mingLiUStyle}><LogOut size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>登出系統</span>}</button></div>
         </nav>
       </aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
-          <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : '智慧管理系統'}</div>
+          <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'personnel_management' ? '人員管理中心' : '智慧管理系統'}</div>
           <div className="flex items-center gap-4 border-l border-gray-100 pl-6">
             <div className="text-right">
-              <p className="text-[14px] font-black text-slate-800 leading-tight" style={mingLiUStyle}>{currentUser.name}</p>
+              <p className="text-[14px] font-black text-slate-800 leading-tight flex items-center justify-end gap-1.5" style={mingLiUStyle}>
+                {currentUser.name} 
+                {isUserAdmin && <ShieldCheck size={14} className="text-indigo-600" />}
+              </p>
               <p className="text-[14px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p>
             </div>
             <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden">
