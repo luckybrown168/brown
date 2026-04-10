@@ -599,7 +599,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
         <div className="flex gap-3">
           <div className={`px-4 py-3 rounded-2xl border flex items-center gap-2 transition-colors ${isMockMode ? 'bg-slate-100 border-slate-200' : 'bg-emerald-50 border-emerald-100'}`}>
               <div className={`w-2 h-2 rounded-full ${isMockMode ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></div>
-              <span className={`text-xs font-black uppercase tracking-widest ${isMockMode ? 'text-slate-500' : 'text-emerald-600'}`} style={mingLiUStyle}>{isMockMode ? 'Mock Mode' : 'Tunnel Active'}</span>
+              <span className={`text-xs font-black uppercase tracking-widest ${isMockMode ? text-slate-500 : 'text-emerald-600'}`} style={mingLiUStyle}>{isMockMode ? 'Mock Mode' : 'Tunnel Active'}</span>
           </div>
           <button onClick={() => { setEditingStaff(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg active:scale-95" style={mingLiUStyle}><UserPlus size={18} /> 新增人員</button>
         </div>
@@ -667,7 +667,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
     reader.readAsDataURL(file);
   };
 
-  // ★ 檢查必填欄位 (主旨與員編)
+  // 檢查必填欄位 (主旨與員編)
   const isRequiredMissing = !formValues.form_subject || !formValues.employee_id;
 
   return (
@@ -882,7 +882,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 // --- 組件：提交後的存根 ---
 const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList }) => {
   const [comment, setComment] = useState("");
-  // ★ 加簽相關狀態
+  // 加簽相關狀態
   const [extraStaffId, setExtraStaffId] = useState("");
   const [extraRole, setExtraRole] = useState("簽核");
   const [showAddStep, setShowAddStep] = useState(false);
@@ -911,7 +911,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     document.body.removeChild(link);
   };
 
-  // ★ 處理加簽邏輯
+  // 處理加簽邏輯
   const handleAddReviewerAndSubmit = () => {
     if (!extraStaffId) return alert("請先選擇加簽人員");
     const staff = staffList.find(s => s.staffId === extraStaffId);
@@ -1029,7 +1029,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                 <MessageSquare size={18} />
                 <h4 className="font-black text-sm" style={mingLiUStyle}>{isAssignee ? "填寫交辦執行意見" : "填寫簽核意見 / 退回理由"}</h4>
               </div>
-              {/* ★ 修改：僅非交辦人員顯示加簽按鈕 */}
               {!isAssignee && (
                 <button 
                   type="button" 
@@ -1042,7 +1041,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
               )}
             </div>
 
-            {/* ★ 加簽面板：僅非交辦人員且開啟時顯示 */}
             {!isAssignee && showAddStep && (
               <div className="mb-6 p-5 bg-white border border-indigo-100 rounded-2xl shadow-sm animate-in slide-in-from-top-2">
                 <p className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5">
@@ -1121,7 +1119,7 @@ const App = () => {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMockMode, setIsMockMode] = useState(true); 
-  // 新增：處理中狀態 (避免夾帶大檔案時沒反應重複點擊)
+  // 處理中狀態 (避免夾帶大檔案時沒反應重複點擊)
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [submittedForms, setSubmittedForms] = useState([]);
@@ -1207,15 +1205,17 @@ const App = () => {
       
       { id: "form_kind", label: "表單種類", type: "select", options: ["出勤異常單", "銷假單", "加班單", "請假單"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
       
+      // ★ 調整規章顯示順序：移動到表單種類下方
+      { id: "anomaly_rules_notice", type: "anomaly_notice", dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
+      { id: "leave_rules_notice", type: "notice", dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
+      { id: "ot_rules_notice", type: "ot_notice", dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
+
       { id: "anomaly_reason", label: "異常原因", type: "select", options: ["公務外出", "逾時登出，無加班申請事實", "其他"], dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
-      
       { id: "anomaly_detail", label: "請詳述", type: "text", dependsOn: "anomaly_reason", showIf: "其他", width: "w-full" },
       { id: "anomaly_clock_in", label: "上班時間", type: "time_picker", dependsOn: "anomaly_reason", showIf: ["公務外出", "逾時登出，無加班申請事實", "其他"], width: "w-1/2" },
       { id: "anomaly_clock_out", label: "下班時間", type: "time_picker", dependsOn: "anomaly_reason", showIf: ["公務外出", "逾時登出，無加班申請事實", "其他"], width: "w-1/2" },
-      { id: "anomaly_rules_notice", type: "anomaly_notice", dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
 
       { id: "leave_type", label: "假單類別", type: "select", options: LEAVE_TYPES, dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
-      
       { id: "agent", label: "代理人", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_start_time", label: "請假開始日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_end_time", label: "請假結束日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
@@ -1223,7 +1223,6 @@ const App = () => {
       { id: "leave_reason", label: "請假/銷假事由", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_comment", label: "意見", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_attachment", label: "附加檔案", type: "file", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
-      { id: "leave_rules_notice", type: "notice", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       
       { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
@@ -1231,7 +1230,6 @@ const App = () => {
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
-      { id: "ot_rules_notice", type: "ot_notice", dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
       
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
@@ -1642,7 +1640,7 @@ const App = () => {
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
-      <aside className={`bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
+      <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
         <div className="p-8 flex items-center justify-between"><div className="flex items-center gap-3 overflow-hidden"><div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl text-white shrink-0"><Layers size={24} /></div>{!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2" style={mingLiUStyle}>先啟智慧表單</span>)}</div></div>
         <nav className="flex-1 px-4 space-y-1 mt-6">
           {[{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'personnel_management', label: '人員管理', icon: Users }].map((item) => (<button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}><item.icon size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>{item.label}</span>}</button>))}
