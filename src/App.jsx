@@ -385,9 +385,9 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
 };
 
 // --- 組件：流程設定視圖 (自動化規則設定) ---
-const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule }) => {
+const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, teamOptions }) => {
   const [editingRule, setEditingRule] = useState(null);
-  const [formData, setFormData] = useState({ category: '差勤類', formKind: '所有單據', steps: [] });
+  const [formData, setFormData] = useState({ category: '差勤類', formKind: '所有單據', department: '所有組別', steps: [] });
   const [tempStaffId, setTempStaffId] = useState('');
   const [tempRole, setTempRole] = useState('簽核');
 
@@ -427,7 +427,7 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule }) =>
       ...formData
     });
     setEditingRule(null);
-    setFormData({ category: '差勤類', formKind: '所有單據', steps: [] });
+    setFormData({ category: '差勤類', formKind: '所有單據', department: '所有組別', steps: [] });
   };
 
   return (
@@ -438,7 +438,7 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule }) =>
         </div>
         <div>
           <h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>簽核流程配置與自動化</h2>
-          <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>設定各類單據的預設送單路徑，員工送單時將自動套用</p>
+          <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>設定各類單據與組別的預設送單路徑，員工送單時將自動套用</p>
         </div>
       </div>
       
@@ -457,13 +457,18 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule }) =>
                       <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded uppercase" style={mingLiUStyle}>{rule.category}</span>
                       <button onClick={(e) => { e.stopPropagation(); onDeleteRule(rule.id); }} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash size={14}/></button>
                     </div>
-                    <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{rule.formKind === '所有單據' ? '套用該類別所有單據' : rule.formKind}</p>
+                    <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>
+                      {rule.formKind === '所有單據' ? '套用該類別所有單據' : rule.formKind}
+                      <span className="text-[11px] text-slate-400 ml-1.5 bg-slate-200 px-1.5 py-0.5 rounded">
+                        {rule.department || '所有組別'}
+                      </span>
+                    </p>
                     <p className="text-xs text-slate-500 mt-2 font-bold" style={mingLiUStyle}>共 {rule.steps.length} 個預設簽核關卡</p>
                   </div>
                 ))
               )}
             </div>
-            <button onClick={() => { setEditingRule(null); setFormData({ category: '差勤類', formKind: '所有單據', steps: [] }); }} className="w-full mt-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-black text-xs hover:bg-indigo-100 transition-colors flex justify-center items-center gap-2" style={mingLiUStyle}>
+            <button onClick={() => { setEditingRule(null); setFormData({ category: '差勤類', formKind: '所有單據', department: '所有組別', steps: [] }); }} className="w-full mt-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-black text-xs hover:bg-indigo-100 transition-colors flex justify-center items-center gap-2" style={mingLiUStyle}>
               <Plus size={16}/> 建立新規則
             </button>
           </div>
@@ -476,7 +481,7 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule }) =>
           </h3>
           
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-xs font-black text-slate-500 mb-1.5 block" style={mingLiUStyle}>適用大類</label>
                 <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value, formKind: '所有單據'})} className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50" style={mingLiUStyle}>
@@ -487,6 +492,13 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule }) =>
                 <label className="text-xs font-black text-slate-500 mb-1.5 block" style={mingLiUStyle}>適用單據種類</label>
                 <select value={formData.formKind} onChange={e => setFormData({...formData, formKind: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50" style={mingLiUStyle}>
                   {(formKinds[formData.category] || ["所有單據"]).map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-black text-slate-500 mb-1.5 block" style={mingLiUStyle}>適用組別條件</label>
+                <select value={formData.department || '所有組別'} onChange={e => setFormData({...formData, department: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50" style={mingLiUStyle}>
+                  <option value="所有組別">所有組別 (無差別套用)</option>
+                  {teamOptions.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
             </div>
@@ -965,12 +977,19 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
   useEffect(() => {
     // 如果這份表單尚未設定流程，則自動尋找符合的規則
     if (!values.workflowPath || values.workflowPath.length === 0) {
-      // 尋找完全匹配 單據類別 + 種類 的規則，若無則找只匹配 單據類別(所有單據) 的規則
-      const matchedRule = workflowRules?.find(r => 
-        r.category === values.category && r.formKind === values.form_kind
-      ) || workflowRules?.find(r => 
-        r.category === values.category && r.formKind === '所有單據'
-      );
+      // 匹配邏輯優先順序：
+      // 1. 完全匹配類別、種類、與該員工所屬組別
+      // 2. 匹配類別、種類，且適用於「所有組別」
+      // 3. 匹配類別，種類為「所有單據」，且匹配該員工所屬組別
+      // 4. 匹配類別，種類為「所有單據」，且適用於「所有組別」
+      
+      const userDept = values.department || '';
+
+      const matchedRule = 
+        workflowRules?.find(r => r.category === values.category && r.formKind === values.form_kind && r.department === userDept) ||
+        workflowRules?.find(r => r.category === values.category && r.formKind === values.form_kind && r.department === '所有組別') ||
+        workflowRules?.find(r => r.category === values.category && r.formKind === '所有單據' && r.department === userDept) ||
+        workflowRules?.find(r => r.category === values.category && r.formKind === '所有單據' && r.department === '所有組別');
 
       if (matchedRule) {
         const mappedSteps = matchedRule.steps.map(step => {
@@ -1482,6 +1501,7 @@ const App = () => {
       id: 'default-rule-1',
       category: '差勤類',
       formKind: '請假單',
+      department: '所有組別',
       steps: [
         { staffId: 'FIN-01', role: '會簽' }, // 預設王大美
         { staffId: '0338', role: '簽核' }    // 預設王管理
@@ -2035,7 +2055,7 @@ const App = () => {
         );
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} />;
       case 'workflow_settings': 
-        return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} />;
+        return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} teamOptions={TEAM_OPTIONS} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
