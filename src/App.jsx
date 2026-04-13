@@ -1047,6 +1047,14 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
       case 'assign': 
         finalComment = `[分文] ${comment}`; 
         break;
+      case 'escalate': 
+        finalComment = `[呈上級決行] ${comment}`; 
+        actionType = 'approve';
+        break;
+      case 'countersign': 
+        finalComment = `[同意送會簽人員] ${comment}`; 
+        actionType = 'approve';
+        break;
       case 'reject_to_step':
         if (!rejectTarget) return alert("請選擇要退回重審的人員");
         const targetStaffName = previousApprovers.find(s => s.staffId === rejectTarget)?.name || rejectTarget;
@@ -1228,13 +1236,20 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                   <div className="space-y-3.5 pl-2">
                     <label className="flex items-center gap-2.5 cursor-pointer group">
                       <input type="radio" name="approvalAction" value="approve" checked={approvalAction === 'approve'} onChange={(e) => setApprovalAction(e.target.value)} className="w-4 h-4 text-green-600 focus:ring-green-500 border-slate-300" />
-                      <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'approve' ? 'text-green-700' : 'text-slate-700'}`} style={mingLiUStyle}>同意 (依上方流程向下派送)</span>
+                      <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'approve' ? 'text-green-700' : 'text-slate-700'}`} style={mingLiUStyle}>同意</span>
                     </label>
                     <label className="flex items-center gap-2.5 cursor-pointer group">
                       <input type="radio" name="approvalAction" value="assign" checked={approvalAction === 'assign'} onChange={(e) => setApprovalAction(e.target.value)} className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300" />
                       <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'assign' ? 'text-indigo-700' : 'text-slate-700'}`} style={mingLiUStyle}>分文</span>
                     </label>
-
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input type="radio" name="approvalAction" value="escalate" checked={approvalAction === 'escalate'} onChange={(e) => setApprovalAction(e.target.value)} className="w-4 h-4 text-amber-600 focus:ring-amber-500 border-slate-300" />
+                      <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'escalate' ? 'text-amber-700' : 'text-slate-700'}`} style={mingLiUStyle}>呈上級決行</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input type="radio" name="approvalAction" value="countersign" checked={approvalAction === 'countersign'} onChange={(e) => setApprovalAction(e.target.value)} className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300" />
+                      <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'countersign' ? 'text-blue-700' : 'text-slate-700'}`} style={mingLiUStyle}>同意送會簽人員</span>
+                    </label>
                     <label className="flex items-center gap-2.5 cursor-pointer group">
                       <input type="radio" name="approvalAction" value="reject_to_step" checked={approvalAction === 'reject_to_step'} 
                              onChange={(e) => { 
