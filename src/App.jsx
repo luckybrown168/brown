@@ -72,7 +72,8 @@ import {
   Undo2,
   UserPlus2,
   ShieldCheck,
-  ListChecks
+  ListChecks,
+  GitBranch
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -364,7 +365,7 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                 <span className="text-sm font-black text-indigo-800 flex items-center gap-1.5" style={mingLiUStyle}>
                   <ShieldCheck size={16} /> 設為系統管理員
                 </span>
-                <span className="text-[11px] text-indigo-500 font-bold mt-0.5" style={mingLiUStyle}>開啟後，該人員可於左側選單進入「人員管理」介面。</span>
+                <span className="text-[11px] text-indigo-500 font-bold mt-0.5" style={mingLiUStyle}>開啟後，該人員可於左側選單進入「人員管理」與「流程設定」介面。</span>
               </div>
             </label>
           </div>
@@ -378,6 +379,38 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
           <button onClick={onClose} className="flex-1 py-3 border rounded-xl text-sm font-bold text-slate-500 hover:bg-white transition-all" style={mingLiUStyle}>取消返回</button>
           <button onClick={() => onSave(formData)} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl text-sm font-black flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all" style={mingLiUStyle}><Save size={18} /> 儲存資料</button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 組件：流程設定視圖 (新增) ---
+const WorkflowSettingsView = () => {
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
+      <div className="flex items-center gap-4 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg text-white">
+          <GitBranch size={28} />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>簽核流程設定</h2>
+          <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>定義各類單據的預設簽核路徑與自動化規則</p>
+        </div>
+      </div>
+      
+      <div className="bg-white rounded-[2.5rem] p-12 border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[400px]">
+        <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-300">
+          <Settings size={40} className="animate-spin-slow" />
+        </div>
+        <div className="max-w-md">
+          <h3 className="text-xl font-black text-slate-700" style={mingLiUStyle}>流程自動化編輯器</h3>
+          <p className="text-sm text-slate-400 mt-2 leading-relaxed" style={mingLiUStyle}>
+            此功能目前正在進行結構性優化。未來您將可以在此針對「差勤類」、「行政類」等不同類型的單據，設定預設的層級簽核對象，並開啟「自動判定職位」之動態路徑。
+          </p>
+        </div>
+        <button className="px-8 py-3 bg-slate-100 text-slate-500 rounded-2xl font-black text-sm cursor-not-allowed" style={mingLiUStyle}>
+          即將開放
+        </button>
       </div>
     </div>
   );
@@ -1792,8 +1825,8 @@ const App = () => {
       ); 
     }
 
-    // 若非管理員且切換到人員管理時，強制切換回 dashboard 避免繞過檢查
-    if (activeTab === 'personnel_management' && !isUserAdmin) {
+    // 若非管理員且切換到管理介面時，強制切換回 dashboard
+    if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings') && !isUserAdmin) {
       setActiveTab('dashboard');
       return null;
     }
@@ -1839,6 +1872,7 @@ const App = () => {
           </div>
         );
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} />;
+      case 'workflow_settings': return <WorkflowSettingsView />; // 渲染流程設定頁面
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
@@ -1863,6 +1897,7 @@ const App = () => {
   ];
   if (isUserAdmin) {
     navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users });
+    navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); // 在人員管理下方新增
   }
 
   return (
@@ -1876,7 +1911,7 @@ const App = () => {
       </aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
-          <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'personnel_management' ? '人員管理中心' : '智慧管理系統'}</div>
+          <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'personnel_management' ? '人員管理中心' : activeTab === 'workflow_settings' ? '簽核流程配置' : '智慧管理系統'}</div>
           <div className="flex items-center gap-4 border-l border-gray-100 pl-6">
             <div className="text-right">
               <p className="text-[14px] font-black text-slate-800 leading-tight flex items-center justify-end gap-1.5" style={mingLiUStyle}>
