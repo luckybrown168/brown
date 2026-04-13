@@ -1181,7 +1181,23 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
               <textarea value={comment} disabled={isProcessing} onChange={(e) => setComment(e.target.value)} placeholder="請輸入交辦任務的執行狀況..." className="w-full h-24 p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50" style={mingLiUStyle} />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-                {/* 左側：簽核單選選項 */}
+                
+                {/* 左側 (原右側)：意見輸入區 */}
+                <div className="flex flex-col">
+                  <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5" style={mingLiUStyle}>
+                    <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核意見
+                  </div>
+                  <textarea 
+                    value={comment} 
+                    disabled={isProcessing} 
+                    onChange={(e) => setComment(e.target.value)} 
+                    placeholder="請在此輸入您的簽核意見補充說明..." 
+                    className="flex-1 w-full p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50 resize-none shadow-sm" 
+                    style={mingLiUStyle} 
+                  />
+                </div>
+
+                {/* 右側 (原左側)：簽核單選選項 */}
                 <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm flex flex-col justify-center">
                   <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5" style={mingLiUStyle}>
                     <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核選項
@@ -1244,20 +1260,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                   </div>
                 </div>
 
-                {/* 右側：意見輸入區 */}
-                <div className="flex flex-col">
-                  <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5" style={mingLiUStyle}>
-                    <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核意見
-                  </div>
-                  <textarea 
-                    value={comment} 
-                    disabled={isProcessing} 
-                    onChange={(e) => setComment(e.target.value)} 
-                    placeholder="請在此輸入您的簽核意見補充說明..." 
-                    className="flex-1 w-full p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50 resize-none shadow-sm" 
-                    style={mingLiUStyle} 
-                  />
-                </div>
               </div>
             )}
             
