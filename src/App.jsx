@@ -929,10 +929,10 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                              </div>
                            </div>
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
-                              <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
-                              <div className="w-px h-6 bg-slate-100 mx-1"></div>
-                              <button onClick={() => removeFromWorkflow(step.staffId)} className="p-1.5 text-slate-300 hover:text-red-500"><X size={16} /></button>
+                             <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
+                             <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
+                             <div className="w-px h-6 bg-slate-100 mx-1"></div>
+                             <button onClick={() => removeFromWorkflow(step.staffId)} className="p-1.5 text-slate-300 hover:text-red-500"><X size={16} /></button>
                            </div>
                         </div>
                       </div>
@@ -968,6 +968,17 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
   const [approvalAction, setApprovalAction] = useState('approve');
   const [rejectTarget, setRejectTarget] = useState("");
 
+  // 新增：用於讓簽核人編輯後續流程的狀態
+  const [editableWorkflow, setEditableWorkflow] = useState([]);
+  const [newStaffId, setNewStaffId] = useState("");
+  const [newRole, setNewRole] = useState("簽核");
+
+  useEffect(() => {
+    if (values && values.workflowPath) {
+      setEditableWorkflow([...values.workflowPath]);
+    }
+  }, [values]);
+
   // 監聽加簽人員狀態，若未選擇人員則重置無法選擇的動作
   useEffect(() => {
     if ((!showAddStep || !extraStaffId) && (approvalAction === 'escalate' || approvalAction === 'countersign')) {
@@ -1002,30 +1013,55 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
   // 取得前序已簽核過的人員 (用於退回重審)
   const safeValues = values || {};
   const currentStepIndex = safeValues.currentStep || 0;
-  const currentRole = safeValues.workflowPath?.[currentStepIndex]?.role;
+  
+  // 改為基於可編輯的流程來判斷當前角色
+  const currentRole = editableWorkflow[currentStepIndex]?.role;
   const isAssignee = currentRole === "交辦";
 
-  const previousApprovers = (safeValues.workflowPath || [])
+  const previousApprovers = editableWorkflow
     .slice(0, currentStepIndex)
     .filter((v,i,a) => a.findIndex(t => (t.staffId === v.staffId)) === i); // 去除重複
+
+  // 新增：處理修改後續流程的函數
+  const handleMoveStep = (index, direction) => {
+    if (index <= currentStepIndex) return;
+    const targetIndex = index + direction;
+    if (targetIndex <= currentStepIndex || targetIndex >= editableWorkflow.length) return;
+    const newFlow = [...editableWorkflow];
+    [newFlow[index], newFlow[targetIndex]] = [newFlow[targetIndex], newFlow[index]];
+    setEditableWorkflow(newFlow);
+  };
+
+  const handleRemoveStep = (index) => {
+    if (index <= currentStepIndex) return;
+    const newFlow = [...editableWorkflow];
+    newFlow.splice(index, 1);
+    setEditableWorkflow(newFlow);
+  };
+
+  const handleAddNewStep = () => {
+    if (!newStaffId) return alert("請選擇人員");
+    if (editableWorkflow.some(step => step.staffId === newStaffId)) return alert("此人員已在流程中");
+    const staff = staffList.find(s => s.staffId === newStaffId);
+    if (!staff) return;
+    setEditableWorkflow([...editableWorkflow, { staffId: staff.staffId, name: staff.name, pos: staff.pos, dept: staff.dept, role: newRole }]);
+    setNewStaffId("");
+  };
 
   // 處理綜合的簽核決策送出
   const handleDecisionSubmit = () => {
     let finalComment = comment;
     let actionType = 'approve';
-    let newWorkflow = null;
+    let finalWorkflow = [...editableWorkflow];
 
-    // 如果選擇了需要加簽人員的動作，先行校驗並組裝新的簽核路徑
+    // 如果選擇了需要加簽人員的動作，先行校驗並組裝新的簽核路徑 (兼容舊版加簽 UI)
     if (approvalAction === 'escalate' || approvalAction === 'countersign') {
       if (!extraStaffId) return alert("請先於上方「加簽/改派」選擇人員");
       const staff = staffList.find(s => s.staffId === extraStaffId);
       if (!staff) return;
       
-      newWorkflow = [...(values.workflowPath || [])];
-      const currentStep = values.currentStep || 0;
-      
       // 檢查是否已在後續流程中
-      if (newWorkflow.some((step, idx) => idx > currentStep && step.staffId === extraStaffId)) {
+      if (finalWorkflow.some((step, idx) => idx > currentStepIndex && step.staffId === extraStaffId)) {
         return alert("此人員已在後續簽核流程中，無需重複加簽");
       }
 
@@ -1038,7 +1074,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
       };
 
       // 在目前的下一步插入
-      newWorkflow.splice(currentStep + 1, 0, newStep);
+      finalWorkflow.splice(currentStepIndex + 1, 0, newStep);
     } else if (showAddStep && extraStaffId && approvalAction === 'approve') {
       return alert("您已選取加簽人員，請於下方簽核選項指定「呈上級決行」或「同意送會簽人員」，或先取消選取人員。");
     }
@@ -1070,7 +1106,8 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     }
 
     if (actionType === 'approve') {
-      onApprove(currentDocId, finalComment, newWorkflow);
+      // 送出時將編輯後的最終流程傳遞給父層 API
+      onApprove(currentDocId, finalComment, finalWorkflow);
     } else if (actionType === 'reject_to_step') {
       // 傳遞第三個參數 rejectTarget (也就是目標人員的 staffId)
       onReject(currentDocId, finalComment, rejectTarget);
@@ -1137,25 +1174,62 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
           })}
         </div>
         
-        {safeValues.workflowPath && (
+        {editableWorkflow.length > 0 && (
             <div className="mt-8 pt-6 border-t border-slate-100">
-              <p className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest" style={mingLiUStyle}>簽核歷程與意見 Workflow History</p>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest" style={mingLiUStyle}>簽核歷程與意見 Workflow History</p>
+                {canApprove && status === 'Pending' && <p className="text-xs text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded" style={mingLiUStyle}>💡 您可修改尚未到達之簽核步驟</p>}
+              </div>
               <div className="space-y-4">
-                {safeValues.workflowPath.map((step, i) => {
-                  const isCurrentStep = (safeValues.currentStep || 0) === i;
-                  const isProcessed = (safeValues.currentStep || 0) > i || status === 'Completed' || (status === 'Rejected' && step.comment);
+                {editableWorkflow.map((step, i) => {
+                  const isCurrentStep = currentStepIndex === i;
+                  const isProcessed = currentStepIndex > i || status === 'Completed' || (status === 'Rejected' && step.comment);
+                  // 判斷是否為可以編輯的未來步驟
+                  const canEditThisStep = canApprove && status === 'Pending' && i > currentStepIndex;
+
                   return (
-                    <div key={i} className={`flex gap-4 p-4 rounded-2xl border transition-all ${isCurrentStep ? 'bg-indigo-50 border-indigo-200 ring-4 ring-indigo-50' : isProcessed ? 'bg-slate-50/50 border-slate-100' : 'bg-transparent border-dashed border-slate-200 opacity-50'}`}>
+                    <div key={step.staffId || i} className={`flex gap-4 p-4 rounded-2xl border transition-all group ${isCurrentStep ? 'bg-indigo-50 border-indigo-200 ring-4 ring-indigo-50' : isProcessed ? 'bg-slate-50/50 border-slate-100' : 'bg-transparent border-dashed border-slate-200 opacity-50 hover:opacity-100 hover:border-indigo-300 hover:bg-white'}`}>
                       <div className="shrink-0"><div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${isProcessed ? 'bg-green-500' : isCurrentStep ? 'bg-indigo-600 animate-pulse' : 'bg-slate-300'}`}>{isProcessed ? <Check size={20} /> : <User size={20} />}</div></div>
-                      <div className="flex-1">
-                         <div className="flex items-center justify-between mb-1"><span className="text-sm font-black text-slate-800" style={mingLiUStyle}>{step.name} <small className="text-slate-400">({step.pos})</small></span><span className="text-xs font-black px-2 py-0.5 bg-white border rounded text-indigo-600 uppercase" style={mingLiUStyle}>{step.role}</span></div>
-                         {step.processedDate && <p className="text-xs text-slate-400 font-bold mb-2" style={mingLiUStyle}>處理時間：{new Date(step.processedDate).toLocaleString()}</p>}
-                         {step.comment ? (<div className="bg-white p-3 rounded-xl border border-slate-200 relative mt-2"><div className="absolute -top-2 left-4 px-1 bg-white text-xs font-black text-slate-400 flex items-center gap-1"><MessageSquare size={10} /> 簽核意見</div><p className="text-xs font-bold text-slate-600 italic" style={mingLiUStyle}>「 {step.comment} 」</p></div>) : isProcessed ? <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isCurrentStep ? <p className="text-xs text-indigo-600 font-black animate-pulse" style={mingLiUStyle}>等待簽核中...</p> : null}
+                      <div className="flex-1 flex justify-between items-start">
+                         <div className="flex-1">
+                           <div className="flex items-center justify-between mb-1">
+                             <div>
+                               <span className="text-sm font-black text-slate-800" style={mingLiUStyle}>{step.name} <small className="text-slate-400">({step.pos})</small></span>
+                               <span className="text-xs font-black px-2 py-0.5 ml-2 bg-white border rounded text-indigo-600 uppercase" style={mingLiUStyle}>{step.role}</span>
+                             </div>
+                           </div>
+                           {step.processedDate && <p className="text-xs text-slate-400 font-bold mb-2" style={mingLiUStyle}>處理時間：{new Date(step.processedDate).toLocaleString()}</p>}
+                           {step.comment ? (<div className="bg-white p-3 rounded-xl border border-slate-200 relative mt-2 w-full max-w-lg"><div className="absolute -top-2 left-4 px-1 bg-white text-xs font-black text-slate-400 flex items-center gap-1"><MessageSquare size={10} /> 簽核意見</div><p className="text-xs font-bold text-slate-600 italic" style={mingLiUStyle}>「 {step.comment} 」</p></div>) : isProcessed ? <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isCurrentStep ? <p className="text-xs text-indigo-600 font-black animate-pulse" style={mingLiUStyle}>等待簽核中...</p> : null}
+                         </div>
+                         {/* 新增修改未來步驟的操作按鈕 */}
+                         {canEditThisStep && (
+                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2 bg-white p-1 rounded-lg shadow-sm border border-slate-100">
+                             <button type="button" onClick={() => handleMoveStep(i, -1)} disabled={i === currentStepIndex + 1} className="p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronUp size={16} /></button>
+                             <button type="button" onClick={() => handleMoveStep(i, 1)} disabled={i === editableWorkflow.length - 1} className="p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronDown size={16} /></button>
+                             <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                             <button type="button" onClick={() => handleRemoveStep(i)} className="p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded transition-all"><X size={16} /></button>
+                           </div>
+                         )}
                       </div>
                     </div>
                   );
                 })}
               </div>
+              
+              {/* 新增後續人員區塊 */}
+              {canApprove && status === 'Pending' && (
+                <div className="flex flex-col sm:flex-row items-center gap-3 p-4 mt-4 border border-dashed border-indigo-200 rounded-2xl bg-white/50 animate-in fade-in transition-all">
+                   <div className="text-xs font-black text-indigo-500 whitespace-nowrap flex items-center gap-1" style={mingLiUStyle}><PlusCircle size={14}/> 增加後續簽核者</div>
+                   <select value={newStaffId} onChange={e => setNewStaffId(e.target.value)} className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 font-bold" style={mingLiUStyle}>
+                     <option value="">-- 選取指定人員 --</option>
+                     {staffList.filter(s => s.staffId !== currentUser.staffId).map(s => <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>)}
+                   </select>
+                   <select value={newRole} onChange={e => setNewRole(e.target.value)} className="w-24 p-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 font-bold" style={mingLiUStyle}>
+                     {["簽核", "會簽", "串會", "交辦"].map(r => <option key={r} value={r}>{r}</option>)}
+                   </select>
+                   <button type="button" onClick={handleAddNewStep} className="px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-200 text-sm font-black rounded-xl hover:bg-indigo-100 transition-all shrink-0 active:scale-95" style={mingLiUStyle}>加入</button>
+                </div>
+              )}
             </div>
         )}
 
@@ -1234,7 +1308,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
                 {/* 右側 (原左側)：簽核單選選項 */}
                 <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm flex flex-col justify-center">
-                  <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5" style={mingLiUStyle}>
+                  <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5">
                     <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核選項
                   </div>
                   <div className="space-y-3.5 pl-2">
