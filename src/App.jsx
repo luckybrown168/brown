@@ -384,8 +384,52 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   );
 };
 
-// --- 組件：流程設定視圖 (新增) ---
-const WorkflowSettingsView = () => {
+// --- 組件：流程設定視圖 (自動化規則設定) ---
+const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule }) => {
+  const [editingRule, setEditingRule] = useState(null);
+  const [formData, setFormData] = useState({ category: '差勤類', formKind: '所有單據', steps: [] });
+  const [tempStaffId, setTempStaffId] = useState('');
+  const [tempRole, setTempRole] = useState('簽核');
+
+  // 目前系統有的表單分類 (為了示範，先寫死對應選單)
+  const categories = ["行政類", "銷售類", "差勤類", "系統類"];
+  const formKinds = {
+    "差勤類": ["所有單據", "出勤異常單", "銷假單", "加班單", "請假單"],
+    "行政類": ["所有單據"], "銷售類": ["所有單據"], "系統類": ["所有單據"]
+  };
+
+  const handleEdit = (rule) => {
+    setEditingRule(rule.id);
+    setFormData({ ...rule });
+  };
+
+  const handleAddStep = () => {
+    if (!tempStaffId) return;
+    const staff = staffList.find(s => s.staffId === tempStaffId);
+    if (!staff) return;
+    setFormData(prev => ({
+      ...prev,
+      steps: [...prev.steps, { staffId: staff.staffId, role: tempRole }]
+    }));
+    setTempStaffId('');
+  };
+
+  const handleRemoveStep = (index) => {
+    const newSteps = [...formData.steps];
+    newSteps.splice(index, 1);
+    setFormData(prev => ({ ...prev, steps: newSteps }));
+  };
+
+  const handleSave = () => {
+    if (formData.steps.length === 0) return alert('請至少加入一位簽核人員');
+    onSaveRule({
+      id: editingRule || `rule-${Date.now()}`,
+      ...formData
+    });
+    setEditingRule(null);
+    setFormData({ category: '差勤類', formKind: '所有單據', steps: [] });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
       <div className="flex items-center gap-4 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -393,24 +437,104 @@ const WorkflowSettingsView = () => {
           <GitBranch size={28} />
         </div>
         <div>
-          <h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>簽核流程設定</h2>
-          <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>定義各類單據的預設簽核路徑與自動化規則</p>
+          <h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>簽核流程配置與自動化</h2>
+          <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>設定各類單據的預設送單路徑，員工送單時將自動套用</p>
         </div>
       </div>
       
-      <div className="bg-white rounded-[2.5rem] p-12 border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[400px]">
-        <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-300">
-          <Settings size={40} className="animate-spin-slow" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* 左側：現有規則列表 */}
+        <div className="lg:col-span-1 space-y-4">
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6">
+            <h3 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2" style={mingLiUStyle}><ListOrdered size={18} className="text-indigo-600"/> 已設定的自動化規則</h3>
+            <div className="space-y-3">
+              {rules.length === 0 ? (
+                <p className="text-xs text-slate-400 italic text-center py-4" style={mingLiUStyle}>尚無任何規則，請於右側新增</p>
+              ) : (
+                rules.map(rule => (
+                  <div key={rule.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:border-indigo-300 transition-colors group cursor-pointer" onClick={() => handleEdit(rule)}>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded uppercase" style={mingLiUStyle}>{rule.category}</span>
+                      <button onClick={(e) => { e.stopPropagation(); onDeleteRule(rule.id); }} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash size={14}/></button>
+                    </div>
+                    <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{rule.formKind === '所有單據' ? '套用該類別所有單據' : rule.formKind}</p>
+                    <p className="text-xs text-slate-500 mt-2 font-bold" style={mingLiUStyle}>共 {rule.steps.length} 個預設簽核關卡</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <button onClick={() => { setEditingRule(null); setFormData({ category: '差勤類', formKind: '所有單據', steps: [] }); }} className="w-full mt-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-black text-xs hover:bg-indigo-100 transition-colors flex justify-center items-center gap-2" style={mingLiUStyle}>
+              <Plus size={16}/> 建立新規則
+            </button>
+          </div>
         </div>
-        <div className="max-w-md">
-          <h3 className="text-xl font-black text-slate-700" style={mingLiUStyle}>流程自動化編輯器</h3>
-          <p className="text-sm text-slate-400 mt-2 leading-relaxed" style={mingLiUStyle}>
-            此功能目前正在進行結構性優化。未來您將可以在此針對「差勤類」、「行政類」等不同類型的單據，設定預設的層級簽核對象，並開啟「自動判定職位」之動態路徑。
-          </p>
+
+        {/* 右側：編輯器 */}
+        <div className="lg:col-span-2 bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
+          <h3 className="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-4" style={mingLiUStyle}>
+            {editingRule ? '編輯自動化規則' : '新增自動化規則'}
+          </h3>
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-black text-slate-500 mb-1.5 block" style={mingLiUStyle}>適用大類</label>
+                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value, formKind: '所有單據'})} className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50" style={mingLiUStyle}>
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-black text-slate-500 mb-1.5 block" style={mingLiUStyle}>適用單據種類</label>
+                <select value={formData.formKind} onChange={e => setFormData({...formData, formKind: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50" style={mingLiUStyle}>
+                  {(formKinds[formData.category] || ["所有單據"]).map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+              <label className="text-xs font-black text-indigo-600 mb-3 block" style={mingLiUStyle}>設定預設流程路徑</label>
+              
+              {/* 預設流程拖曳/列表顯示區 */}
+              <div className="space-y-2 mb-6">
+                {formData.steps.length === 0 ? (
+                  <div className="py-8 border-2 border-dashed border-slate-300 rounded-xl text-center text-slate-400 text-sm font-bold" style={mingLiUStyle}>尚未設定人員，請從下方加入</div>
+                ) : (
+                  formData.steps.map((step, idx) => {
+                    const staffInfo = staffList.find(s => s.staffId === step.staffId) || { name: '未知人員', pos: '' };
+                    return (
+                      <div key={idx} className="flex items-center gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm">
+                        <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-black shrink-0">{idx + 1}</div>
+                        <div className="flex-1 flex justify-between items-center">
+                          <div><span className="font-bold text-sm text-slate-700" style={mingLiUStyle}>{staffInfo.name}</span> <span className="text-xs text-slate-400">({staffInfo.pos})</span></div>
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-black rounded uppercase" style={mingLiUStyle}>{step.role}</span>
+                        </div>
+                        <button onClick={() => handleRemoveStep(idx)} className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded hover:bg-red-50"><X size={16}/></button>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              {/* 加入人員控制區 */}
+              <div className="flex gap-2 items-center">
+                <select value={tempStaffId} onChange={e => setTempStaffId(e.target.value)} className="flex-1 p-2.5 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500" style={mingLiUStyle}>
+                  <option value="">-- 選擇指定人員 --</option>
+                  {staffList.map(s => <option key={s.staffId} value={s.staffId}>{s.name} - {s.dept}</option>)}
+                </select>
+                <select value={tempRole} onChange={e => setTempRole(e.target.value)} className="w-24 p-2.5 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500" style={mingLiUStyle}>
+                  <option value="簽核">簽核</option><option value="會簽">會簽</option><option value="交辦">交辦</option>
+                </select>
+                <button onClick={handleAddStep} className="px-4 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-black hover:bg-slate-700 transition-colors" style={mingLiUStyle}>加入</button>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <button onClick={handleSave} className="px-8 py-3 bg-[#1677FF] text-white rounded-xl text-sm font-black flex items-center gap-2 hover:bg-blue-700 shadow-md active:scale-95 transition-all" style={mingLiUStyle}>
+                <Save size={18}/> 儲存規則
+              </button>
+            </div>
+          </div>
         </div>
-        <button className="px-8 py-3 bg-slate-100 text-slate-500 rounded-2xl font-black text-sm cursor-not-allowed" style={mingLiUStyle}>
-          即將開放
-        </button>
       </div>
     </div>
   );
@@ -832,10 +956,33 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
 };
 
 // --- 組件：預覽校對畫面 ---
-const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staffList, isProcessing }) => {
+const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staffList, isProcessing, workflowRules }) => {
   const [workflowSteps, setWorkflowSteps] = useState(values.workflowPath || []);
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [selectedRole, setSelectedRole] = useState("簽核");
+
+  // 自動套用流程設定邏輯
+  useEffect(() => {
+    // 如果這份表單尚未設定流程，則自動尋找符合的規則
+    if (!values.workflowPath || values.workflowPath.length === 0) {
+      // 尋找完全匹配 單據類別 + 種類 的規則，若無則找只匹配 單據類別(所有單據) 的規則
+      const matchedRule = workflowRules?.find(r => 
+        r.category === values.category && r.formKind === values.form_kind
+      ) || workflowRules?.find(r => 
+        r.category === values.category && r.formKind === '所有單據'
+      );
+
+      if (matchedRule) {
+        const mappedSteps = matchedRule.steps.map(step => {
+          const staff = staffList.find(s => s.staffId === step.staffId);
+          if (!staff) return null;
+          return { staffId: staff.staffId, name: staff.name, pos: staff.pos, dept: staff.dept, role: step.role };
+        }).filter(Boolean); // 過濾掉找不到人員的無效步驟
+        
+        setWorkflowSteps(mappedSteps);
+      }
+    }
+  }, []);
 
   const roles = [
     { label: "簽核", value: "簽核", color: "bg-indigo-600", icon: CheckCircle },
@@ -1328,6 +1475,34 @@ const App = () => {
   const [viewingForm, setViewingForm] = useState(null);
   const [formValues, setFormValues] = useState({});
   const [staffList, setStaffList] = useState([]);
+
+  // 新增：流程設定的狀態 (實務上這也會存進資料庫，目前存在 State 中)
+  const [workflowRules, setWorkflowRules] = useState([
+    {
+      id: 'default-rule-1',
+      category: '差勤類',
+      formKind: '請假單',
+      steps: [
+        { staffId: 'FIN-01', role: '會簽' }, // 預設王大美
+        { staffId: '0338', role: '簽核' }    // 預設王管理
+      ]
+    }
+  ]);
+
+  const handleSaveRule = (newRule) => {
+    setWorkflowRules(prev => {
+      const exists = prev.find(r => r.id === newRule.id);
+      if (exists) return prev.map(r => r.id === newRule.id ? newRule : r);
+      return [...prev, newRule];
+    });
+    alert("規則儲存成功！未來員工發起此類單據將自動帶入此流程。");
+  };
+
+  const handleDeleteRule = (ruleId) => {
+    if(window.confirm('確定要刪除這條自動化規則嗎？')) {
+      setWorkflowRules(prev => prev.filter(r => r.id !== ruleId));
+    }
+  };
 
   // 對接 server.js 的獲取人員列表 API
   const fetchPersonnel = async () => {
@@ -1859,12 +2034,13 @@ const App = () => {
           </div>
         );
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} />;
-      case 'workflow_settings': return <WorkflowSettingsView />; // 渲染流程設定頁面
+      case 'workflow_settings': 
+        return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
             {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} staffList={staffList} /> : 
-              isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} /> : 
+              isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} workflowRules={workflowRules} /> : 
               <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} />}
           </div></div>
         );
