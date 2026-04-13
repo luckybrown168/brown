@@ -71,7 +71,8 @@ import {
   MessageSquare,
   Undo2,
   UserPlus2,
-  ShieldCheck
+  ShieldCheck,
+  ListChecks
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -924,6 +925,10 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
   const [extraRole, setExtraRole] = useState("簽核");
   const [showAddStep, setShowAddStep] = useState(false);
 
+  // 簽核動作狀態 (新增功能)
+  const [approvalAction, setApprovalAction] = useState('approve');
+  const [rejectTarget, setRejectTarget] = useState("");
+
   const handlePrint = () => {
     const originalTitle = document.title;
     document.title = `申請存根_${currentDocId}`;
@@ -975,13 +980,55 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     newWorkflow.splice(currentStep + 1, 0, newStep);
 
     // 執行核准並夾帶新的路徑
-    onApprove(currentDocId, comment || "加簽主管核核", newWorkflow);
+    onApprove(currentDocId, comment || "加簽主管核准", newWorkflow);
+  };
+
+  // 處理綜合的簽核決策送出
+  const handleDecisionSubmit = () => {
+    let finalComment = comment;
+    let actionType = 'approve';
+
+    switch (approvalAction) {
+      case 'assign': 
+        finalComment = `[分文] ${comment}`; 
+        break;
+      case 'escalate': 
+        finalComment = `[呈上級決行] ${comment}`; 
+        break;
+      case 'countersign': 
+        finalComment = `[同意送會簽人員] ${comment}`; 
+        break;
+      case 'reject_to_step':
+        if (!rejectTarget) return alert("請選擇要退回重審的人員");
+        finalComment = `[退回給 ${rejectTarget} 重審] ${comment}`;
+        actionType = 'reject';
+        break;
+      case 'reject':
+        actionType = 'reject';
+        finalComment = `[退回原發文者] ${comment}`;
+        break;
+      case 'approve':
+      default:
+        actionType = 'approve';
+        break;
+    }
+
+    if (actionType === 'approve') {
+      onApprove(currentDocId, finalComment);
+    } else {
+      onReject(currentDocId, finalComment);
+    }
   };
 
   const safeValues = values || {};
   const currentStepIndex = safeValues.currentStep || 0;
   const currentRole = safeValues.workflowPath?.[currentStepIndex]?.role;
   const isAssignee = currentRole === "交辦";
+
+  // 取得前序已簽核過的人員 (用於退回重審)
+  const previousApprovers = (safeValues.workflowPath || [])
+    .slice(0, currentStepIndex)
+    .filter((v,i,a) => a.findIndex(t => (t.staffId === v.staffId)) === i); // 去除重複
 
   const statusConfig = {
     Completed: { text: '核准完成', colorClass: 'text-green-600', borderClass: 'border-green-600' },
@@ -1063,8 +1110,8 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
           <div className="mt-8 p-6 bg-indigo-50/50 border-2 border-indigo-200 rounded-[2rem] animate-in slide-in-from-bottom-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-indigo-700">
-                <MessageSquare size={18} />
-                <h4 className="font-black text-sm" style={mingLiUStyle}>{isAssignee ? "填寫交辦執行意見" : "填寫簽核意見 / 退回理由"}</h4>
+                <ListChecks size={18} />
+                <h4 className="font-black text-sm" style={mingLiUStyle}>{isAssignee ? "填寫交辦執行意見" : "簽核決策與意見輸入"}</h4>
               </div>
               {!isAssignee && (
                 <button 
@@ -1080,9 +1127,9 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
             {!isAssignee && showAddStep && (
               <div className="mb-6 p-5 bg-white border border-indigo-100 rounded-2xl shadow-sm animate-in slide-in-from-top-2">
-                <p className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5">
+                <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5">
                   <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 設定加簽對象 (核准後將先送至此人)
-                </p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <select 
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-bold text-sm"
@@ -1113,24 +1160,103 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
               </div>
             )}
 
-            <textarea value={comment} disabled={isProcessing} onChange={(e) => setComment(e.target.value)} placeholder={isAssignee ? "請輸入交辦任務的執行狀況..." : "請在此輸入您的簽核意見..."} className="w-full h-24 p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50" style={mingLiUStyle} />
+            {isAssignee ? (
+              <textarea value={comment} disabled={isProcessing} onChange={(e) => setComment(e.target.value)} placeholder="請輸入交辦任務的執行狀況..." className="w-full h-24 p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50" style={mingLiUStyle} />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+                {/* 左側：簽核單選選項 */}
+                <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm flex flex-col justify-center">
+                  <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5" style={mingLiUStyle}>
+                    <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核選項
+                  </div>
+                  <div className="space-y-3.5 pl-2">
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input type="radio" name="approvalAction" value="approve" checked={approvalAction === 'approve'} onChange={(e) => setApprovalAction(e.target.value)} className="w-4 h-4 text-green-600 focus:ring-green-500 border-slate-300" />
+                      <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'approve' ? 'text-green-700' : 'text-slate-700'}`} style={mingLiUStyle}>同意</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input type="radio" name="approvalAction" value="assign" checked={approvalAction === 'assign'} onChange={(e) => setApprovalAction(e.target.value)} className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300" />
+                      <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'assign' ? 'text-indigo-700' : 'text-slate-700'}`} style={mingLiUStyle}>分文</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input type="radio" name="approvalAction" value="escalate" checked={approvalAction === 'escalate'} onChange={(e) => setApprovalAction(e.target.value)} className="w-4 h-4 text-amber-600 focus:ring-amber-500 border-slate-300" />
+                      <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'escalate' ? 'text-amber-700' : 'text-amber-700/60'}`} style={mingLiUStyle}>呈上級決行</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input type="radio" name="approvalAction" value="reject_to_step" checked={approvalAction === 'reject_to_step'} 
+                             onChange={(e) => { 
+                               setApprovalAction(e.target.value); 
+                               if(!rejectTarget && previousApprovers.length > 0) setRejectTarget(previousApprovers[0].name); 
+                             }} 
+                             className="w-4 h-4 text-red-600 focus:ring-red-500 border-slate-300" />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'reject_to_step' ? 'text-red-600' : 'text-slate-700'}`} style={mingLiUStyle}>不同意 (退</span>
+                        <select 
+                          disabled={approvalAction !== 'reject_to_step'} 
+                          value={rejectTarget} 
+                          onChange={e => setRejectTarget(e.target.value)} 
+                          className="border border-slate-300 rounded px-1.5 py-0.5 text-xs text-slate-700 disabled:opacity-50 outline-none focus:border-red-400" 
+                          onClick={e => e.stopPropagation()}
+                          style={mingLiUStyle}
+                        >
+                          <option value="">-- 選擇人員 --</option>
+                          {previousApprovers.map(step => (
+                            <option key={step.staffId} value={step.name}>{step.name}</option>
+                          ))}
+                        </select>
+                        <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'reject_to_step' ? 'text-red-600' : 'text-slate-700'}`} style={mingLiUStyle}>重審)</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input type="radio" name="approvalAction" value="reject" checked={approvalAction === 'reject'} onChange={(e) => setApprovalAction(e.target.value)} className="w-4 h-4 text-red-600 focus:ring-red-500 border-slate-300" />
+                      <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'reject' ? 'text-red-600' : 'text-slate-700'}`} style={mingLiUStyle}>不同意 (退回原發文者並中斷流程)</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input type="radio" name="approvalAction" value="countersign" checked={approvalAction === 'countersign'} onChange={(e) => setApprovalAction(e.target.value)} className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300" />
+                      <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'countersign' ? 'text-indigo-700' : 'text-slate-700'}`} style={mingLiUStyle}>同意送會簽人員</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 右側：意見輸入區 */}
+                <div className="flex flex-col">
+                  <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5" style={mingLiUStyle}>
+                    <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核意見
+                  </div>
+                  <textarea 
+                    value={comment} 
+                    disabled={isProcessing} 
+                    onChange={(e) => setComment(e.target.value)} 
+                    placeholder="請在此輸入您的簽核意見補充說明..." 
+                    className="flex-1 w-full p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50 resize-none shadow-sm" 
+                    style={mingLiUStyle} 
+                  />
+                </div>
+              </div>
+            )}
             
             <div className="mt-6 flex gap-3">
-                {!isAssignee && <button type="button" disabled={isProcessing} onClick={() => onReject(currentDocId, comment)} className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 flex items-center justify-center gap-2 disabled:opacity-50" style={mingLiUStyle}><X size={14} /> 退回申請</button>}
-                
                 {!isAssignee && showAddStep ? (
                   <button 
                     type="button" 
                     disabled={isProcessing || !extraStaffId} 
                     onClick={handleAddReviewerAndSubmit} 
-                    className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-md hover:bg-indigo-700 flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-3.5 bg-indigo-600 text-white rounded-xl text-sm font-black shadow-md hover:bg-indigo-700 flex items-center justify-center gap-2 disabled:opacity-50"
                     style={mingLiUStyle}
                   >
-                    {isProcessing ? <RotateCcw className="animate-spin" size={14} /> : <UserPlus2 size={14} />} 核准並加簽傳送
+                    {isProcessing ? <RotateCcw className="animate-spin" size={16} /> : <UserPlus2 size={16} />} 核准並加簽傳送
                   </button>
                 ) : (
-                  <button type="button" disabled={isProcessing} onClick={() => onApprove(currentDocId, comment)} className={`${isAssignee ? 'w-full' : 'flex-[2]'} py-3 bg-green-600 text-white rounded-xl text-xs font-black shadow-md hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-50`} style={mingLiUStyle}>
-                    {isProcessing ? <RotateCcw className="animate-spin" size={14} /> : <Check size={14} />} {isAssignee ? "確認交辦完成" : "核准通過"}
+                  <button 
+                    type="button" 
+                    disabled={isProcessing} 
+                    onClick={isAssignee ? () => onApprove(currentDocId, comment) : handleDecisionSubmit} 
+                    className={`w-full py-3.5 text-white rounded-xl text-sm font-black shadow-md flex items-center justify-center gap-2 disabled:opacity-50 transition-colors ${
+                      approvalAction.includes('reject') && !isAssignee ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'
+                    }`} 
+                    style={mingLiUStyle}
+                  >
+                    {isProcessing ? <RotateCcw className="animate-spin" size={16} /> : <CheckCircle size={16} />} {isAssignee ? "確認交辦完成" : "確認送出決策"}
                   </button>
                 )}
             </div>
