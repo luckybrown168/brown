@@ -964,6 +964,16 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     document.body.removeChild(link);
   };
 
+  // 取得前序已簽核過的人員 (用於退回重審)
+  const safeValues = values || {};
+  const currentStepIndex = safeValues.currentStep || 0;
+  const currentRole = safeValues.workflowPath?.[currentStepIndex]?.role;
+  const isAssignee = currentRole === "交辦";
+
+  const previousApprovers = (safeValues.workflowPath || [])
+    .slice(0, currentStepIndex)
+    .filter((v,i,a) => a.findIndex(t => (t.staffId === v.staffId)) === i); // 去除重複
+
   // 處理綜合的簽核決策送出
   const handleDecisionSubmit = () => {
     let finalComment = comment;
@@ -1010,8 +1020,9 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         break;
       case 'reject_to_step':
         if (!rejectTarget) return alert("請選擇要退回重審的人員");
-        finalComment = `[退回給 ${rejectTarget} 重審] ${comment}`;
-        actionType = 'reject';
+        const targetStaffName = previousApprovers.find(s => s.staffId === rejectTarget)?.name || rejectTarget;
+        finalComment = `[退回給 ${targetStaffName} 重審] ${comment}`;
+        actionType = 'reject_to_step';
         break;
       case 'reject':
         actionType = 'reject';
@@ -1025,20 +1036,13 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
     if (actionType === 'approve') {
       onApprove(currentDocId, finalComment, newWorkflow);
+    } else if (actionType === 'reject_to_step') {
+      // 傳遞第三個參數 rejectTarget (也就是目標人員的 staffId)
+      onReject(currentDocId, finalComment, rejectTarget);
     } else {
       onReject(currentDocId, finalComment);
     }
   };
-
-  const safeValues = values || {};
-  const currentStepIndex = safeValues.currentStep || 0;
-  const currentRole = safeValues.workflowPath?.[currentStepIndex]?.role;
-  const isAssignee = currentRole === "交辦";
-
-  // 取得前序已簽核過的人員 (用於退回重審)
-  const previousApprovers = (safeValues.workflowPath || [])
-    .slice(0, currentStepIndex)
-    .filter((v,i,a) => a.findIndex(t => (t.staffId === v.staffId)) === i); // 去除重複
 
   const statusConfig = {
     Completed: { text: '核准完成', colorClass: 'text-green-600', borderClass: 'border-green-600' },
@@ -1204,7 +1208,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                       <input type="radio" name="approvalAction" value="reject_to_step" checked={approvalAction === 'reject_to_step'} 
                              onChange={(e) => { 
                                setApprovalAction(e.target.value); 
-                               if(!rejectTarget && previousApprovers.length > 0) setRejectTarget(previousApprovers[0].name); 
+                               if(!rejectTarget && previousApprovers.length > 0) setRejectTarget(previousApprovers[0].staffId); 
                              }} 
                              className="w-4 h-4 text-red-600 focus:ring-red-500 border-slate-300" />
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -1219,7 +1223,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                         >
                           <option value="">-- 選擇人員 --</option>
                           {previousApprovers.map(step => (
-                            <option key={step.staffId} value={step.name}>{step.name}</option>
+                            <option key={step.staffId} value={step.staffId}>{step.name}</option>
                           ))}
                         </select>
                         <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'reject_to_step' ? 'text-red-600' : 'text-slate-700'}`} style={mingLiUStyle}>重審)</span>
@@ -1578,7 +1582,7 @@ const App = () => {
   };
 
   // 對接 server.js 的簽核更新 API
-  const handleProcessForm = async (docId, action, comment, optionalNewWorkflow = null) => {
+  const handleProcessForm = async (docId, action, comment, optionalNewWorkflow = null, targetRejectId = null) => {
     const formToProcess = submittedForms.find(f => f.id === docId);
     if (!formToProcess) return;
 
@@ -1590,15 +1594,36 @@ const App = () => {
 
     setIsProcessing(true);
     try {
-      if (workflow[newStepIndex] && action !== 'withdraw') {
+      if (workflow[newStepIndex] && action !== 'withdraw' && action !== 'reject_to_step') {
         workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
       }
 
       if (action === 'approve') {
         if (newStepIndex < workflow.length - 1) newStepIndex += 1;
         else newStatus = 'Completed';
-      } else if (action === 'reject') { newStatus = 'Rejected'; } 
-      else if (action === 'withdraw') {
+      } else if (action === 'reject') { 
+        newStatus = 'Rejected'; 
+      } else if (action === 'reject_to_step') {
+        // 先將當前退回者的意見保存到歷程中
+        if (workflow[newStepIndex]) {
+          workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
+        }
+        // 尋找要退回的目標人員順序位置
+        const targetIndex = workflow.findIndex(step => step.staffId === targetRejectId);
+        if (targetIndex !== -1) {
+          newStepIndex = targetIndex;
+          newStatus = 'Pending';
+          // 清除退回目標點到當前步驟之間所有人的歷史簽核紀錄（不包含剛剛退回的人）
+          for (let i = targetIndex; i < workflow.length; i++) {
+            if (i !== formToProcess.values.currentStep) {
+              workflow[i].comment = "";
+              workflow[i].processedDate = null;
+            }
+          }
+        } else {
+          newStatus = 'Rejected'; // 防呆：若找不到該人則直接退件
+        }
+      } else if (action === 'withdraw') {
         newStatus = 'Rejected';
         if (workflow[newStepIndex]) {
           workflow[newStepIndex] = { ...workflow[newStepIndex], comment: "申請人自行撤回 (抽單)", processedDate: new Date().toISOString() };
@@ -1670,7 +1695,7 @@ const App = () => {
         }
       }
 
-      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : '已退回申請！');
+      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : action === 'reject_to_step' ? '已退回至指定人員重審！' : '已退回申請！');
       setViewingForm(null);
     } catch (err) { 
       alert(`操作失敗：${err.message}`); 
@@ -1757,7 +1782,7 @@ const App = () => {
       return (
         <SubmissionSummary 
           schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} canApprove={canApprove}
-          onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm) => handleProcessForm(id, 'reject', comm)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
+          onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm, targetId) => handleProcessForm(id, targetId ? 'reject_to_step' : 'reject', comm, null, targetId)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
           isProcessing={isProcessing} staffList={staffList}
         />
       ); 
