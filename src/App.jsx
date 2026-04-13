@@ -1495,32 +1495,76 @@ const App = () => {
   const [formValues, setFormValues] = useState({});
   const [staffList, setStaffList] = useState([]);
 
-  // 新增：流程設定的狀態 (實務上這也會存進資料庫，目前存在 State 中)
-  const [workflowRules, setWorkflowRules] = useState([
-    {
-      id: 'default-rule-1',
-      category: '差勤類',
-      formKind: '請假單',
-      department: '所有組別',
-      steps: [
-        { staffId: 'FIN-01', role: '會簽' }, // 預設王大美
-        { staffId: '0338', role: '簽核' }    // 預設王管理
-      ]
-    }
-  ]);
+  // 修改：將寫死的狀態改為空陣列，並透過 API 獲取
+  const [workflowRules, setWorkflowRules] = useState([]);
 
-  const handleSaveRule = (newRule) => {
-    setWorkflowRules(prev => {
-      const exists = prev.find(r => r.id === newRule.id);
-      if (exists) return prev.map(r => r.id === newRule.id ? newRule : r);
-      return [...prev, newRule];
-    });
-    alert("規則儲存成功！未來員工發起此類單據將自動帶入此流程。");
+  // 對接 server.js 的獲取規則 API
+  const fetchWorkflowRules = async () => {
+    if (isMockMode) {
+      setWorkflowRules([
+        {
+          id: 'default-rule-1',
+          category: '差勤類',
+          formKind: '請假單',
+          department: '所有組別',
+          steps: [
+            { staffId: 'FIN-01', role: '會簽' }, // 預設王大美
+            { staffId: '0338', role: '簽核' }    // 預設王管理
+          ]
+        }
+      ]);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL_ROOT}/api/workflow_rules`, { headers: getRequestHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setWorkflowRules(data);
+      }
+    } catch (err) { console.error("流程規則讀取失敗", err); }
   };
 
-  const handleDeleteRule = (ruleId) => {
+  const handleSaveRule = async (newRule) => {
+    try {
+      if (!isMockMode) {
+        setIsProcessing(true);
+        const res = await fetch(`${API_URL_ROOT}/api/workflow_rules`, {
+          method: 'POST',
+          headers: getRequestHeaders(),
+          body: JSON.stringify(newRule)
+        });
+        if (!res.ok) throw new Error("儲存規則至資料庫失敗");
+      }
+      setWorkflowRules(prev => {
+        const exists = prev.find(r => r.id === newRule.id);
+        if (exists) return prev.map(r => r.id === newRule.id ? newRule : r);
+        return [...prev, newRule];
+      });
+      alert("規則儲存成功！未來員工發起此類單據將自動帶入此流程。");
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteRule = async (ruleId) => {
     if(window.confirm('確定要刪除這條自動化規則嗎？')) {
-      setWorkflowRules(prev => prev.filter(r => r.id !== ruleId));
+      try {
+        if (!isMockMode) {
+          setIsProcessing(true);
+          const res = await fetch(`${API_URL_ROOT}/api/workflow_rules/${ruleId}`, {
+            method: 'DELETE',
+            headers: getRequestHeaders()
+          });
+          if (!res.ok) throw new Error("從資料庫刪除規則失敗");
+        }
+        setWorkflowRules(prev => prev.filter(r => r.id !== ruleId));
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -1570,7 +1614,12 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (currentUser) { fetchMyForms(currentUser.staffId); fetchPersonnel(); }
+    if (currentUser) { 
+      fetchMyForms(currentUser.staffId); 
+      fetchPersonnel(); 
+      // 新增：登入或切換 Tab 時，同步向後端要取流程設定
+      fetchWorkflowRules();
+    }
   }, [currentUser, activeTab]);
 
   const handleLogout = () => { 
