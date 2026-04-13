@@ -840,7 +840,11 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
           </div>
           <div className="flex flex-wrap -mx-2 gap-y-4 mb-10">
               {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice' && f.type !== 'anomaly_notice').map(field => {
-                if (field.dependsOn && !values[field.dependsOn]) return null;
+                if (field.dependsOn) {
+                  const parentValue = values[field.dependsOn];
+                  const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
+                  if (!showConditions.includes(parentValue)) return null;
+                }
                 const val = values[field.id];
                 const displayVal = field.type === 'file' ? (val?.name ? `📎 ${val.name}` : '(未上傳)') : (val || '(未填寫)');
                 return (
@@ -1065,8 +1069,12 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
           {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice' && f.type !== 'anomaly_notice').map(field => {
+             if (field.dependsOn) {
+               const parentValue = safeValues[field.dependsOn];
+               const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
+               if (!showConditions.includes(parentValue)) return null;
+             }
              const val = safeValues[field.id];
-             if (field.dependsOn && !safeValues[field.dependsOn]) return null;
              return (
               <div key={field.id} className={`${field.width} px-2`} style={mingLiUStyle}>
                 <p className="text-xs font-black text-slate-400 uppercase mb-1" style={mingLiUStyle}>{field.label}</p>
