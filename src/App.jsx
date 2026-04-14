@@ -1303,7 +1303,8 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
     let actionType = 'approve';
     let finalWorkflow = [...editableWorkflow];
 
-    const agentPrefix = isAgentActing ? `[代理 ${originalAssigneeName} 簽核] ` : '';
+    // 將標籤改為顯示「目前登入的代理人」代簽
+    const agentPrefix = isAgentActing ? `[${currentUser.name} 代 ${originalAssigneeName} 簽核] ` : '';
 
     switch (approvalAction) {
       case 'assign': 
