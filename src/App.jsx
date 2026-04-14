@@ -586,6 +586,66 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
   );
 };
 
+// --- 組件：個人設定視圖 (職務代理人) ---
+const ProfileSettingsView = ({ currentUser, staffList, onSave, isProcessing }) => {
+  const [formData, setFormData] = useState({
+    agentId: currentUser.agentId || '',
+    agentStartDate: currentUser.agentStartDate ? currentUser.agentStartDate.split('T')[0] : '',
+    agentEndDate: currentUser.agentEndDate ? currentUser.agentEndDate.split('T')[0] : ''
+  });
+
+  const handleChange = (e) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
+      <div className="flex items-center gap-4 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg text-white">
+          <UserCog size={28} />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>個人設定與職務代理</h2>
+          <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>當您休假或無法處理單據時，系統將自動授權代理人替您簽核</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 max-w-2xl">
+        <h3 className="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-4" style={mingLiUStyle}>職務代理人設定</h3>
+        <div className="space-y-5">
+          <div>
+            <label className="text-xs font-black text-slate-500 mb-1.5 block" style={mingLiUStyle}>選擇代理人</label>
+            <select name="agentId" value={formData.agentId} onChange={handleChange} className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 bg-slate-50" style={mingLiUStyle}>
+              <option value="">-- 不啟用代理機制 --</option>
+              {staffList.filter(s => s.staffId !== currentUser.staffId).map(s => (
+                <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-black text-slate-500 mb-1.5 block" style={mingLiUStyle}>代理開始日期</label>
+              <input type="date" name="agentStartDate" value={formData.agentStartDate} onChange={handleChange} disabled={!formData.agentId} className="w-full p-3 border border-slate-300 rounded-xl text-sm outline-none focus:border-indigo-500 disabled:opacity-50" style={mingLiUStyle} />
+            </div>
+            <div>
+              <label className="text-xs font-black text-slate-500 mb-1.5 block" style={mingLiUStyle}>代理結束日期</label>
+              <input type="date" name="agentEndDate" value={formData.agentEndDate} onChange={handleChange} disabled={!formData.agentId} className="w-full p-3 border border-slate-300 rounded-xl text-sm outline-none focus:border-indigo-500 disabled:opacity-50" style={mingLiUStyle} />
+            </div>
+          </div>
+          {formData.agentId && (!formData.agentStartDate || !formData.agentEndDate) && (
+             <p className="text-xs text-amber-500 font-bold" style={mingLiUStyle}>* 啟用代理人時，請務必設定完整的開始與結束日期。</p>
+          )}
+          <div className="pt-4 flex justify-end">
+            <button onClick={() => onSave(formData)} disabled={isProcessing || (formData.agentId && (!formData.agentStartDate || !formData.agentEndDate))} className="px-8 py-3 bg-[#1677FF] text-white rounded-xl text-sm font-black flex items-center gap-2 hover:bg-blue-700 shadow-md active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed" style={mingLiUStyle}>
+              {isProcessing ? <RotateCcw className="animate-spin" size={18}/> : <Save size={18}/>} 儲存設定
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- 時間/工時選擇器組件 ---
 const TimePicker = ({ id, value, onChange, defaultTime = '09:00' }) => {
   const h = value ? value.split(':')[0] : defaultTime.split(':')[0];
@@ -1157,7 +1217,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 };
 
 // --- 組件：提交後的存根 ---
-const SubmissionSummary = ({ schema, values, status, submitDate, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList }) => {
+const SubmissionSummary = ({ schema, values, status, submitDate, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList, isAgentActing, originalAssigneeName }) => {
   const [comment, setComment] = useState("");
 
   // 簽核動作狀態 (移除舊的加簽相關狀態，保留單純的決策狀態)
@@ -1243,30 +1303,33 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
     let actionType = 'approve';
     let finalWorkflow = [...editableWorkflow];
 
+    const agentPrefix = isAgentActing ? `[代理 ${originalAssigneeName} 簽核] ` : '';
+
     switch (approvalAction) {
       case 'assign': 
-        finalComment = `[分文] ${comment}`; 
+        finalComment = `${agentPrefix}[分文] ${comment}`; 
         break;
       case 'escalate': 
-        finalComment = `[呈上級決行] ${comment}`; 
+        finalComment = `${agentPrefix}[呈上級決行] ${comment}`; 
         actionType = 'approve';
         break;
       case 'countersign': 
-        finalComment = `[同意送會簽人員] ${comment}`; 
+        finalComment = `${agentPrefix}[同意送會簽人員] ${comment}`; 
         actionType = 'approve';
         break;
       case 'reject_to_step':
         if (!rejectTarget) return alert("請選擇要退回重審的人員");
         const targetStaffName = previousApprovers.find(s => s.staffId === rejectTarget)?.name || rejectTarget;
-        finalComment = `[退回給 ${targetStaffName} 重審] ${comment}`;
+        finalComment = `${agentPrefix}[退回給 ${targetStaffName} 重審] ${comment}`;
         actionType = 'reject_to_step';
         break;
       case 'reject':
         actionType = 'reject';
-        finalComment = `[退回原發文者] ${comment}`;
+        finalComment = `${agentPrefix}[退回原發文者] ${comment}`;
         break;
       case 'approve':
       default:
+        finalComment = isAgentActing ? `${agentPrefix}${comment}` : comment;
         actionType = 'approve';
         break;
     }
@@ -1440,6 +1503,12 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
                 <h4 className="font-black text-sm" style={mingLiUStyle}>{isAssignee ? "填寫交辦執行意見" : "簽核決策與意見輸入"}</h4>
               </div>
             </div>
+            
+            {isAgentActing && (
+              <div className="mb-5 p-3 bg-indigo-100 border border-indigo-200 rounded-xl flex items-center gap-2 text-indigo-800 text-sm font-bold shadow-sm" style={mingLiUStyle}>
+                <UserCog size={18} /> 您目前正以「{originalAssigneeName}」的職務代理人身分進行此單據的簽核作業。
+              </div>
+            )}
 
             {isAssignee ? (
               <textarea value={comment} disabled={isProcessing} onChange={(e) => setComment(e.target.value)} placeholder="請輸入交辦任務的執行狀況..." className="w-full h-24 p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50" style={mingLiUStyle} />
@@ -2100,11 +2169,53 @@ const App = () => {
   const draftList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Draft');
   const trashList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted');
   
+  // 判斷代理人是否生效的輔助函數
+  const isAgentActive = (targetUser) => {
+    if (!targetUser || !targetUser.agentId || !targetUser.agentStartDate || !targetUser.agentEndDate) return false;
+    const now = new Date();
+    const start = new Date(targetUser.agentStartDate);
+    const end = new Date(targetUser.agentEndDate);
+    end.setHours(23, 59, 59, 999); // 包含結束日期的最後一刻
+    return now >= start && now <= end;
+  };
+
   const inboxList = submittedForms.filter(f => {
     if (f.status !== 'Pending') return false; 
     const step = f.values?.currentStep || 0;
-    return f.values?.workflowPath?.[step]?.staffId === currentUser?.staffId;
+    const targetStaffId = f.values?.workflowPath?.[step]?.staffId;
+    
+    // 如果是自己，直接放入收件匣
+    if (targetStaffId === currentUser?.staffId) return true;
+    
+    // 如果對方啟用了代理人，且代理人是自己，也放入收件匣
+    const targetUser = staffList.find(s => s.staffId === targetStaffId);
+    if (isAgentActive(targetUser) && targetUser.agentId === currentUser?.staffId) {
+      return true;
+    }
+    return false;
   });
+
+  const handleUpdateProfile = async (updateData) => {
+    setIsProcessing(true);
+    try {
+      const updatedUser = { ...currentUser, ...updateData };
+      if (!isMockMode) {
+        const res = await fetch(`${API_URL_ROOT}/api/personnel/${currentUser.staffId}`, {
+          method: 'PUT',
+          headers: getRequestHeaders(),
+          body: JSON.stringify(updatedUser)
+        });
+        if (!res.ok) throw new Error("個人設定更新失敗");
+      }
+      setCurrentUser(updatedUser);
+      setStaffList(prev => prev.map(s => s.staffId === currentUser.staffId ? updatedUser : s));
+      alert("個人設定儲存成功！");
+    } catch(err) {
+      alert(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // 判斷是否為系統管理員
   const isUserAdmin = currentUser?.isAdmin || currentUser?.staffId === '0338' || currentUser?.staffId === 'ADMIN-01';
@@ -2112,13 +2223,32 @@ const App = () => {
   const renderMainContent = () => {
     if (viewingForm) { 
       const step = viewingForm.values?.currentStep || 0;
-      const canApprove = viewingForm.status === 'Pending' && viewingForm.values?.workflowPath?.[step]?.staffId === currentUser?.staffId;
+      const targetStaffId = viewingForm.values?.workflowPath?.[step]?.staffId;
+      
+      let canApprove = false;
+      let isAgentActing = false;
+      let originalAssigneeName = '';
+
+      if (viewingForm.status === 'Pending') {
+        if (targetStaffId === currentUser?.staffId) {
+          canApprove = true;
+        } else {
+          // 檢查是否為代理人代簽
+          const targetUser = staffList.find(s => s.staffId === targetStaffId);
+          if (isAgentActive(targetUser) && targetUser.agentId === currentUser?.staffId) {
+            canApprove = true;
+            isAgentActing = true;
+            originalAssigneeName = targetUser.name;
+          }
+        }
+      }
+      
       const canWithdraw = viewingForm.staffId === currentUser?.staffId && viewingForm.status === 'Pending';
       return (
         <SubmissionSummary 
           schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} submitDate={viewingForm.submitDate} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} canApprove={canApprove}
           onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm, targetId) => handleProcessForm(id, targetId ? 'reject_to_step' : 'reject', comm, null, targetId)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
-          isProcessing={isProcessing} staffList={staffList}
+          isProcessing={isProcessing} staffList={staffList} isAgentActing={isAgentActing} originalAssigneeName={originalAssigneeName}
         />
       ); 
     }
@@ -2172,6 +2302,8 @@ const App = () => {
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} />;
       case 'workflow_settings': 
         return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} teamOptions={TEAM_OPTIONS} />;
+      case 'profile_settings':
+        return <ProfileSettingsView currentUser={currentUser} staffList={staffList} onSave={handleUpdateProfile} isProcessing={isProcessing} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
@@ -2192,7 +2324,8 @@ const App = () => {
 
   // 左側導覽列的選項，依照權限呈現
   const navItems = [
-    { id: 'dashboard', label: '首頁', icon: LayoutDashboard }
+    { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
+    { id: 'profile_settings', label: '個人設定', icon: UserCog }
   ];
   if (isUserAdmin) {
     navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users });
