@@ -95,6 +95,29 @@ const getRequestHeaders = (extraHeaders = {}) => ({
   ...extraHeaders
 });
 
+// --- 簽核期限計算 (整份單據共 7 天) ---
+const getDeadlineInfo = (formSubmitDate, workflowPath, currentStep) => {
+  if (currentStep === undefined || currentStep < 0) return null;
+  
+  // 統一以「表單送出日」作為計算基準，不因關卡推進而重新給 7 天
+  if (!formSubmitDate) return null;
+
+  const startTime = new Date(formSubmitDate);
+  if (isNaN(startTime.getTime())) return null;
+
+  const deadline = new Date(startTime.getTime() + 7 * 24 * 60 * 60 * 1000); // 送單日起算 + 7天
+  const now = new Date();
+  const diffMs = deadline - now;
+  // 大於 0 無條件進位(剩餘天數)，小於 0 無條件捨去(逾期天數)
+  const diffDays = diffMs >= 0 ? Math.ceil(diffMs / (1000 * 60 * 60 * 24)) : Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  let status = 'normal'; 
+  if (diffMs < 0) status = 'expired';
+  else if (diffDays <= 3) status = 'urgent'; // 剩餘 3 天內顯示為緊急(黃色)
+
+  return { deadline, diffDays, status };
+};
+
 // --- 登入頁面組件 ---
 const LoginView = ({ onLoginSuccess, isMockMode }) => {
   const [staffId, setStaffId] = useState('');
@@ -248,6 +271,17 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => 
                      item.status === 'Deleted' ? '已刪除' : 
                      item.status === 'Draft' ? '草稿' : item.status}
                   </span>
+                  {item.status === 'Pending' && (() => {
+                    const step = item.values?.currentStep || 0;
+                    const deadline = getDeadlineInfo(item.submitDate, item.values?.workflowPath, step);
+                    if (!deadline) return null;
+                    return (
+                      <div className={`mt-2 flex items-center gap-1 text-[11px] font-bold ${deadline.status === 'expired' ? 'text-red-500' : deadline.status === 'urgent' ? 'text-amber-500' : 'text-blue-500'}`} style={mingLiUStyle}>
+                        <Timer size={12} className={deadline.status === 'expired' ? 'animate-pulse' : ''} />
+                        {deadline.status === 'expired' ? `已逾期 ${Math.abs(deadline.diffDays)} 天` : `剩餘 ${deadline.diffDays} 天`}
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td className="px-8 py-5 text-right">
                   <div className="flex justify-end items-center gap-2">
@@ -1123,7 +1157,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 };
 
 // --- 組件：提交後的存根 ---
-const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList }) => {
+const SubmissionSummary = ({ schema, values, status, submitDate, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList }) => {
   const [comment, setComment] = useState("");
 
   // 簽核動作狀態 (移除舊的加簽相關狀態，保留單純的決策狀態)
@@ -1331,7 +1365,21 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                              </div>
                            </div>
                            {step.processedDate && <p className="text-xs text-slate-400 font-bold mb-2" style={mingLiUStyle}>處理時間：{new Date(step.processedDate).toLocaleString()}</p>}
-                           {step.comment ? (<div className="bg-white p-3 rounded-xl border border-slate-200 relative mt-2 w-full max-w-lg"><div className="absolute -top-2 left-4 px-1 bg-white text-xs font-black text-slate-400 flex items-center gap-1"><MessageSquare size={10} /> 簽核意見</div><p className="text-xs font-bold text-slate-600 italic" style={mingLiUStyle}>「 {step.comment} 」</p></div>) : isProcessed ? <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isCurrentStep ? <p className="text-xs text-indigo-600 font-black animate-pulse" style={mingLiUStyle}>等待簽核中...</p> : null}
+                           {step.comment ? (<div className="bg-white p-3 rounded-xl border border-slate-200 relative mt-2 w-full max-w-lg"><div className="absolute -top-2 left-4 px-1 bg-white text-xs font-black text-slate-400 flex items-center gap-1"><MessageSquare size={10} /> 簽核意見</div><p className="text-xs font-bold text-slate-600 italic" style={mingLiUStyle}>「 {step.comment} 」</p></div>) : isProcessed ? <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isCurrentStep ? (
+                             <div>
+                               <p className="text-xs text-indigo-600 font-black animate-pulse" style={mingLiUStyle}>等待簽核中...</p>
+                               {(() => {
+                                 const deadline = getDeadlineInfo(submitDate, editableWorkflow, currentStepIndex);
+                                 if(!deadline) return null;
+                                 return (
+                                   <p className={`text-[11px] font-bold mt-1.5 flex items-center gap-1 ${deadline.status === 'expired' ? 'text-red-500' : deadline.status === 'urgent' ? 'text-amber-500' : 'text-blue-500'}`} style={mingLiUStyle}>
+                                     <Timer size={12} />
+                                     {deadline.status === 'expired' ? `⚠️ 已逾期 ${Math.abs(deadline.diffDays)} 天` : `⏳ 期限: ${deadline.deadline.toLocaleDateString()} (剩 ${deadline.diffDays} 天)`}
+                                   </p>
+                                 );
+                               })()}
+                             </div>
+                           ) : null}
                          </div>
                          {/* 新增修改未來步驟的操作按鈕 */}
                          {canEditThisStep && (
@@ -1367,6 +1415,25 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
         {canApprove && (
           <div className="mt-8 p-6 bg-indigo-50/50 border-2 border-indigo-200 rounded-[2rem] animate-in slide-in-from-bottom-4">
+            {/* 簽核時效提示 */}
+            {(() => {
+              const deadline = getDeadlineInfo(submitDate, safeValues.workflowPath, currentStepIndex);
+              if(!deadline) return null;
+              return (
+                 <div className={`mb-5 p-4 rounded-xl flex items-center gap-3 text-sm font-bold shadow-sm ${
+                   deadline.status === 'expired' ? 'bg-red-100 text-red-700 border border-red-200' :
+                   deadline.status === 'urgent' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                   'bg-blue-100 text-blue-700 border border-blue-200'
+                 }`} style={mingLiUStyle}>
+                   <Clock size={20} className={deadline.status === 'expired' ? 'animate-bounce text-red-600' : ''} />
+                   {deadline.status === 'expired'
+                     ? `【逾期提醒】此單據已超過 7 日簽核期限 (逾期 ${Math.abs(deadline.diffDays)} 天)！請盡速優先處理。`
+                     : `【簽核時效】請於 ${deadline.deadline.toLocaleDateString()} 前完成簽核 (剩餘 ${deadline.diffDays} 天)`
+                   }
+                 </div>
+              );
+            })()}
+
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-indigo-700">
                 <ListChecks size={18} />
@@ -2049,7 +2116,7 @@ const App = () => {
       const canWithdraw = viewingForm.staffId === currentUser?.staffId && viewingForm.status === 'Pending';
       return (
         <SubmissionSummary 
-          schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} canApprove={canApprove}
+          schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} submitDate={viewingForm.submitDate} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} canApprove={canApprove}
           onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm, targetId) => handleProcessForm(id, targetId ? 'reject_to_step' : 'reject', comm, null, targetId)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
           isProcessing={isProcessing} staffList={staffList}
         />
