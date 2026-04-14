@@ -1297,14 +1297,20 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
     setNewStaffId("");
   };
 
-  // 處理綜合的簽核決策送出 (移除舊版加簽防呆邏輯)
+  // 處理綜合的簽核決策送出
   const handleDecisionSubmit = () => {
     let finalComment = comment;
     let actionType = 'approve';
     let finalWorkflow = [...editableWorkflow];
 
-    // 將標籤改為顯示「目前登入的代理人」代簽
-    const agentPrefix = isAgentActing ? `[${currentUser.name} 代 ${originalAssigneeName} 簽核] ` : '';
+    // ★ 修正重點：建構代理識別訊息，確保文字為「[代理人 代理 被代理人 簽核]」
+    const agentPrefix = isAgentActing ? `[${currentUser.name} 代理 ${originalAssigneeName} 簽核] ` : '';
+
+    if (isAssignee) {
+      // 若為交辦執行，直接組合標籤與意見後送出
+      onApprove(currentDocId, `${agentPrefix}${comment}`, finalWorkflow);
+      return;
+    }
 
     switch (approvalAction) {
       case 'assign': 
@@ -1330,16 +1336,15 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
         break;
       case 'approve':
       default:
+        // 一般同意簽核
         finalComment = isAgentActing ? `${agentPrefix}${comment}` : comment;
         actionType = 'approve';
         break;
     }
 
     if (actionType === 'approve') {
-      // 送出時將編輯後的最終流程傳遞給父層 API
       onApprove(currentDocId, finalComment, finalWorkflow);
     } else if (actionType === 'reject_to_step') {
-      // 傳遞第三個參數 rejectTarget (也就是目標人員的 staffId)
       onReject(currentDocId, finalComment, rejectTarget);
     } else {
       onReject(currentDocId, finalComment);
@@ -1414,7 +1419,6 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
                 {editableWorkflow.map((step, i) => {
                   const isCurrentStep = currentStepIndex === i;
                   const isProcessed = currentStepIndex > i || status === 'Completed' || (status === 'Rejected' && step.comment);
-                  // 判斷是否為可以編輯的未來步驟
                   const canEditThisStep = canApprove && status === 'Pending' && i > currentStepIndex;
 
                   return (
@@ -1429,7 +1433,12 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
                              </div>
                            </div>
                            {step.processedDate && <p className="text-xs text-slate-400 font-bold mb-2" style={mingLiUStyle}>處理時間：{new Date(step.processedDate).toLocaleString()}</p>}
-                           {step.comment ? (<div className="bg-white p-3 rounded-xl border border-slate-200 relative mt-2 w-full max-w-lg"><div className="absolute -top-2 left-4 px-1 bg-white text-xs font-black text-slate-400 flex items-center gap-1"><MessageSquare size={10} /> 簽核意見</div><p className="text-xs font-bold text-slate-600 italic" style={mingLiUStyle}>「 {step.comment} 」</p></div>) : isProcessed ? <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isCurrentStep ? (
+                           {step.comment ? (
+                             <div className="bg-white p-3 rounded-xl border border-slate-200 relative mt-2 w-full max-w-lg shadow-sm">
+                               <div className="absolute -top-2 left-4 px-1 bg-white text-xs font-black text-slate-400 flex items-center gap-1"><MessageSquare size={10} /> 簽核意見</div>
+                               <p className="text-xs font-bold text-slate-600 italic" style={mingLiUStyle}>「 {step.comment} 」</p>
+                             </div>
+                           ) : isProcessed ? <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isCurrentStep ? (
                              <div>
                                <p className="text-xs text-indigo-600 font-black animate-pulse" style={mingLiUStyle}>等待簽核中...</p>
                                {(() => {
@@ -1445,7 +1454,6 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
                              </div>
                            ) : null}
                          </div>
-                         {/* 新增修改未來步驟的操作按鈕 */}
                          {canEditThisStep && (
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2 bg-white p-1 rounded-lg shadow-sm border border-slate-100">
                              <button type="button" onClick={() => handleMoveStep(i, -1)} disabled={i === currentStepIndex + 1} className="p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronUp size={16} /></button>
@@ -1460,7 +1468,6 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
                 })}
               </div>
               
-              {/* 新增後續人員區塊 */}
               {canApprove && status === 'Pending' && (
                 <div className="flex flex-col sm:flex-row items-center gap-3 p-4 mt-4 border border-dashed border-indigo-200 rounded-2xl bg-white/50 animate-in fade-in transition-all">
                    <div className="text-xs font-black text-indigo-500 whitespace-nowrap flex items-center gap-1" style={mingLiUStyle}><PlusCircle size={14}/> 增加後續簽核者</div>
@@ -1479,7 +1486,6 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
 
         {canApprove && (
           <div className="mt-8 p-6 bg-indigo-50/50 border-2 border-indigo-200 rounded-[2rem] animate-in slide-in-from-bottom-4">
-            {/* 簽核時效提示 */}
             {(() => {
               const deadline = getDeadlineInfo(submitDate, safeValues.workflowPath, currentStepIndex);
               if(!deadline) return null;
@@ -1515,8 +1521,6 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
               <textarea value={comment} disabled={isProcessing} onChange={(e) => setComment(e.target.value)} placeholder="請輸入交辦任務的執行狀況..." className="w-full h-24 p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50" style={mingLiUStyle} />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-                
-                {/* 左側 (原右側)：意見輸入區 */}
                 <div className="flex flex-col">
                   <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5" style={mingLiUStyle}>
                     <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核意見
@@ -1530,8 +1534,6 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
                     style={mingLiUStyle} 
                   />
                 </div>
-
-                {/* 右側 (原左側)：簽核單選選項 */}
                 <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm flex flex-col justify-center">
                   <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5">
                     <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核選項
@@ -1584,7 +1586,6 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
                     </label>
                   </div>
                 </div>
-
               </div>
             )}
             
@@ -1592,7 +1593,7 @@ const SubmissionSummary = ({ schema, values, status, submitDate, onReset, curren
                 <button 
                   type="button" 
                   disabled={isProcessing} 
-                  onClick={isAssignee ? () => onApprove(currentDocId, comment) : handleDecisionSubmit} 
+                  onClick={handleDecisionSubmit} 
                   className={`w-full py-3.5 text-white rounded-xl text-sm font-black shadow-md flex items-center justify-center gap-2 disabled:opacity-50 transition-colors ${
                     approvalAction.includes('reject') && !isAssignee ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'
                   }`} 
@@ -1623,7 +1624,6 @@ const App = () => {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMockMode, setIsMockMode] = useState(true); 
-  // 處理中狀態 (避免夾帶大檔案時沒反應重複點擊)
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [submittedForms, setSubmittedForms] = useState([]);
@@ -1631,33 +1631,19 @@ const App = () => {
   const [viewingForm, setViewingForm] = useState(null);
   const [formValues, setFormValues] = useState({});
   const [staffList, setStaffList] = useState([]);
-
-  // 修改：將寫死的狀態改為空陣列，並透過 API 獲取
   const [workflowRules, setWorkflowRules] = useState([]);
 
-  // 對接 server.js 的獲取規則 API
   const fetchWorkflowRules = async () => {
     if (isMockMode) {
-      setWorkflowRules([
-        {
-          id: 'default-rule-1',
-          category: '差勤類',
-          formKind: '請假單',
-          department: '所有組別',
-          steps: [
-            { staffId: 'FIN-01', role: '會簽' }, // 預設王大美
-            { staffId: '0338', role: '簽核' }    // 預設王管理
-          ]
-        }
-      ]);
+      setWorkflowRules([{
+          id: 'default-rule-1', category: '差勤類', formKind: '請假單', department: '所有組別',
+          steps: [{ staffId: 'FIN-01', role: '會簽' }, { staffId: '0338', role: '簽核' }]
+      }]);
       return;
     }
     try {
       const res = await fetch(`${API_URL_ROOT}/api/workflow_rules`, { headers: getRequestHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setWorkflowRules(data);
-      }
+      if (res.ok) setWorkflowRules(await res.json());
     } catch (err) { console.error("流程規則讀取失敗", err); }
   };
 
@@ -1666,46 +1652,34 @@ const App = () => {
       if (!isMockMode) {
         setIsProcessing(true);
         const res = await fetch(`${API_URL_ROOT}/api/workflow_rules`, {
-          method: 'POST',
-          headers: getRequestHeaders(),
-          body: JSON.stringify(newRule)
+          method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(newRule)
         });
-        if (!res.ok) throw new Error("儲存規則至資料庫失敗");
+        if (!res.ok) throw new Error("儲存規則失敗");
       }
       setWorkflowRules(prev => {
         const exists = prev.find(r => r.id === newRule.id);
         if (exists) return prev.map(r => r.id === newRule.id ? newRule : r);
         return [...prev, newRule];
       });
-      alert("規則儲存成功！未來員工發起此類單據將自動帶入此流程。");
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setIsProcessing(false);
-    }
+      alert("規則儲存成功！");
+    } catch (err) { alert(err.message); } finally { setIsProcessing(false); }
   };
 
   const handleDeleteRule = async (ruleId) => {
-    if(window.confirm('確定要刪除這條自動化規則嗎？')) {
+    if(window.confirm('確定要刪除這條規則嗎？')) {
       try {
         if (!isMockMode) {
           setIsProcessing(true);
           const res = await fetch(`${API_URL_ROOT}/api/workflow_rules/${ruleId}`, {
-            method: 'DELETE',
-            headers: getRequestHeaders()
+            method: 'DELETE', headers: getRequestHeaders()
           });
-          if (!res.ok) throw new Error("從資料庫刪除規則失敗");
+          if (!res.ok) throw new Error("刪除失敗");
         }
         setWorkflowRules(prev => prev.filter(r => r.id !== ruleId));
-      } catch (err) {
-        alert(err.message);
-      } finally {
-        setIsProcessing(false);
-      }
+      } catch (err) { alert(err.message); } finally { setIsProcessing(false); }
     }
   };
 
-  // 對接 server.js 的獲取人員列表 API
   const fetchPersonnel = async () => {
     if (isMockMode) {
       setStaffList([
@@ -1719,18 +1693,15 @@ const App = () => {
     }
     try {
       const res = await fetch(`${API_URL_ROOT}/api/personnel`, { headers: getRequestHeaders() });
-      const data = await res.json();
-      setStaffList(data);
+      setStaffList(await res.json());
     } catch (err) { console.error("人員列表讀取失敗"); }
   };
 
-  // 對接 server.js 的獲取表單列表 API
   const fetchMyForms = async (userId) => {
     if (isMockMode || !userId) return;
     try {
       const res = await fetch(`${API_URL_ROOT}/api/forms/${userId}`, { headers: getRequestHeaders() });
-      const contentType = res.headers.get("content-type");
-      if (!res.ok || !contentType || !contentType.includes("application/json")) return;
+      if (!res.ok) return;
       const data = await res.json();
       setSubmittedForms(data.map(item => ({
         ...item,
@@ -1739,7 +1710,6 @@ const App = () => {
     } catch (err) { console.error("無法載入表單資料:", err.message); }
   };
 
-  // 初始化檢查後端連線
   useEffect(() => {
     const checkConnection = async () => {
       try {
@@ -1754,26 +1724,12 @@ const App = () => {
     if (currentUser) { 
       fetchMyForms(currentUser.staffId); 
       fetchPersonnel(); 
-      // 新增：登入或切換 Tab 時，同步向後端要取流程設定
       fetchWorkflowRules();
     }
   }, [currentUser, activeTab]);
 
-  const handleLogout = () => { 
-    setCurrentUser(null); 
-    setActiveTab('dashboard'); 
-    setFormValues({}); 
-  };
-
-  const handleLoginSuccess = (user) => {
-    setCurrentUser(user);
-    setActiveTab('dashboard'); 
-    setFormValues({});
-    setCurrentDocId('');
-    setIsSubmitted(false);
-    setIsPreviewing(false);
-    setViewingForm(null);
-  };
+  const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); setFormValues({}); };
+  const handleLoginSuccess = (user) => { setCurrentUser(user); setActiveTab('dashboard'); setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setIsPreviewing(false); setViewingForm(null); };
 
   const TEAM_OPTIONS = ["總經理室", "財務行政部", "北區營業組", "中區營業組", "南區營業組", "客服組", "產品組", "工程組", "系統組"];
   const LEAVE_TYPES = ["特休", "事假", "病假", "喪假", "補休", "婚假", "公假", "產假", "家庭照顧假"];
@@ -1785,35 +1741,27 @@ const App = () => {
       { id: "employee_id", label: "員工編號", type: "text", width: "w-1/2" },
       { id: "department", label: "組別", type: "select", options: TEAM_OPTIONS, width: "w-1/2" },
       { id: "category", label: "選擇類別", type: "select", options: ["行政類", "銷售類", "差勤類", "系統類"], width: "w-full" },
-      
       { id: "form_kind", label: "表單種類", type: "select", options: ["出勤異常單", "銷假單", "加班單", "請假單"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
-      
-      // ★ 調整規章顯示順序：移動到表單種類下方
       { id: "anomaly_rules_notice", type: "anomaly_notice", dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
       { id: "leave_rules_notice", type: "notice", dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
-
       { id: "anomaly_reason", label: "異常原因", type: "select", options: ["公務外出", "逾時登出，無加班申請事實", "其他"], dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
       { id: "anomaly_detail", label: "請詳述", type: "text", dependsOn: "anomaly_reason", showIf: "其他", width: "w-full" },
       { id: "anomaly_clock_in", label: "上班時間", type: "time_picker", dependsOn: "anomaly_reason", showIf: ["公務外出", "逾時登出，無加班申請事實", "其他"], width: "w-1/2" },
       { id: "anomaly_clock_out", label: "下班時間", type: "time_picker", dependsOn: "anomaly_reason", showIf: ["公務外出", "逾時登出，無加班申請事實", "其他"], width: "w-1/2" },
-
       { id: "leave_type", label: "假單類別", type: "select", options: LEAVE_TYPES, dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
       { id: "agent", label: "代理人", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_start_time", label: "請假開始日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_end_time", label: "請假結束日期時間", type: "datetime", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_total", label: "共計", type: "leave_duration", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_reason", label: "請假/銷假事由", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
-      { id: "leave_comment", label: "意見", type: "text", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
       { id: "leave_attachment", label: "附加檔案", type: "file", dependsOn: "leave_type", showIf: LEAVE_TYPES, width: "w-full" },
-      
       { id: "ot_type", label: "加班類型", type: "select", options: ["事前", "事後"], dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
       { id: "ot_start_time", label: "加班開始日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
-      
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
   };
@@ -1834,431 +1782,175 @@ const App = () => {
     });
   };
 
-  /**
-   * 改良版單號產生邏輯：F + YYYYMMDD + 員編 + 流水號
-   * 讀取當前列表內相同前綴的最高序號並 +1
-   */
   const generateSequentialId = (currentForms) => {
     const now = new Date();
-    const dateStr = now.getFullYear().toString() + 
-                    (now.getMonth() + 1).toString().padStart(2, '0') + 
-                    now.getDate().toString().padStart(2, '0');
-    
-    // 前綴包含日期與員編，確保即使多人同時操作，只要員編不同就不會碰撞
+    const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
     const prefix = `F${dateStr}-${currentUser.staffId}-`;
-    
-    // 從現有的表單中找出今天、且屬於自己的單據最高序號
-    const todaySerials = currentForms
-      .filter(f => f.id && f.id.startsWith(prefix))
-      .map(f => {
-        const parts = f.id.split('-');
-        const serialStr = parts[parts.length - 1];
-        const serial = parseInt(serialStr, 10);
-        return isNaN(serial) ? 0 : serial;
-      });
-
+    const todaySerials = currentForms.filter(f => f.id && f.id.startsWith(prefix)).map(f => parseInt(f.id.split('-').pop(), 10) || 0);
     const maxSerial = todaySerials.length > 0 ? Math.max(...todaySerials) : 0;
-    const nextSerial = (maxSerial + 1).toString().padStart(3, '0');
-    
-    return `${prefix}${nextSerial}`;
+    return `${prefix}${(maxSerial + 1).toString().padStart(3, '0')}`;
   };
 
-  // 對接 server.js 的提交表單 API
   const handleFinalSubmit = async (approvalFlow) => {
     let docId = currentDocId;
     let isNew = false;
-    
     setIsProcessing(true);
     try {
       if (!docId) {
-        // 在提交前先刷新一次表單列表，確保取得最新的序號
         const res = await fetch(`${API_URL_ROOT}/api/forms/${currentUser.staffId}`, { headers: getRequestHeaders() });
-        const list = await res.json();
-        docId = generateSequentialId(list);
+        docId = generateSequentialId(await res.json());
         isNew = true;
       }
-
-      const submissionData = { 
-        id: docId, 
-        staffId: currentUser.staffId, 
-        form_subject: formValues.form_subject || '未命名表單', 
-        values: { ...formValues, ...approvalFlow, currentStep: 0 }, 
-        status: 'Pending' 
-      };
-
+      const submissionData = { id: docId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單', values: { ...formValues, ...approvalFlow, currentStep: 0 }, status: 'Pending' };
       if (isMockMode) {
-        if (isNew) {
-          setSubmittedForms([...submittedForms, { ...submissionData, submitDate: new Date().toISOString() }]);
-        } else {
-          setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...submissionData } : f));
-        }
-      } 
-      else {
-        if (isNew) {
-          const response = await fetch(`${API_URL_ROOT}/api/forms`, { 
-            method: 'POST', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify(submissionData) 
-          });
-          if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(`提交失敗: ${errData.details || response.statusText}`);
-          }
-        } else {
-          const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-            method: 'PUT', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify({
-              status: submissionData.status,
-              values: submissionData.values
-            }) 
-          });
-          if (!response.ok) throw new Error("伺服器更新失敗");
-        }
+        if (isNew) setSubmittedForms([...submittedForms, { ...submissionData, submitDate: new Date().toISOString() }]);
+        else setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...submissionData } : f));
+      } else {
+        const url = isNew ? `${API_URL_ROOT}/api/forms` : `${API_URL_ROOT}/api/forms/${docId}`;
+        const method = isNew ? 'POST' : 'PUT';
+        const res = await fetch(url, { method, headers: getRequestHeaders(), body: JSON.stringify(submissionData) });
+        if (!res.ok) throw new Error("提交失敗");
         await fetchMyForms(currentUser.staffId);
       }
       setCurrentDocId(docId); setIsPreviewing(false); setIsSubmitted(true);
-    } catch (err) { 
-      alert(err.message); 
-    } finally {
-      setIsProcessing(false);
-    }
+    } catch (err) { alert(err.message); } finally { setIsProcessing(false); }
   };
 
-  // 草稿儲存對接
   const handleSaveDraft = async (approvalFlow) => {
     let docId = currentDocId;
     let isNew = false;
-    
     setIsProcessing(true);
     try {
       if (!docId) {
         const res = await fetch(`${API_URL_ROOT}/api/forms/${currentUser.staffId}`, { headers: getRequestHeaders() });
-        const list = await res.json();
-        docId = generateSequentialId(list);
+        docId = generateSequentialId(await res.json());
         isNew = true;
       }
-
-      const draftData = { 
-        id: docId, 
-        staffId: currentUser.staffId, 
-        form_subject: formValues.form_subject || '未命名表單(草稿)', 
-        values: { ...formValues, ...approvalFlow, currentStep: 0 }, 
-        status: 'Draft' 
-      };
-
+      const draftData = { id: docId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單(草稿)', values: { ...formValues, ...approvalFlow, currentStep: 0 }, status: 'Draft' };
       if (isMockMode) {
-        if (isNew) {
-          setSubmittedForms([...submittedForms, { ...draftData, submitDate: new Date().toISOString() }]);
-        } else {
-          setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...draftData } : f));
-        }
+        if (isNew) setSubmittedForms([...submittedForms, { ...draftData, submitDate: new Date().toISOString() }]);
+        else setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...draftData } : f));
       } else {
-        if (isNew) {
-          const response = await fetch(`${API_URL_ROOT}/api/forms`, { 
-            method: 'POST', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify(draftData) 
-          });
-          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-            method: 'PUT', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
-          });
-        } else {
-          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-            method: 'PUT', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
-          });
-        }
+        if (isNew) await fetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(draftData) });
+        await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify({ status: 'Draft', values: draftData.values }) });
         await fetchMyForms(currentUser.staffId);
       }
-      alert('已成功儲存至草稿匣！');
-      setFormValues({});
-      setCurrentDocId('');
-      setIsPreviewing(false);
-      setActiveTab('draft_list');
-    } catch (err) { 
-      alert(err.message); 
-    } finally {
-      setIsProcessing(false);
-    }
+      alert('已儲存至草稿匣！'); setFormValues({}); setCurrentDocId(''); setIsPreviewing(false); setActiveTab('draft_list');
+    } catch (err) { alert(err.message); } finally { setIsProcessing(false); }
   };
 
-  // 對接 server.js 的簽核更新 API
   const handleProcessForm = async (docId, action, comment, optionalNewWorkflow = null, targetRejectId = null) => {
     const formToProcess = submittedForms.find(f => f.id === docId);
     if (!formToProcess) return;
-
     let newStatus = formToProcess.status;
     let newStepIndex = formToProcess.values.currentStep || 0;
-    
-    // 如果有傳入加簽後的新路徑則採用之，否則使用原路徑
     const workflow = optionalNewWorkflow ? [...optionalNewWorkflow] : [...(formToProcess.values.workflowPath || [])];
-
     setIsProcessing(true);
     try {
       if (workflow[newStepIndex] && action !== 'withdraw' && action !== 'reject_to_step') {
         workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
       }
-
       if (action === 'approve') {
         if (newStepIndex < workflow.length - 1) newStepIndex += 1;
         else newStatus = 'Completed';
-      } else if (action === 'reject') { 
-        newStatus = 'Rejected'; 
-      } else if (action === 'reject_to_step') {
-        // 先將當前退回者的意見保存到歷程中
-        if (workflow[newStepIndex]) {
-          workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
-        }
-        // 尋找要退回的目標人員順序位置
+      } else if (action === 'reject') { newStatus = 'Rejected'; }
+      else if (action === 'reject_to_step') {
+        if (workflow[newStepIndex]) workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
         const targetIndex = workflow.findIndex(step => step.staffId === targetRejectId);
-        if (targetIndex !== -1) {
-          newStepIndex = targetIndex;
-          newStatus = 'Pending';
-          // 清除退回目標點到當前步驟之間所有人的歷史簽核紀錄（不包含剛剛退回的人）
-          for (let i = targetIndex; i < workflow.length; i++) {
-            if (i !== formToProcess.values.currentStep) {
-              workflow[i].comment = "";
-              workflow[i].processedDate = null;
-            }
-          }
-        } else {
-          newStatus = 'Rejected'; // 防呆：若找不到該人則直接退件
-        }
+        if (targetIndex !== -1) { newStepIndex = targetIndex; newStatus = 'Pending'; for (let i = targetIndex; i < workflow.length; i++) { if (i !== formToProcess.values.currentStep) { workflow[i].comment = ""; workflow[i].processedDate = null; } } }
+        else newStatus = 'Rejected';
       } else if (action === 'withdraw') {
         newStatus = 'Rejected';
-        if (workflow[newStepIndex]) {
-          workflow[newStepIndex] = { ...workflow[newStepIndex], comment: "申請人自行撤回 (抽單)", processedDate: new Date().toISOString() };
-        }
+        if (workflow[newStepIndex]) workflow[newStepIndex] = { ...workflow[newStepIndex], comment: "申請人自行撤回 (抽單)", processedDate: new Date().toISOString() };
       }
-
       const updatedValues = { ...formToProcess.values, workflowPath: workflow, currentStep: newStepIndex };
-
-      if (isMockMode) { 
-        setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, status: newStatus, values: updatedValues } : f)); 
-      } 
+      if (isMockMode) setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, status: newStatus, values: updatedValues } : f));
       else {
-        const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-          method: 'PUT', 
-          headers: getRequestHeaders(), 
-          body: JSON.stringify({ status: newStatus, values: updatedValues }) 
-        });
-        if (!response.ok) throw new Error("伺服器更新失敗");
+        const res = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify({ status: newStatus, values: updatedValues }) });
+        if (!res.ok) throw new Error("更新失敗");
         await fetchMyForms(currentUser.staffId);
       }
 
-      // --- 自動扣假與銷假歸還邏輯 ---
+      // 扣假與銷假歸還
       if (newStatus === 'Completed' && updatedValues.category === '差勤類') {
-        const formKind = updatedValues.form_kind;
-        if (formKind === '請假單' || formKind === '銷假單') {
-          const leaveType = updatedValues.leave_type;
-          if (leaveType === '特休' || leaveType === '補休') {
-            const leaveTotalStr = updatedValues.leave_total || "0 日 0 時";
-            const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
-            if (match) {
-              const totalProcessHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
-              
-              // 改為抓取表單內填寫的「員工編號」(employee_id) 欄位來判定實際請假人，若未填寫則預設退回填單人
-              const targetStaffId = updatedValues.employee_id || formToProcess.staffId;
-              const applicant = staffList.find(s => s.staffId === targetStaffId);
-              
-              if (applicant && totalProcessHours > 0) {
-                const updatedApplicant = { ...applicant };
-                const isDeducting = formKind === '請假單'; 
-                if (leaveType === '特休') {
-                  const currentAnnual = parseFloat(updatedApplicant.annualLeave) || 0;
-                  updatedApplicant.annualLeave = isDeducting 
-                    ? Math.max(0, parseFloat((currentAnnual - totalProcessHours).toFixed(1)))
-                    : parseFloat((currentAnnual + totalProcessHours).toFixed(1));
-                } else if (leaveType === '補休') {
-                  const currentComp = parseFloat(updatedApplicant.compLeave) || 0;
-                  updatedApplicant.compLeave = isDeducting
-                    ? Math.max(0, parseFloat((currentComp - totalProcessHours).toFixed(1)))
-                    : parseFloat((currentComp + totalProcessHours).toFixed(1));
-                }
-                
-                if (isMockMode) {
-                  setStaffList(prev => prev.map(s => s.staffId === updatedApplicant.staffId ? updatedApplicant : s));
-                  if (currentUser.staffId === updatedApplicant.staffId) setCurrentUser(updatedApplicant);
-                } else {
-                  await fetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, {
-                    method: 'PUT',
-                    headers: getRequestHeaders(),
-                    body: JSON.stringify(updatedApplicant)
-                  });
-                  await fetchPersonnel();
-                  if (currentUser.staffId === updatedApplicant.staffId) {
-                    setCurrentUser(prev => ({...prev, annualLeave: updatedApplicant.annualLeave, compLeave: updatedApplicant.compLeave}));
-                  }
-                }
-              }
+        const { form_kind, leave_type, leave_total, employee_id } = updatedValues;
+        if ((form_kind === '請假單' || form_kind === '銷假單') && (leave_type === '特休' || leave_type === '補休')) {
+          const match = (leave_total || "0 日 0 時").match(/(\d+)\s*日\s*(\d+)\s*時/);
+          if (match) {
+            const hrs = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
+            const applicant = staffList.find(s => s.staffId === (employee_id || formToProcess.staffId));
+            if (applicant && hrs > 0) {
+              const updated = { ...applicant };
+              const isDeduct = form_kind === '請假單';
+              if (leave_type === '特休') updated.annualLeave = isDeduct ? Math.max(0, applicant.annualLeave - hrs) : applicant.annualLeave + hrs;
+              else updated.compLeave = isDeduct ? Math.max(0, applicant.compLeave - hrs) : applicant.compLeave + hrs;
+              if (isMockMode) setStaffList(prev => prev.map(s => s.staffId === updated.staffId ? updated : s));
+              else await fetch(`${API_URL_ROOT}/api/personnel/${updated.staffId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(updated) });
             }
           }
         }
       }
-
-      alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : action === 'reject_to_step' ? '已退回至指定人員重審！' : '已退回申請！');
-      setViewingForm(null);
-    } catch (err) { 
-      alert(`操作失敗：${err.message}`); 
-    } finally {
-      setIsProcessing(false);
-    }
+      alert('操作成功！'); setViewingForm(null);
+    } catch (err) { alert(`失敗：${err.message}`); } finally { setIsProcessing(false); }
   };
 
-  // 對接 server.js 的刪除表單 API
   const handleDeleteForm = async (formItem) => {
-    const isAlreadyInTrash = formItem.status === 'Deleted';
-    const confirmMsg = isAlreadyInTrash 
-      ? `確定要永久刪除單據 [${formItem.id}] 嗎？此操作不可還原。` 
-      : `確定要將單據 [${formItem.id}] 移至垃圾桶嗎？`;
-
-    if (!window.confirm(confirmMsg)) return;
-
+    const isTrash = formItem.status === 'Deleted';
+    if (!window.confirm(isTrash ? `確定要永久刪除 [${formItem.id}]？` : `移至垃圾桶？`)) return;
     setIsProcessing(true);
     try {
-      if (isAlreadyInTrash) {
-        if (isMockMode) {
-          setSubmittedForms(prev => prev.filter(f => f.id !== formItem.id));
-        } else {
-          const response = await fetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
-            method: 'DELETE',
-            headers: getRequestHeaders()
-          });
-          if (!response.ok) throw new Error("資料庫刪除失敗");
-          await fetchMyForms(currentUser.staffId);
-        }
-        alert('單據已永久刪除');
+      if (isTrash) {
+        if (isMockMode) setSubmittedForms(prev => prev.filter(f => f.id !== formItem.id));
+        else await fetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, { method: 'DELETE', headers: getRequestHeaders() });
       } else {
-        const updatedItem = { ...formItem, status: 'Deleted' };
-        if (isMockMode) {
-          setSubmittedForms(prev => prev.map(f => f.id === formItem.id ? updatedItem : f));
-        } else {
-          const response = await fetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
-            method: 'PUT',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({ status: 'Deleted', values: formItem.values })
-          });
-          if (!response.ok) throw new Error("移至垃圾桶失敗");
-          await fetchMyForms(currentUser.staffId);
-        }
-        alert('單據已移至垃圾桶');
+        if (isMockMode) setSubmittedForms(prev => prev.map(f => f.id === formItem.id ? { ...f, status: 'Deleted' } : f));
+        else await fetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify({ status: 'Deleted', values: formItem.values }) });
       }
-    } catch (err) { 
-      alert(`操作失敗：${err.message}`); 
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleEditDraft = (draft) => {
-    setFormValues(draft.values || {});
-    setCurrentDocId(draft.id);
-    setIsSubmitted(false);
-    setIsPreviewing(false);
-    setActiveTab('inbox');
-    setViewingForm(null);
+      await fetchMyForms(currentUser.staffId); alert('已處理完畢');
+    } catch (err) { alert(err.message); } finally { setIsProcessing(false); }
   };
 
   if (!currentUser) return <LoginView onLoginSuccess={handleLoginSuccess} isMockMode={isMockMode} />;
 
-  const myPendingList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Pending');
-  const myCompletedList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Completed');
-  const draftList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Draft');
-  const trashList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted');
-  
-  // 判斷代理人是否生效的輔助函數
-  const isAgentActive = (targetUser) => {
-    if (!targetUser || !targetUser.agentId || !targetUser.agentStartDate || !targetUser.agentEndDate) return false;
-    const now = new Date();
-    const start = new Date(targetUser.agentStartDate);
-    const end = new Date(targetUser.agentEndDate);
-    end.setHours(23, 59, 59, 999); // 包含結束日期的最後一刻
-    return now >= start && now <= end;
+  const isAgentActive = (u) => {
+    if (!u?.agentId || !u?.agentStartDate || !u?.agentEndDate) return false;
+    const n = new Date(); return n >= new Date(u.agentStartDate) && n <= new Date(new Date(u.agentEndDate).setHours(23,59,59));
   };
 
   const inboxList = submittedForms.filter(f => {
-    if (f.status !== 'Pending') return false; 
-    const step = f.values?.currentStep || 0;
-    const targetStaffId = f.values?.workflowPath?.[step]?.staffId;
-    
-    // 如果是自己，直接放入收件匣
-    if (targetStaffId === currentUser?.staffId) return true;
-    
-    // 如果對方啟用了代理人，且代理人是自己，也放入收件匣
-    const targetUser = staffList.find(s => s.staffId === targetStaffId);
-    if (isAgentActive(targetUser) && targetUser.agentId === currentUser?.staffId) {
-      return true;
-    }
-    return false;
+    if (f.status !== 'Pending') return false;
+    const targetId = f.values?.workflowPath?.[f.values?.currentStep || 0]?.staffId;
+    if (targetId === currentUser?.staffId) return true;
+    const targetUser = staffList.find(s => s.staffId === targetId);
+    return isAgentActive(targetUser) && targetUser.agentId === currentUser?.staffId;
   });
 
-  const handleUpdateProfile = async (updateData) => {
-    setIsProcessing(true);
-    try {
-      const updatedUser = { ...currentUser, ...updateData };
-      if (!isMockMode) {
-        const res = await fetch(`${API_URL_ROOT}/api/personnel/${currentUser.staffId}`, {
-          method: 'PUT',
-          headers: getRequestHeaders(),
-          body: JSON.stringify(updatedUser)
-        });
-        if (!res.ok) throw new Error("個人設定更新失敗");
-      }
-      setCurrentUser(updatedUser);
-      setStaffList(prev => prev.map(s => s.staffId === currentUser.staffId ? updatedUser : s));
-      alert("個人設定儲存成功！");
-    } catch(err) {
-      alert(err.message);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // 判斷是否為系統管理員
   const isUserAdmin = currentUser?.isAdmin || currentUser?.staffId === '0338' || currentUser?.staffId === 'ADMIN-01';
 
   const renderMainContent = () => {
-    if (viewingForm) { 
+    if (viewingForm) {
       const step = viewingForm.values?.currentStep || 0;
-      const targetStaffId = viewingForm.values?.workflowPath?.[step]?.staffId;
-      
-      let canApprove = false;
-      let isAgentActing = false;
-      let originalAssigneeName = '';
-
+      const targetId = viewingForm.values?.workflowPath?.[step]?.staffId;
+      let canApprove = false, isAgentActing = false, originalAssigneeName = '';
       if (viewingForm.status === 'Pending') {
-        if (targetStaffId === currentUser?.staffId) {
-          canApprove = true;
-        } else {
-          // 檢查是否為代理人代簽
-          const targetUser = staffList.find(s => s.staffId === targetStaffId);
+        if (targetId === currentUser?.staffId) canApprove = true;
+        else {
+          const targetUser = staffList.find(s => s.staffId === targetId);
           if (isAgentActive(targetUser) && targetUser.agentId === currentUser?.staffId) {
-            canApprove = true;
-            isAgentActing = true;
-            originalAssigneeName = targetUser.name;
+            canApprove = true; isAgentActing = true; originalAssigneeName = targetUser.name;
           }
         }
       }
-      
-      const canWithdraw = viewingForm.staffId === currentUser?.staffId && viewingForm.status === 'Pending';
       return (
         <SubmissionSummary 
           schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} submitDate={viewingForm.submitDate} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} canApprove={canApprove}
-          onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm, targetId) => handleProcessForm(id, targetId ? 'reject_to_step' : 'reject', comm, null, targetId)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
+          onApprove={(id, comm, flow) => handleProcessForm(id, 'approve', comm, flow)} onReject={(id, comm, tid) => handleProcessForm(id, tid ? 'reject_to_step' : 'reject', comm, null, tid)} canWithdraw={viewingForm.staffId === currentUser?.staffId && viewingForm.status === 'Pending'} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
           isProcessing={isProcessing} staffList={staffList} isAgentActing={isAgentActing} originalAssigneeName={originalAssigneeName}
         />
-      ); 
+      );
     }
 
-    // 若非管理員且切換到管理介面時，強制切換回 dashboard
-    if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings') && !isUserAdmin) {
-      setActiveTab('dashboard');
-      return null;
-    }
+    if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings') && !isUserAdmin) { setActiveTab('dashboard'); return null; }
 
     switch (activeTab) {
       case 'dashboard':
@@ -2268,43 +1960,38 @@ const App = () => {
                 <div className="lg:w-2/3 bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                   <div className="absolute right-[-30px] top-[-30px] opacity-10 rotate-12"><Layers size={240} /></div>
                   <div className="relative z-10">
-                    <h2 className="text-3xl font-black mb-3 flex items-center gap-2" style={mingLiUStyle}>
-                      早安，{currentUser.name} {currentUser.pos}
-                      {isUserAdmin && <span className="px-2 py-1 bg-white/20 text-xs rounded border border-white/30 backdrop-blur-md">系統管理員</span>}
-                    </h2>
-                    <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p>
+                    <h2 className="text-3xl font-black mb-3 flex items-center gap-2" style={mingLiUStyle}>早安，{currentUser.name} {isUserAdmin && <span className="px-2 py-1 bg-white/20 text-xs rounded border border-white/30">系統管理員</span>}</h2>
+                    <p className="text-blue-100 text-sm max-w-md">您的員編為 {currentUser.staffId}。系統運作正常，您可以開始建單。</p>
                     <button onClick={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setIsPreviewing(false); setActiveTab('inbox'); }} className="bg-white text-blue-700 px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2 shadow-lg mt-8" style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button>
                   </div>
                 </div>
                 <div className="lg:w-1/3 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘時數</h4><span className="text-xs font-bold text-slate-400 tracking-widest uppercase" style={mingLiUStyle}>Balance</span></div>
+                  <div className="flex items-center justify-between mb-6"><h4 className="text-lg font-black text-slate-700 flex items-center gap-2" style={mingLiUStyle}><Clock size={20} className="text-blue-600" /> 休假剩餘</h4></div>
                   <div className="space-y-6">
-                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span><span className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-xs text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 240) * 100, 100)}%` }}></div></div></div>
-                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span><span className="text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-xs text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.compLeave || 0) / 80) * 100, 100)}%` }}></div></div></div>
+                    <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600">特休</span><span className="text-xl font-black text-blue-600">{currentUser?.annualLeave || 0} hr</span></div></div>
+                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600">補休</span><span className="text-xl font-black text-emerald-600">{currentUser?.compLeave || 0} hr</span></div></div>
                   </div>
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
                 { id: 'inbox_stat', label: '收件匣', value: inboxList.length, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
-                { id: 'pending_stat', label: '流程中案件', value: myPendingList.length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
-                { id: 'completed_stat', label: '已結案', value: myCompletedList.length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
-                { id: 'draft_stat', label: '草稿匣', value: draftList.length, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
+                { id: 'pending_stat', label: '流程中案件', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Pending').length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
+                { id: 'completed_stat', label: '已結案', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Completed').length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
+                { id: 'draft_stat', label: '草稿匣', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Draft').length, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
                 { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX, targetTab: 'rejected' },
-                { id: 'trash_stat', label: '垃圾桶', value: trashList.length, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
+                { id: 'trash_stat', label: '垃圾桶', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted').length, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
               ].map((stat, idx) => (
                 <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group">
-                  <div className="flex justify-between items-start"><div><p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
+                  <div className="flex justify-between items-start"><div><p className="text-xs text-slate-400 mb-1 font-bold">{stat.label}</p><h3 className="text-2xl font-black">{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
                 </div>
               ))}
             </div>
           </div>
         );
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} />;
-      case 'workflow_settings': 
-        return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} teamOptions={TEAM_OPTIONS} />;
-      case 'profile_settings':
-        return <ProfileSettingsView currentUser={currentUser} staffList={staffList} onSave={handleUpdateProfile} isProcessing={isProcessing} />;
+      case 'workflow_settings': return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} teamOptions={TEAM_OPTIONS} />;
+      case 'profile_settings': return <ProfileSettingsView currentUser={currentUser} staffList={staffList} onSave={(d) => handleProcessForm(null, null, null, null, null, d)} isProcessing={isProcessing} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
@@ -2314,48 +2001,33 @@ const App = () => {
           </div></div>
         );
       case 'inbox_list': return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" data={inboxList} onItemClick={setViewingForm} />;
-      case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" data={myPendingList} onItemClick={setViewingForm} />;
-      case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={myCompletedList} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
+      case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Pending')} onItemClick={setViewingForm} />;
+      case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Completed')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       case 'rejected': return <ListView title="退回/抽單" icon={FileX} color="bg-red-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
-      case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={draftList} onItemClick={handleEditDraft} onDelete={handleDeleteForm} />;
-      case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={trashList} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
+      case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Draft')} onItemClick={(d) => { setFormValues(d.values); setCurrentDocId(d.id); setActiveTab('inbox'); }} onDelete={handleDeleteForm} />;
+      case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted')} onItemClick={setViewingForm} onDelete={handleDeleteForm} />;
       default: return null;
     }
   };
 
-  // 左側導覽列的選項，依照權限呈現
-  const navItems = [
-    { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
-    { id: 'profile_settings', label: '個人設定', icon: UserCog }
-  ];
-  if (isUserAdmin) {
-    navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users });
-    navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); // 在人員管理下方新增
-  }
+  const navItems = [{ id: 'dashboard', label: '首頁', icon: LayoutDashboard }, { id: 'profile_settings', label: '個人設定', icon: UserCog }];
+  if (isUserAdmin) { navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users }); navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); }
 
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
       <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
-        <div className="p-8 flex items-center justify-between"><div className="flex items-center gap-3 overflow-hidden"><div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center shadow-xl text-white shrink-0"><Layers size={24} /></div>{!isSidebarCollapsed && (<span className="font-black text-lg tracking-tighter text-slate-800 italic animate-in slide-in-from-left-2" style={mingLiUStyle}>先啟智慧表單</span>)}</div></div>
+        <div className="p-8"><div className="flex items-center gap-3 overflow-hidden"><div className="w-10 h-10 bg-[#1677FF] rounded-2xl flex items-center justify-center text-white shadow-xl"><Layers size={24} /></div>{!isSidebarCollapsed && <span className="font-black text-lg italic">先啟智慧表單</span>}</div></div>
         <nav className="flex-1 px-4 space-y-1 mt-6">
-          {navItems.map((item) => (<button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-start gap-3'}`} style={mingLiUStyle}><item.icon size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>{item.label}</span>}</button>))}
-          <div className="pt-8 mt-8 border-t border-slate-100"><button onClick={handleLogout} className={`w-full flex items-center px-5 py-3.5 rounded-2xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-all font-black text-sm ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`} style={mingLiUStyle}><LogOut size={20} />{!isSidebarCollapsed && <span style={mingLiUStyle}>登出系統</span>}</button></div>
+          {navItems.map((item) => (<button key={item.id} onClick={() => { setActiveTab(item.id); setViewingForm(null); }} className={`w-full flex items-center px-5 py-3.5 rounded-2xl transition-all font-black text-sm ${activeTab === item.id || activeTab.includes('_list') ? 'bg-blue-50 text-[#1677FF]' : 'text-slate-400 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}><item.icon size={20} />{!isSidebarCollapsed && <span>{item.label}</span>}</button>))}
+          <button onClick={handleLogout} className="w-full flex items-center px-5 py-3.5 rounded-2xl text-red-400 hover:bg-red-50 transition-all font-black text-sm gap-3 mt-8 border-t border-slate-100"><LogOut size={20} />{!isSidebarCollapsed && <span>登出系統</span>}</button>
         </nav>
       </aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
-          <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'personnel_management' ? '人員管理中心' : activeTab === 'workflow_settings' ? '簽核流程配置' : '智慧管理系統'}</div>
-          <div className="flex items-center gap-4 border-l border-gray-100 pl-6">
-            <div className="text-right">
-              <p className="text-[14px] font-black text-slate-800 leading-tight flex items-center justify-end gap-1.5" style={mingLiUStyle}>
-                {currentUser.name} 
-                {isUserAdmin && <ShieldCheck size={14} className="text-indigo-600" />}
-              </p>
-              <p className="text-[14px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden">
-              <img src={`https://robohash.org/${encodeURIComponent(currentUser.name)}?set=set4`} alt="avatar" />
-            </div>
+          <div className="text-slate-800 font-black text-lg">{activeTab === 'dashboard' ? '數位儀表板' : '智慧管理系統'}</div>
+          <div className="flex items-center gap-4">
+            <div className="text-right"><p className="text-[14px] font-black">{currentUser.name} {isUserAdmin && <ShieldCheck size={14} className="inline ml-1 text-indigo-600" />}</p><p className="text-[12px] text-slate-400 font-black">{currentUser.pos}</p></div>
+            <div className="w-12 h-12 bg-blue-50 rounded-2xl border-2 border-white shadow-lg overflow-hidden"><img src={`https://robohash.org/${encodeURIComponent(currentUser.name)}?set=set4`} alt="avatar" /></div>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white">{renderMainContent()}</div>
