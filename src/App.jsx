@@ -119,6 +119,26 @@ const getExpirationStatus = (submitDateStr) => {
   }
 };
 
+// --- 職務代理人解析輔助函數 ---
+const resolveDelegate = (targetStaffId, currentStaffList, visited = new Set()) => {
+  if (visited.has(targetStaffId)) return targetStaffId; // 防止循環代理
+  visited.add(targetStaffId);
+
+  const staff = currentStaffList.find(s => s.staffId === targetStaffId);
+  if (!staff || !staff.oooActive || !staff.oooDelegateId) return targetStaffId;
+
+  const now = new Date();
+  // 如果沒有設定日期，預設只要啟用就生效；若有設定則判斷區間
+  if (staff.oooStartDate && staff.oooEndDate) {
+    const start = new Date(staff.oooStartDate);
+    const end = new Date(staff.oooEndDate);
+    end.setHours(23, 59, 59, 999);
+    if (now < start || now > end) return targetStaffId;
+  }
+  
+  return resolveDelegate(staff.oooDelegateId, currentStaffList, visited);
+};
+
 // --- 登入頁面組件 ---
 const LoginView = ({ onLoginSuccess, isMockMode }) => {
   const [staffId, setStaffId] = useState('');
@@ -417,6 +437,107 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
         <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-3">
           <button onClick={onClose} className="flex-1 py-3 border rounded-xl text-sm font-bold text-slate-500 hover:bg-white transition-all" style={mingLiUStyle}>取消返回</button>
           <button onClick={() => onSave(formData)} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl text-sm font-black flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all" style={mingLiUStyle}><Save size={18} /> 儲存資料</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 職務代理設定彈出視窗 ---
+const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList }) => {
+  const [formData, setFormData] = useState({
+    oooActive: false,
+    oooDelegateId: '',
+    oooStartDate: '',
+    oooEndDate: ''
+  });
+
+  useEffect(() => {
+    if (currentUser && isOpen) {
+      setFormData({
+        oooActive: !!currentUser.oooActive,
+        oooDelegateId: currentUser.oooDelegateId || '',
+        oooStartDate: currentUser.oooStartDate || '',
+        oooEndDate: currentUser.oooEndDate || ''
+      });
+    }
+  }, [currentUser, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const labelClass = "text-[12px] font-black text-slate-500 mb-1.5 block";
+  const inputClass = "w-full border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 transition-all bg-slate-50 shadow-sm";
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={mingLiUStyle}>
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}></div>
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300" style={mingLiUStyle}>
+        <div className="bg-purple-600 px-8 py-6 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Briefcase size={20} /></div>
+            <div>
+              <h3 className="text-lg font-black tracking-tight" style={mingLiUStyle}>職務代理設定</h3>
+              <p className="text-xs opacity-70 font-bold uppercase tracking-widest" style={mingLiUStyle}>Out-of-Office Delegation</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
+        </div>
+        
+        <div className="p-8 space-y-6">
+          <div className="bg-purple-50/50 p-5 rounded-2xl border border-purple-100 flex items-center justify-between">
+            <div>
+              <p className="font-black text-purple-800 text-sm mb-1" style={mingLiUStyle}>啟用職務代理</p>
+              <p className="text-xs text-purple-600/70 font-bold" style={mingLiUStyle}>開啟後，指派給您的表單將自動轉派</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="oooActive" checked={formData.oooActive} onChange={handleChange} className="sr-only peer" />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+
+          <div className={`space-y-5 transition-opacity duration-300 ${!formData.oooActive ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+            <div>
+              <label className={labelClass} style={mingLiUStyle}>指定代理人</label>
+              <select name="oooDelegateId" value={formData.oooDelegateId} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
+                <option value="">-- 請選擇代理人 --</option>
+                {staffList.filter(s => s.staffId !== currentUser?.staffId).map(s => (
+                  <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass} style={mingLiUStyle}>開始日期 (選填)</label>
+                <input type="date" name="oooStartDate" value={formData.oooStartDate} onChange={handleChange} className={inputClass} style={mingLiUStyle} />
+              </div>
+              <div>
+                <label className={labelClass} style={mingLiUStyle}>結束日期 (選填)</label>
+                <input type="date" name="oooEndDate" value={formData.oooEndDate} onChange={handleChange} className={inputClass} style={mingLiUStyle} />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 font-bold leading-relaxed" style={mingLiUStyle}>
+              * 若未設定日期，則只要「啟用」即刻生效。<br/>
+              * 若設定日期區間，系統將以您設定的起訖日自動判斷是否轉派。
+            </p>
+          </div>
+        </div>
+
+        <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 border rounded-xl text-sm font-bold text-slate-500 hover:bg-white transition-all" style={mingLiUStyle}>取消</button>
+          <button onClick={() => {
+            if (formData.oooActive && !formData.oooDelegateId) {
+              return alert("啟用代理時，請務必選擇一位代理人！");
+            }
+            onSave(formData);
+          }} className="flex-[2] py-3 bg-purple-600 text-white rounded-xl text-sm font-black flex items-center justify-center gap-2 hover:bg-purple-700 transition-all shadow-md active:scale-95" style={mingLiUStyle}>
+            <Save size={18} /> 儲存設定
+          </button>
         </div>
       </div>
     </div>
@@ -1032,9 +1153,25 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 
       if (matchedRule) {
         const mappedSteps = matchedRule.steps.map(step => {
-          const staff = staffList.find(s => s.staffId === step.staffId);
+          const actualStaffId = resolveDelegate(step.staffId, staffList);
+          const staff = staffList.find(s => s.staffId === actualStaffId);
+          const originalStaff = staffList.find(s => s.staffId === step.staffId);
+
           if (!staff) return null;
-          return { staffId: staff.staffId, name: staff.name, pos: staff.pos, dept: staff.dept, role: step.role };
+
+          const isDelegated = actualStaffId !== step.staffId;
+          const delegateNote = isDelegated ? `(代理 ${originalStaff?.name})` : '';
+
+          return { 
+            staffId: staff.staffId, 
+            name: staff.name, 
+            pos: staff.pos, 
+            dept: staff.dept, 
+            role: step.role,
+            isDelegated,
+            originalStaffId: isDelegated ? step.staffId : null,
+            delegateNote
+          };
         }).filter(Boolean); // 過濾掉找不到人員的無效步驟
         
         setWorkflowSteps(mappedSteps);
@@ -1051,10 +1188,27 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 
   const addToWorkflow = () => {
     if (!selectedStaffId) { alert("請先選擇人員"); return; }
-    const staff = staffList.find(s => s.staffId === selectedStaffId);
+    
+    const actualStaffId = resolveDelegate(selectedStaffId, staffList);
+    const staff = staffList.find(s => s.staffId === actualStaffId);
+    const originalStaff = staffList.find(s => s.staffId === selectedStaffId);
+
     if (!staff) return;
-    if (workflowSteps.some(step => step.staffId === selectedStaffId)) { alert("此人員已在流程中"); return; }
-    setWorkflowSteps([...workflowSteps, { staffId: staff.staffId, name: staff.name, pos: staff.pos, dept: staff.dept, role: selectedRole }]);
+    if (workflowSteps.some(step => step.staffId === actualStaffId)) { alert("此人員(或其代理人)已在流程中"); return; }
+    
+    const isDelegated = actualStaffId !== selectedStaffId;
+    const delegateNote = isDelegated ? `(代理 ${originalStaff?.name})` : '';
+
+    setWorkflowSteps([...workflowSteps, { 
+      staffId: staff.staffId, 
+      name: staff.name, 
+      pos: staff.pos, 
+      dept: staff.dept, 
+      role: selectedRole,
+      isDelegated,
+      originalStaffId: isDelegated ? selectedStaffId : null,
+      delegateNote
+    }]);
     setSelectedStaffId("");
   };
 
@@ -1127,7 +1281,10 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                              <div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}><roleInfo.icon size={20} /></div>
                              <div>
                                <div className="flex items-center gap-2">
-                                 <p className="font-black text-slate-800" style={mingLiUStyle}>{step.name}</p>
+                                 <p className="font-black text-slate-800" style={mingLiUStyle}>
+                                   {step.name}
+                                   {step.delegateNote && <span className="text-amber-600 ml-1.5 text-xs bg-amber-50 px-1.5 py-0.5 rounded">{step.delegateNote}</span>}
+                                 </p>
                                  <span className={`px-2 py-0.5 rounded-md text-xs font-black text-white uppercase ${roleInfo.color}`} style={mingLiUStyle}>{step.role}</span>
                                </div>
                                <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p>
@@ -1390,7 +1547,10 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                          <div className="flex-1">
                            <div className="flex items-center justify-between mb-1">
                              <div>
-                               <span className="text-sm font-black text-slate-800" style={mingLiUStyle}>{step.name} <small className="text-slate-400">({step.pos})</small></span>
+                               <span className="text-sm font-black text-slate-800" style={mingLiUStyle}>
+                                 {step.name} <small className="text-slate-400">({step.pos})</small>
+                                 {step.delegateNote && <span className="text-amber-600 ml-1.5 text-xs bg-amber-50 px-1.5 py-0.5 rounded">{step.delegateNote}</span>}
+                               </span>
                                <span className="text-xs font-black px-2 py-0.5 ml-2 bg-white border rounded text-indigo-600 uppercase" style={mingLiUStyle}>{step.role}</span>
                              </div>
                            </div>
@@ -1552,6 +1712,7 @@ const App = () => {
   const [isMockMode, setIsMockMode] = useState(true); 
   // 處理中狀態 (避免夾帶大檔案時沒反應重複點擊)
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDelegateModalOpen, setIsDelegateModalOpen] = useState(false);
 
   const [submittedForms, setSubmittedForms] = useState([]);
   const [currentDocId, setCurrentDocId] = useState('');
@@ -2147,6 +2308,18 @@ const App = () => {
                   <div className="space-y-6">
                     <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>特休 (Annual)</span><span className="text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-xs text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 240) * 100, 100)}%` }}></div></div></div>
                     <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50"><div className="flex justify-between items-end mb-2"><span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>補休 (Comp.)</span><span className="text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-xs text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.compLeave || 0) / 80) * 100, 100)}%` }}></div></div></div>
+                    
+                    <div className="p-4 bg-purple-50/50 rounded-2xl border border-purple-100/50 flex flex-col gap-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-bold text-slate-600" style={mingLiUStyle}>職務代理狀態</span>
+                        <span className={`px-2 py-1 rounded text-xs font-black ${currentUser?.oooActive ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`} style={mingLiUStyle}>
+                          {currentUser?.oooActive ? '已啟用' : '未啟用'}
+                        </span>
+                      </div>
+                      <button onClick={() => setIsDelegateModalOpen(true)} className="w-full py-2.5 bg-white border border-purple-200 text-purple-700 rounded-xl text-xs font-black hover:bg-purple-50 transition-colors flex justify-center items-center gap-1.5 shadow-sm" style={mingLiUStyle}>
+                        <UserCog size={14} /> 設定代理人
+                      </button>
+                    </div>
                   </div>
                 </div>
             </div>
@@ -2196,6 +2369,32 @@ const App = () => {
     navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); // 在人員管理下方新增
   }
 
+  const handleSaveDelegateSettings = async (settingsData) => {
+    try {
+      setIsProcessing(true);
+      const updatedUser = { ...currentUser, ...settingsData };
+      if (isMockMode) {
+        setStaffList(prev => prev.map(s => s.staffId === updatedUser.staffId ? updatedUser : s));
+        setCurrentUser(updatedUser);
+      } else {
+        const res = await fetch(`${API_URL_ROOT}/api/personnel/${updatedUser.staffId}`, {
+          method: 'PUT',
+          headers: getRequestHeaders(),
+          body: JSON.stringify(updatedUser)
+        });
+        if (!res.ok) throw new Error("儲存失敗");
+        setCurrentUser(updatedUser);
+        await fetchPersonnel();
+      }
+      alert("職務代理設定已更新！");
+      setIsDelegateModalOpen(false);
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-[#F0F2F5] text-[#262626]" style={mingLiUStyle}>
       <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} print:hidden`}>
@@ -2223,6 +2422,14 @@ const App = () => {
         </header>
         <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white">{renderMainContent()}</div>
       </main>
+
+      <DelegateSettingsModal 
+        isOpen={isDelegateModalOpen} 
+        onClose={() => setIsDelegateModalOpen(false)} 
+        onSave={handleSaveDelegateSettings} 
+        currentUser={currentUser} 
+        staffList={staffList} 
+      />
     </div>
   );
 };
