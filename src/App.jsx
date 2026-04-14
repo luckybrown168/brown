@@ -95,6 +95,30 @@ const getRequestHeaders = (extraHeaders = {}) => ({
   ...extraHeaders
 });
 
+// --- 效期計算輔助函數 ---
+const getExpirationStatus = (submitDateStr) => {
+  if (!submitDateStr) return null;
+  const submitDate = new Date(submitDateStr);
+  const expireDate = new Date(submitDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7天效期
+  const now = new Date();
+  const diffMs = expireDate - now;
+
+  if (diffMs <= 0) {
+    return { isExpired: true, text: '已逾期', color: 'bg-red-50 text-red-600 border-red-200' };
+  }
+
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+  if (diffDays > 3) {
+    return { isExpired: false, text: `剩餘 ${diffDays} 天`, color: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
+  } else if (diffDays > 0) {
+    return { isExpired: false, text: `剩餘 ${diffDays}天 ${diffHours}時`, color: 'bg-amber-50 text-amber-600 border-amber-200' };
+  } else {
+    return { isExpired: false, text: `剩餘 ${diffHours} 小時`, color: 'bg-orange-50 text-orange-600 border-orange-300 animate-pulse' };
+  }
+};
+
 // --- 登入頁面組件 ---
 const LoginView = ({ onLoginSuccess, isMockMode }) => {
   const [staffId, setStaffId] = useState('');
@@ -223,6 +247,7 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => 
               <th className="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>單號</th>
               <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>主旨</th>
               <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>提交日期</th>
+              <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>簽核時效</th>
               <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>狀態</th>
               <th className="px-8 py-4 text-right font-black text-slate-400 uppercase tracking-widest text-[12px]" style={mingLiUStyle}>檢視</th>
             </tr>
@@ -236,6 +261,20 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => 
                 </td>
                 <td className="px-6 py-5 text-xs font-bold text-slate-500" style={mingLiUStyle}>
                   {item.submitDate ? new Date(item.submitDate).toLocaleDateString() : 'N/A'}
+                </td>
+                <td className="px-6 py-5">
+                  {item.status === 'Pending' && item.submitDate ? (() => {
+                    const exp = getExpirationStatus(item.submitDate);
+                    if(!exp) return null;
+                    return (
+                      <span className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-black ${exp.color} whitespace-nowrap flex items-center gap-1 w-fit shadow-sm`} style={mingLiUStyle}>
+                        <Timer size={12} />
+                        {exp.text}
+                      </span>
+                    );
+                  })() : (
+                    <span className="text-slate-300 text-xs font-bold" style={mingLiUStyle}>-</span>
+                  )}
                 </td>
                 <td className="px-6 py-5">
                   <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${
@@ -268,7 +307,7 @@ const ListView = ({ title, icon: Icon, color, data, onItemClick, onDelete }) => 
               </tr>
             )) : (
               <tr>
-                <td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>
+                <td colSpan="6" className="px-8 py-20 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>
                   目前尚無相關單據資料。
                 </td>
               </tr>
@@ -1123,7 +1162,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 };
 
 // --- 組件：提交後的存根 ---
-const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList }) => {
+const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList, submitDate }) => {
   const [comment, setComment] = useState("");
 
   // 簽核動作狀態 (移除舊的加簽相關狀態，保留單純的決策狀態)
@@ -1255,6 +1294,8 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
   };
   const currentStatus = statusConfig[status] || statusConfig.Pending;
 
+  const expInfo = (status === 'Pending' && submitDate) ? getExpirationStatus(submitDate) : null;
+
   return (
     <div className="space-y-8 animate-in zoom-in-95 duration-500" style={mingLiUStyle}>
       <div className="flex justify-between items-center print:hidden">
@@ -1270,6 +1311,29 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
           <span className={`text-lg border-y-2 my-1 ${currentStatus.borderClass}`} style={mingLiUStyle}>{currentStatus.text}</span>
           <span className="text-xs" style={mingLiUStyle}>{new Date().toLocaleDateString()}</span>
         </div>
+        
+        {expInfo && (
+          <div className={`mb-8 p-5 rounded-2xl border flex items-center justify-between shadow-sm print:hidden ${expInfo.isExpired ? 'bg-red-50 border-red-200' : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'}`}>
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner ${expInfo.isExpired ? 'bg-red-500' : 'bg-amber-500'}`}>
+                <Timer size={24} className={expInfo.isExpired ? '' : 'animate-pulse'} />
+              </div>
+              <div>
+                <h4 className={`font-black text-base flex items-center gap-2 ${expInfo.isExpired ? 'text-red-800' : 'text-amber-900'}`} style={mingLiUStyle}>
+                  {expInfo.isExpired ? '此單據已逾期' : '單據簽核倒數計時'}
+                  {expInfo.isExpired && <AlertCircle size={16} className="text-red-600"/>}
+                </h4>
+                <p className={`text-xs font-bold mt-1 ${expInfo.isExpired ? 'text-red-600' : 'text-amber-700'}`} style={mingLiUStyle}>
+                  系統規定表單送出後 7 日內需完成所有簽核流程。
+                </p>
+              </div>
+            </div>
+            <div className={`px-5 py-2.5 rounded-xl border-2 text-sm font-black tracking-widest bg-white shadow-sm ${expInfo.isExpired ? 'text-red-600 border-red-200' : 'text-orange-600 border-orange-200'}`} style={mingLiUStyle}>
+              {expInfo.text}
+            </div>
+          </div>
+        )}
+
         <div className="text-center mb-10"><h2 className="text-2xl font-black text-slate-800 underline decoration-4 underline-offset-8" style={mingLiUStyle}>電子表單申請存根</h2></div>
         <div className="mb-6 flex justify-between items-end border-b pb-4">
             <div>
@@ -2051,7 +2115,7 @@ const App = () => {
         <SubmissionSummary 
           schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} canApprove={canApprove}
           onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm, targetId) => handleProcessForm(id, targetId ? 'reject_to_step' : 'reject', comm, null, targetId)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
-          isProcessing={isProcessing} staffList={staffList}
+          isProcessing={isProcessing} staffList={staffList} submitDate={viewingForm.submitDate}
         />
       ); 
     }
@@ -2108,7 +2172,7 @@ const App = () => {
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
-            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} staffList={staffList} /> : 
+            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} staffList={staffList} submitDate={currentDocId ? submittedForms.find(f=>f.id===currentDocId)?.submitDate || new Date().toISOString() : new Date().toISOString()} /> : 
               isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} workflowRules={workflowRules} /> : 
               <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} />}
           </div></div>
