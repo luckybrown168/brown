@@ -442,8 +442,6 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div><label className={labelClass} style={mingLiUStyle}>組別</label>
               <select name="team" value={formData.team} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
                 <option value="">請選擇組別</option>
-                <option value="總經理室">總經理室</option>
-                <option value="財務行政部">財務行政部</option>
                 <option value="北區營業組">北區營業組</option><option value="中區營業組">中區營業組</option><option value="南區營業組">南區營業組</option><option value="客服組">客服組</option><option value="產品組">產品組</option><option value="工程組">工程組</option><option value="系統組">系統組</option>
               </select>
             </div>
