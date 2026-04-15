@@ -502,12 +502,16 @@ const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList
 
           <div className={`space-y-5 transition-opacity duration-300 ${!formData.oooActive ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
             <div>
-              <label className={labelClass} style={mingLiUStyle}>指定代理人</label>
+              <label className={labelClass} style={mingLiUStyle}>指定代理人 (僅限同部門)</label>
               <select name="oooDelegateId" value={formData.oooDelegateId} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
-                <option value="">-- 請選擇代理人 --</option>
-                {staffList.filter(s => s.staffId !== currentUser?.staffId).map(s => (
-                  <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
-                ))}
+                <option value="">-- 請選擇同部門代理人 --</option>
+                {/* 修改：過濾條件增加 s.dept === currentUser?.dept */}
+                {staffList
+                  .filter(s => s.staffId !== currentUser?.staffId && s.dept === currentUser?.dept)
+                  .map(s => (
+                    <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
+                  ))
+                }
               </select>
             </div>
             
@@ -551,7 +555,6 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
   const [tempStaffId, setTempStaffId] = useState('');
   const [tempRole, setTempRole] = useState('簽核');
 
-  // 目前系統有的表單分類 (為了示範，先寫死對應選單)
   const categories = ["行政類", "銷售類", "差勤類", "系統類"];
   const formKinds = {
     "差勤類": ["所有單據", "出勤異常單", "銷假單", "加班單", "請假單"],
@@ -603,7 +606,6 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* 左側：現有規則列表 */}
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6">
             <h3 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2" style={mingLiUStyle}><ListOrdered size={18} className="text-indigo-600"/> 已設定的自動化規則</h3>
@@ -634,7 +636,6 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
           </div>
         </div>
 
-        {/* 右側：編輯器 */}
         <div className="lg:col-span-2 bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
           <h3 className="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-4" style={mingLiUStyle}>
             {editingRule ? '編輯自動化規則' : '新增自動化規則'}
@@ -666,7 +667,6 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
               <label className="text-xs font-black text-indigo-600 mb-3 block" style={mingLiUStyle}>設定預設流程路徑</label>
               
-              {/* 預設流程拖曳/列表顯示區 */}
               <div className="space-y-2 mb-6">
                 {formData.steps.length === 0 ? (
                   <div className="py-8 border-2 border-dashed border-slate-300 rounded-xl text-center text-slate-400 text-sm font-bold" style={mingLiUStyle}>尚未設定人員，請從下方加入</div>
@@ -687,7 +687,6 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
                 )}
               </div>
 
-              {/* 加入人員控制區 */}
               <div className="flex gap-2 items-center">
                 <select value={tempStaffId} onChange={e => setTempStaffId(e.target.value)} className="flex-1 p-2.5 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500" style={mingLiUStyle}>
                   <option value="">-- 選擇指定人員 --</option>
@@ -980,7 +979,6 @@ const PersonnelManagementView = ({ isMockMode }) => {
                       </p>
                       <div className="flex items-center gap-2">
                         <p className="text-[18px] font-bold text-slate-700 leading-tight" style={mingLiUStyle}>{person.name}</p>
-                        {/* 顯示系統管理員標籤 */}
                         {(person.isAdmin || person.staffId === '0338' || person.staffId === 'ADMIN-01') && (
                           <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[10px] font-black tracking-widest flex items-center gap-1" style={mingLiUStyle}>
                             <ShieldCheck size={10} /> 管理員
@@ -1012,7 +1010,6 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
     const file = e.target.files[0];
     if (!file) return;
 
-    // 檔案大小限制 (5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert("檔案太大，請上傳小於 5MB 的檔案");
       return;
@@ -1021,7 +1018,6 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
     setIsUploading(true);
     const reader = new FileReader();
     reader.onloadend = () => {
-      // 正式化：將檔案轉為 Base64 物件儲存
       onInputChange(fieldId, {
         name: file.name,
         type: file.type,
@@ -1036,7 +1032,6 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
     reader.readAsDataURL(file);
   };
 
-  // 檢查必填欄位 (主旨與員編)
   const isRequiredMissing = !formValues.form_subject || !formValues.employee_id;
 
   return (
@@ -1133,16 +1128,8 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [selectedRole, setSelectedRole] = useState("簽核");
 
-  // 自動套用流程設定邏輯
   useEffect(() => {
-    // 如果這份表單尚未設定流程，則自動尋找符合的規則
     if (!values.workflowPath || values.workflowPath.length === 0) {
-      // 匹配邏輯優先順序：
-      // 1. 完全匹配類別、種類、與該員工所屬組別
-      // 2. 匹配類別、種類，且適用於「所有組別」
-      // 3. 匹配類別，種類為「所有單據」，且匹配該員工所屬組別
-      // 4. 匹配類別，種類為「所有單據」，且適用於「所有組別」
-      
       const userDept = values.department || '';
 
       const matchedRule = 
@@ -1172,7 +1159,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
             originalStaffId: isDelegated ? step.staffId : null,
             delegateNote
           };
-        }).filter(Boolean); // 過濾掉找不到人員的無效步驟
+        }).filter(Boolean);
         
         setWorkflowSteps(mappedSteps);
       }
@@ -1321,12 +1308,8 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 // --- 組件：提交後的存根 ---
 const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, applicantId, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList, submitDate }) => {
   const [comment, setComment] = useState("");
-
-  // 簽核動作狀態
   const [approvalAction, setApprovalAction] = useState('approve');
   const [rejectTarget, setRejectTarget] = useState("");
-
-  // 用於讓簽核人編輯後續流程的狀態
   const [editableWorkflow, setEditableWorkflow] = useState([]);
   const [newStaffId, setNewStaffId] = useState("");
   const [newRole, setNewRole] = useState("簽核");
@@ -1337,7 +1320,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     }
   }, [values]);
 
-  // 【重要修改】根據 applicantId 找出真正的申請人姓名
   const applicantInfo = staffList.find(s => s.staffId === applicantId);
   const applicantName = applicantInfo ? applicantInfo.name : "系統人員";
 
@@ -1365,19 +1347,15 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     document.body.removeChild(link);
   };
 
-  // 取得前序已簽核過的人員 (用於退回重審)
   const safeValues = values || {};
   const currentStepIndex = safeValues.currentStep || 0;
-  
-  // 改為基於可編輯的流程來判斷當前角色
   const currentRole = editableWorkflow[currentStepIndex]?.role;
   const isAssignee = currentRole === "交辦";
 
   const previousApprovers = editableWorkflow
     .slice(0, currentStepIndex)
-    .filter((v,i,a) => a.findIndex(t => (t.staffId === v.staffId)) === i); // 去除重複
+    .filter((v,i,a) => a.findIndex(t => (t.staffId === v.staffId)) === i);
 
-  // 處理修改後續流程的函數
   const handleMoveStep = (index, direction) => {
     if (index <= currentStepIndex) return;
     const targetIndex = index + direction;
@@ -1403,7 +1381,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     setNewStaffId("");
   };
 
-  // 處理綜合的簽核決策送出
   const handleDecisionSubmit = () => {
     let finalComment = comment;
     let actionType = 'approve';
@@ -1501,7 +1478,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
             </div>
             <div className="text-right">
               <p className="text-xs font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p>
-              {/* 修改：顯示查找到的申請人姓名 */}
               <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{applicantName}</p>
             </div>
         </div>
@@ -1707,7 +1683,6 @@ const App = () => {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMockMode, setIsMockMode] = useState(true); 
-  // 處理中狀態 (避免夾帶大檔案時沒反應重複點擊)
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDelegateModalOpen, setIsDelegateModalOpen] = useState(false);
 
@@ -1716,11 +1691,8 @@ const App = () => {
   const [viewingForm, setViewingForm] = useState(null);
   const [formValues, setFormValues] = useState({});
   const [staffList, setStaffList] = useState([]);
-
-  // 修改：將寫死的狀態改為空陣列，並透過 API 獲取
   const [workflowRules, setWorkflowRules] = useState([]);
 
-  // 對接 server.js 的獲取規則 API
   const fetchWorkflowRules = async () => {
     if (isMockMode) {
       setWorkflowRules([
@@ -1730,8 +1702,8 @@ const App = () => {
           formKind: '請假單',
           department: '所有組別',
           steps: [
-            { staffId: 'FIN-01', role: '會簽' }, // 預設王大美
-            { staffId: '0338', role: '簽核' }    // 預設王管理
+            { staffId: 'FIN-01', role: '會簽' },
+            { staffId: '0338', role: '簽核' }
           ]
         }
       ]);
@@ -1790,7 +1762,6 @@ const App = () => {
     }
   };
 
-  // 對接 server.js 的獲取人員列表 API
   const fetchPersonnel = async () => {
     if (isMockMode) {
       setStaffList([
@@ -1809,7 +1780,6 @@ const App = () => {
     } catch (err) { console.error("人員列表讀取失敗"); }
   };
 
-  // 對接 server.js 的獲取表單列表 API
   const fetchMyForms = async (userId) => {
     if (isMockMode || !userId) return;
     try {
@@ -1824,7 +1794,6 @@ const App = () => {
     } catch (err) { console.error("無法載入表單資料:", err.message); }
   };
 
-  // 初始化檢查後端連線
   useEffect(() => {
     const checkConnection = async () => {
       try {
@@ -1922,9 +1891,7 @@ const App = () => {
     const dateStr = now.getFullYear().toString() + 
                     (now.getMonth() + 1).toString().padStart(2, '0') + 
                     now.getDate().toString().padStart(2, '0');
-    
     const prefix = `F${dateStr}-${currentUser.staffId}-`;
-    
     const todaySerials = currentForms
       .filter(f => f.id && f.id.startsWith(prefix))
       .map(f => {
@@ -1933,17 +1900,14 @@ const App = () => {
         const serial = parseInt(serialStr, 10);
         return isNaN(serial) ? 0 : serial;
       });
-
     const maxSerial = todaySerials.length > 0 ? Math.max(...todaySerials) : 0;
     const nextSerial = (maxSerial + 1).toString().padStart(3, '0');
-    
     return `${prefix}${nextSerial}`;
   };
 
   const handleFinalSubmit = async (approvalFlow) => {
     let docId = currentDocId;
     let isNew = false;
-    
     setIsProcessing(true);
     try {
       if (!docId) {
@@ -1952,7 +1916,6 @@ const App = () => {
         docId = generateSequentialId(list);
         isNew = true;
       }
-
       const submissionData = { 
         id: docId, 
         staffId: currentUser.staffId, 
@@ -1960,7 +1923,6 @@ const App = () => {
         values: { ...formValues, ...approvalFlow, currentStep: 0 }, 
         status: 'Pending' 
       };
-
       if (isMockMode) {
         if (isNew) {
           setSubmittedForms([...submittedForms, { ...submissionData, submitDate: new Date().toISOString() }]);
@@ -2003,7 +1965,6 @@ const App = () => {
   const handleSaveDraft = async (approvalFlow) => {
     let docId = currentDocId;
     let isNew = false;
-    
     setIsProcessing(true);
     try {
       if (!docId) {
@@ -2012,7 +1973,6 @@ const App = () => {
         docId = generateSequentialId(list);
         isNew = true;
       }
-
       const draftData = { 
         id: docId, 
         staffId: currentUser.staffId, 
@@ -2020,7 +1980,6 @@ const App = () => {
         values: { ...formValues, ...approvalFlow, currentStep: 0 }, 
         status: 'Draft' 
       };
-
       if (isMockMode) {
         if (isNew) {
           setSubmittedForms([...submittedForms, { ...draftData, submitDate: new Date().toISOString() }]);
@@ -2179,9 +2138,7 @@ const App = () => {
     const confirmMsg = isAlreadyInTrash 
       ? `確定要永久刪除單據 [${formItem.id}] 嗎？此操作不可還原。` 
       : `確定要將單據 [${formItem.id}] 移至垃圾桶嗎？`;
-
     if (!window.confirm(confirmMsg)) return;
-
     setIsProcessing(true);
     try {
       if (isAlreadyInTrash) {
@@ -2395,7 +2352,6 @@ const App = () => {
         </header>
         <div className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] print:p-0 print:bg-white">{renderMainContent()}</div>
       </main>
-
       <DelegateSettingsModal 
         isOpen={isDelegateModalOpen} 
         onClose={() => setIsDelegateModalOpen(false)} 
