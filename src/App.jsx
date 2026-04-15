@@ -1319,14 +1319,14 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 };
 
 // --- 組件：提交後的存根 ---
-const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList, submitDate }) => {
+const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, applicantId, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList, submitDate }) => {
   const [comment, setComment] = useState("");
 
-  // 簽核動作狀態 (移除舊的加簽相關狀態，保留單純的決策狀態)
+  // 簽核動作狀態
   const [approvalAction, setApprovalAction] = useState('approve');
   const [rejectTarget, setRejectTarget] = useState("");
 
-  // 新增：用於讓簽核人編輯後續流程的狀態
+  // 用於讓簽核人編輯後續流程的狀態
   const [editableWorkflow, setEditableWorkflow] = useState([]);
   const [newStaffId, setNewStaffId] = useState("");
   const [newRole, setNewRole] = useState("簽核");
@@ -1336,6 +1336,10 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
       setEditableWorkflow([...values.workflowPath]);
     }
   }, [values]);
+
+  // 【重要修改】根據 applicantId 找出真正的申請人姓名
+  const applicantInfo = staffList.find(s => s.staffId === applicantId);
+  const applicantName = applicantInfo ? applicantInfo.name : "系統人員";
 
   const handlePrint = () => {
     const originalTitle = document.title;
@@ -1373,7 +1377,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     .slice(0, currentStepIndex)
     .filter((v,i,a) => a.findIndex(t => (t.staffId === v.staffId)) === i); // 去除重複
 
-  // 新增：處理修改後續流程的函數
+  // 處理修改後續流程的函數
   const handleMoveStep = (index, direction) => {
     if (index <= currentStepIndex) return;
     const targetIndex = index + direction;
@@ -1399,7 +1403,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     setNewStaffId("");
   };
 
-  // 處理綜合的簽核決策送出 (移除舊版加簽防呆邏輯)
+  // 處理綜合的簽核決策送出
   const handleDecisionSubmit = () => {
     let finalComment = comment;
     let actionType = 'approve';
@@ -1434,10 +1438,8 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     }
 
     if (actionType === 'approve') {
-      // 送出時將編輯後的最終流程傳遞給父層 API
       onApprove(currentDocId, finalComment, finalWorkflow);
     } else if (actionType === 'reject_to_step') {
-      // 傳遞第三個參數 rejectTarget (也就是目標人員的 staffId)
       onReject(currentDocId, finalComment, rejectTarget);
     } else {
       onReject(currentDocId, finalComment);
@@ -1499,7 +1501,8 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
             </div>
             <div className="text-right">
               <p className="text-xs font-black text-slate-400 uppercase" style={mingLiUStyle}>申請人 Applicant</p>
-              <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{currentUser?.name || '測試人員'}</p>
+              {/* 修改：顯示查找到的申請人姓名 */}
+              <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{applicantName}</p>
             </div>
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
@@ -1537,7 +1540,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                 {editableWorkflow.map((step, i) => {
                   const isCurrentStep = currentStepIndex === i;
                   const isProcessed = currentStepIndex > i || status === 'Completed' || (status === 'Rejected' && step.comment);
-                  // 判斷是否為可以編輯的未來步驟
                   const canEditThisStep = canApprove && status === 'Pending' && i > currentStepIndex;
 
                   return (
@@ -1557,7 +1559,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                            {step.processedDate && <p className="text-xs text-slate-400 font-bold mb-2" style={mingLiUStyle}>處理時間：{new Date(step.processedDate).toLocaleString()}</p>}
                            {step.comment ? (<div className="bg-white p-3 rounded-xl border border-slate-200 relative mt-2 w-full max-w-lg"><div className="absolute -top-2 left-4 px-1 bg-white text-xs font-black text-slate-400 flex items-center gap-1"><MessageSquare size={10} /> 簽核意見</div><p className="text-xs font-bold text-slate-600 italic" style={mingLiUStyle}>「 {step.comment} 」</p></div>) : isProcessed ? <p className="text-xs text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isCurrentStep ? <p className="text-xs text-indigo-600 font-black animate-pulse" style={mingLiUStyle}>等待簽核中...</p> : null}
                          </div>
-                         {/* 新增修改未來步驟的操作按鈕 */}
                          {canEditThisStep && (
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2 bg-white p-1 rounded-lg shadow-sm border border-slate-100">
                              <button type="button" onClick={() => handleMoveStep(i, -1)} disabled={i === currentStepIndex + 1} className="p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronUp size={16} /></button>
@@ -1572,7 +1573,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                 })}
               </div>
               
-              {/* 新增後續人員區塊 */}
               {canApprove && status === 'Pending' && (
                 <div className="flex flex-col sm:flex-row items-center gap-3 p-4 mt-4 border border-dashed border-indigo-200 rounded-2xl bg-white/50 animate-in fade-in transition-all">
                    <div className="text-xs font-black text-indigo-500 whitespace-nowrap flex items-center gap-1" style={mingLiUStyle}><PlusCircle size={14}/> 增加後續簽核者</div>
@@ -1602,8 +1602,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
               <textarea value={comment} disabled={isProcessing} onChange={(e) => setComment(e.target.value)} placeholder="請輸入交辦任務的執行狀況..." className="w-full h-24 p-4 border border-indigo-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 font-bold disabled:opacity-50" style={mingLiUStyle} />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-                
-                {/* 左側 (原右側)：意見輸入區 */}
                 <div className="flex flex-col">
                   <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5" style={mingLiUStyle}>
                     <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核意見
@@ -1618,7 +1616,6 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                   />
                 </div>
 
-                {/* 右側 (原左側)：簽核單選選項 */}
                 <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm flex flex-col justify-center">
                   <div className="text-xs text-indigo-800 font-black mb-3 flex items-center gap-1.5">
                     <div className="w-1 h-3 bg-indigo-500 rounded-full"></div> 簽核選項
@@ -1842,7 +1839,6 @@ const App = () => {
     if (currentUser) { 
       fetchMyForms(currentUser.staffId); 
       fetchPersonnel(); 
-      // 新增：登入或切換 Tab 時，同步向後端要取流程設定
       fetchWorkflowRules();
     }
   }, [currentUser, activeTab]);
@@ -1876,7 +1872,6 @@ const App = () => {
       
       { id: "form_kind", label: "表單種類", type: "select", options: ["出勤異常單", "銷假單", "加班單", "請假單"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
       
-      // ★ 調整規章顯示順序：移動到表單種類下方
       { id: "anomaly_rules_notice", type: "anomaly_notice", dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
       { id: "leave_rules_notice", type: "notice", dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
@@ -1922,20 +1917,14 @@ const App = () => {
     });
   };
 
-  /**
-   * 改良版單號產生邏輯：F + YYYYMMDD + 員編 + 流水號
-   * 讀取當前列表內相同前綴的最高序號並 +1
-   */
   const generateSequentialId = (currentForms) => {
     const now = new Date();
     const dateStr = now.getFullYear().toString() + 
                     (now.getMonth() + 1).toString().padStart(2, '0') + 
                     now.getDate().toString().padStart(2, '0');
     
-    // 前綴包含日期與員編，確保即使多人同時操作，只要員編不同就不會碰撞
     const prefix = `F${dateStr}-${currentUser.staffId}-`;
     
-    // 從現有的表單中找出今天、且屬於自己的單據最高序號
     const todaySerials = currentForms
       .filter(f => f.id && f.id.startsWith(prefix))
       .map(f => {
@@ -1951,7 +1940,6 @@ const App = () => {
     return `${prefix}${nextSerial}`;
   };
 
-  // 對接 server.js 的提交表單 API
   const handleFinalSubmit = async (approvalFlow) => {
     let docId = currentDocId;
     let isNew = false;
@@ -1959,7 +1947,6 @@ const App = () => {
     setIsProcessing(true);
     try {
       if (!docId) {
-        // 在提交前先刷新一次表單列表，確保取得最新的序號
         const res = await fetch(`${API_URL_ROOT}/api/forms/${currentUser.staffId}`, { headers: getRequestHeaders() });
         const list = await res.json();
         docId = generateSequentialId(list);
@@ -2013,7 +2000,6 @@ const App = () => {
     }
   };
 
-  // 草稿儲存對接
   const handleSaveDraft = async (approvalFlow) => {
     let docId = currentDocId;
     let isNew = false;
@@ -2074,15 +2060,12 @@ const App = () => {
     }
   };
 
-  // 對接 server.js 的簽核更新 API
   const handleProcessForm = async (docId, action, comment, optionalNewWorkflow = null, targetRejectId = null) => {
     const formToProcess = submittedForms.find(f => f.id === docId);
     if (!formToProcess) return;
 
     let newStatus = formToProcess.status;
     let newStepIndex = formToProcess.values.currentStep || 0;
-    
-    // 如果有傳入加簽後的新路徑則採用之，否則使用原路徑
     const workflow = optionalNewWorkflow ? [...optionalNewWorkflow] : [...(formToProcess.values.workflowPath || [])];
 
     setIsProcessing(true);
@@ -2097,16 +2080,13 @@ const App = () => {
       } else if (action === 'reject') { 
         newStatus = 'Rejected'; 
       } else if (action === 'reject_to_step') {
-        // 先將當前退回者的意見保存到歷程中
         if (workflow[newStepIndex]) {
           workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
         }
-        // 尋找要退回的目標人員順序位置
         const targetIndex = workflow.findIndex(step => step.staffId === targetRejectId);
         if (targetIndex !== -1) {
           newStepIndex = targetIndex;
           newStatus = 'Pending';
-          // 清除退回目標點到當前步驟之間所有人的歷史簽核紀錄（不包含剛剛退回的人）
           for (let i = targetIndex; i < workflow.length; i++) {
             if (i !== formToProcess.values.currentStep) {
               workflow[i].comment = "";
@@ -2114,7 +2094,7 @@ const App = () => {
             }
           }
         } else {
-          newStatus = 'Rejected'; // 防呆：若找不到該人則直接退件
+          newStatus = 'Rejected';
         }
       } else if (action === 'withdraw') {
         newStatus = 'Rejected';
@@ -2138,7 +2118,6 @@ const App = () => {
         await fetchMyForms(currentUser.staffId);
       }
 
-      // --- 自動扣假與銷假歸還邏輯 ---
       if (newStatus === 'Completed' && updatedValues.category === '差勤類') {
         const formKind = updatedValues.form_kind;
         if (formKind === '請假單' || formKind === '銷假單') {
@@ -2148,8 +2127,6 @@ const App = () => {
             const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
             if (match) {
               const totalProcessHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
-              
-              // 改為抓取表單內填寫的「員工編號」(employee_id) 欄位來判定實際請假人，若未填寫則預設退回填單人
               const targetStaffId = updatedValues.employee_id || formToProcess.staffId;
               const applicant = staffList.find(s => s.staffId === targetStaffId);
               
@@ -2197,7 +2174,6 @@ const App = () => {
     }
   };
 
-  // 對接 server.js 的刪除表單 API
   const handleDeleteForm = async (formItem) => {
     const isAlreadyInTrash = formItem.status === 'Deleted';
     const confirmMsg = isAlreadyInTrash 
@@ -2264,7 +2240,6 @@ const App = () => {
     return f.values?.workflowPath?.[step]?.staffId === currentUser?.staffId;
   });
 
-  // 判斷是否為系統管理員
   const isUserAdmin = currentUser?.isAdmin || currentUser?.staffId === '0338' || currentUser?.staffId === 'ADMIN-01';
 
   const renderMainContent = () => {
@@ -2274,14 +2249,13 @@ const App = () => {
       const canWithdraw = viewingForm.staffId === currentUser?.staffId && viewingForm.status === 'Pending';
       return (
         <SubmissionSummary 
-          schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} canApprove={canApprove}
+          schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} applicantId={viewingForm.staffId} canApprove={canApprove}
           onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm, targetId) => handleProcessForm(id, targetId ? 'reject_to_step' : 'reject', comm, null, targetId)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
           isProcessing={isProcessing} staffList={staffList} submitDate={viewingForm.submitDate}
         />
       ); 
     }
 
-    // 若非管理員且切換到管理介面時，強制切換回 dashboard
     if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings') && !isUserAdmin) {
       setActiveTab('dashboard');
       return null;
@@ -2345,7 +2319,7 @@ const App = () => {
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
-            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} staffList={staffList} submitDate={currentDocId ? submittedForms.find(f=>f.id===currentDocId)?.submitDate || new Date().toISOString() : new Date().toISOString()} /> : 
+            {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} applicantId={currentUser.staffId} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} staffList={staffList} submitDate={currentDocId ? submittedForms.find(f=>f.id===currentDocId)?.submitDate || new Date().toISOString() : new Date().toISOString()} /> : 
               isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} workflowRules={workflowRules} /> : 
               <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} />}
           </div></div>
@@ -2360,13 +2334,12 @@ const App = () => {
     }
   };
 
-  // 左側導覽列的選項，依照權限呈現
   const navItems = [
     { id: 'dashboard', label: '首頁', icon: LayoutDashboard }
   ];
   if (isUserAdmin) {
     navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users });
-    navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); // 在人員管理下方新增
+    navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); 
   }
 
   const handleSaveDelegateSettings = async (settingsData) => {
