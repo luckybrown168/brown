@@ -1200,14 +1200,24 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 
       if (matchedRule) {
         const applicantId = String(values.employee_id || currentUser?.staffId || "").trim().toLowerCase();
+        const applicantStaff = staffList.find(s => String(s.staffId).trim().toLowerCase() === applicantId);
+        const applicantRank = applicantStaff ? getPositionRank(applicantStaff.pos) : 0;
 
         const mappedSteps = matchedRule.steps.map(step => {
           let targetStaffId = step.staffId;
           let escalationNote = '';
 
-          // 【新增邏輯】如果流程中的人剛好是申請人自己，自動替換為上一級主管
-          if (String(targetStaffId).trim().toLowerCase() === applicantId) {
-            const supervisorId = findSupervisor(targetStaffId, staffList);
+          const targetStaff = staffList.find(s => s.staffId === targetStaffId);
+          const targetRank = targetStaff ? getPositionRank(targetStaff.pos) : 0;
+
+          const isSelf = String(targetStaffId).trim().toLowerCase() === applicantId;
+          // 只針對「簽核」角色做職級檢測，避免把「交辦」或「會簽」的行政人員也誤判升級給總經理
+          const isLowerRankApprover = step.role === '簽核' && targetRank < applicantRank;
+
+          // 【加強邏輯】如果是自己，或者該關卡為「簽核」但職級低於申請人，則自動替換為申請人的上一級主管
+          if (isSelf || isLowerRankApprover) {
+            // 這裡改成尋找「申請人」的主管，因為是申請人發起的單據，要找申請人的上級
+            const supervisorId = findSupervisor(applicantStaff?.staffId || targetStaffId, staffList);
             if (supervisorId) {
               targetStaffId = supervisorId;
               escalationNote = '(自動上呈)';
