@@ -442,6 +442,8 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div><label className={labelClass} style={mingLiUStyle}>組別</label>
               <select name="team" value={formData.team} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
                 <option value="">請選擇組別</option>
+                <option value="總經理室">總經理室</option>
+                <option value="財務行政部">財務行政部</option>
                 <option value="北區營業組">北區營業組</option><option value="中區營業組">中區營業組</option><option value="南區營業組">南區營業組</option><option value="客服組">客服組</option><option value="產品組">產品組</option><option value="工程組">工程組</option><option value="系統組">系統組</option>
               </select>
             </div>
@@ -1404,7 +1406,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 };
 
 // --- 組件：提交後的存根 ---
-const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, applicantId, canApprove, onApprove, onReject, canWithdraw, onWithdraw, isProcessing, staffList, submitDate }) => {
+const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, applicantId, canApprove, onApprove, onReject, canWithdraw, onWithdraw, onCloneToDraft, isProcessing, staffList, submitDate }) => {
   const [comment, setComment] = useState("");
   const [approvalAction, setApprovalAction] = useState('approve');
   const [rejectTarget, setRejectTarget] = useState("");
@@ -1534,9 +1536,14 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     <div className="space-y-8 animate-in zoom-in-95 duration-500" style={mingLiUStyle}>
       <div className="flex justify-between items-center print:hidden">
         <button onClick={onBack || onReset} disabled={isProcessing} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 font-black text-sm hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm active:scale-95 disabled:opacity-50" style={mingLiUStyle}><ArrowLeft size={18} /> 返回上一頁</button>
-        {canWithdraw && (
-          <button onClick={() => { if(window.confirm('確定要撤回此項表單申請（抽單）嗎？')) onWithdraw(currentDocId); }} disabled={isProcessing} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-100 rounded-2xl text-red-500 font-black text-sm hover:bg-red-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" style={mingLiUStyle}><Undo2 size={18} /> 撤回申請 (抽單)</button>
-        )}
+        <div className="flex gap-2">
+          {canWithdraw && (
+            <button onClick={() => { if(window.confirm('確定要撤回此項表單申請（抽單）嗎？')) onWithdraw(currentDocId); }} disabled={isProcessing} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-100 rounded-2xl text-red-500 font-black text-sm hover:bg-red-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" style={mingLiUStyle}><Undo2 size={18} /> 撤回申請 (抽單)</button>
+          )}
+          {(status === 'Rejected' || status === 'Completed') && applicantId === currentUser?.staffId && onCloneToDraft && (
+            <button onClick={() => onCloneToDraft(currentDocId)} disabled={isProcessing} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-indigo-100 rounded-2xl text-indigo-600 font-black text-sm hover:bg-indigo-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" style={mingLiUStyle}><RotateCcw size={18} /> 複製為新草稿重填</button>
+          )}
+        </div>
       </div>
 
       <div id="printable-stub" className="bg-white border-2 border-slate-200 rounded-3xl p-10 shadow-2xl relative font-serif print:shadow-none print:border-slate-400">
@@ -1636,7 +1643,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                          {canEditThisStep && (
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2 bg-white p-1 rounded-lg shadow-sm border border-slate-100">
                              <button type="button" onClick={() => handleMoveStep(i, -1)} disabled={i === currentStepIndex + 1} className="p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronUp size={16} /></button>
-                             <button type="button" onClick={() => handleMoveStep(i, 1)} disabled={i === editableWorkflow.length - 1} className="p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronDown size={16} /></button>
+                             <button type="button" onClick={() => handleMoveStep(i, 1)} disabled={i === editableWorkflow.length - 1} className="p-1 text-slate-400 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronDown size={16} /></button>
                              <div className="w-px h-4 bg-slate-200 mx-1"></div>
                              <button type="button" onClick={() => handleRemoveStep(i)} className="p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded transition-all"><X size={16} /></button>
                            </div>
@@ -2284,6 +2291,24 @@ const App = () => {
     setViewingForm(null);
   };
 
+  const handleCloneToDraft = (docId) => {
+    const formToClone = submittedForms.find(f => f.id === docId);
+    if (!formToClone) return;
+
+    if (!window.confirm("確定要將此單據內容複製為一份新草稿並重新編輯嗎？\n(系統將為您帶入原內容，並產生全新的文件單號)")) return;
+
+    const clonedValues = { ...formToClone.values };
+    delete clonedValues.workflowPath; // 清除舊的簽核路徑
+    delete clonedValues.currentStep;  // 清除舊的進度
+
+    setFormValues(clonedValues);
+    setCurrentDocId(''); // 清空 ID，讓系統在儲存/送出時產生新單號
+    setIsSubmitted(false);
+    setIsPreviewing(false);
+    setViewingForm(null);
+    setActiveTab('inbox');
+  };
+
   if (!currentUser) return <LoginView onLoginSuccess={handleLoginSuccess} isMockMode={isMockMode} />;
 
   const myPendingList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Pending');
@@ -2308,6 +2333,7 @@ const App = () => {
         <SubmissionSummary 
           schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} applicantId={viewingForm.staffId} canApprove={canApprove}
           onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm, targetId) => handleProcessForm(id, targetId ? 'reject_to_step' : 'reject', comm, null, targetId)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
+          onCloneToDraft={handleCloneToDraft}
           isProcessing={isProcessing} staffList={staffList} submitDate={viewingForm.submitDate}
         />
       ); 
