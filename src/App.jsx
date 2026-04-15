@@ -142,12 +142,14 @@ const resolveDelegate = (targetStaffId, currentStaffList, visited = new Set()) =
 const getPositionRank = (pos) => {
   if (!pos) return 0;
   const p = pos.toLowerCase();
+  if (p.includes('執行長') || p.includes('ceo')) return 110;
   if (p.includes('總經理') && !p.includes('副總經理')) return 100;
   if (p.includes('副總') || p.includes('總監')) return 90;
-  if (p.includes('協理')) return 80;
+  if (p.includes('處長') || p.includes('協理')) return 80;
   if (p.includes('經理') && !p.includes('副理') && !p.includes('總經理')) return 70;
   if (p.includes('副理')) return 60;
   if (p.includes('組長') || p.includes('課長') || p.includes('主任')) return 50;
+  if (p.includes('資深') || p.includes('高級')) return 30;
   return 10; // 一般員工/專員
 };
 
@@ -157,24 +159,32 @@ const findSupervisor = (staffId, staffList) => {
 
   const staffRank = getPositionRank(staff.pos);
 
-  // 1. 同部門且職級較高的人
+  // 1. 同部門且職級較高的人 (尋找最接近的直屬主管)
   const deptSupervisors = staffList.filter(s => s.dept === staff.dept && getPositionRank(s.pos) > staffRank);
   if (deptSupervisors.length > 0) {
-    // 找職級最接近的直屬主管
     deptSupervisors.sort((a, b) => getPositionRank(a.pos) - getPositionRank(b.pos));
     return deptSupervisors[0].staffId;
   }
 
-  // 2. 若部門內沒有更高級別，則直接往上找總經理級別 (rank >= 90)
-  const topExecutives = staffList.filter(s => getPositionRank(s.pos) >= 90);
-  if (topExecutives.length > 0) {
-    // 找最高級別的
-    topExecutives.sort((a, b) => getPositionRank(b.pos) - getPositionRank(a.pos));
-    const gm = topExecutives.find(s => s.staffId !== staffId);
-    if (gm) return gm.staffId;
+  // 2. 若部門內沒有更高級別，則全公司尋找職級較高的人 (例如找全公司最高級別的總經理)
+  const companyExecutives = staffList.filter(s => s.staffId !== staffId && getPositionRank(s.pos) > staffRank);
+  if (companyExecutives.length > 0) {
+    // 找全公司分數最高的人
+    companyExecutives.sort((a, b) => getPositionRank(b.pos) - getPositionRank(a.pos));
+    return companyExecutives[0].staffId;
   }
 
-  return null; // 若找不到則回傳null
+  // 3. 容錯機制：如果資料庫的職稱都沒有設定符合的關鍵字，至少往上抓全公司職級相對最高的主管
+  const allOthers = staffList.filter(s => s.staffId !== staffId);
+  if (allOthers.length > 0) {
+    allOthers.sort((a, b) => getPositionRank(b.pos) - getPositionRank(a.pos));
+    // 只要最高分的人有 50 分(含)以上的主管級，就可以當作最終呈報對象
+    if (getPositionRank(allOthers[0].pos) >= 50) {
+      return allOthers[0].staffId;
+    }
+  }
+
+  return null; // 真的沒有任何人可以呈報了
 };
 
 // --- 登入頁面組件 ---
@@ -1189,14 +1199,14 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
         workflowRules?.find(r => r.category === values.category && r.formKind === '所有單據' && r.department === '所有組別');
 
       if (matchedRule) {
-        const applicantId = values.employee_id || currentUser?.staffId;
+        const applicantId = String(values.employee_id || currentUser?.staffId || "").trim().toLowerCase();
 
         const mappedSteps = matchedRule.steps.map(step => {
           let targetStaffId = step.staffId;
           let escalationNote = '';
 
           // 【新增邏輯】如果流程中的人剛好是申請人自己，自動替換為上一級主管
-          if (targetStaffId === applicantId) {
+          if (String(targetStaffId).trim().toLowerCase() === applicantId) {
             const supervisorId = findSupervisor(targetStaffId, staffList);
             if (supervisorId) {
               targetStaffId = supervisorId;
