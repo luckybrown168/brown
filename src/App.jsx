@@ -442,6 +442,8 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div><label className={labelClass} style={mingLiUStyle}>組別</label>
               <select name="team" value={formData.team} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
                 <option value="">請選擇組別</option>
+                <option value="總經理室">總經理室</option>
+                <option value="財務行政部">財務行政部</option>
                 <option value="北區營業組">北區營業組</option><option value="中區營業組">中區營業組</option><option value="南區營業組">南區營業組</option><option value="客服組">客服組</option><option value="產品組">產品組</option><option value="工程組">工程組</option><option value="系統組">系統組</option>
               </select>
             </div>
@@ -1212,9 +1214,9 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
           // 只針對「簽核」角色做職級檢測，避免把「交辦」或「會簽」的行政人員也誤判升級給總經理
           const isLowerRankApprover = step.role === '簽核' && targetRank < applicantRank;
 
-          // 【加強邏輯】如果是自己，或者該關卡為「簽核」但職級低於申請人，則自動替換為申請人的上一級主管
-          if (isSelf || isLowerRankApprover) {
-            // 這裡改成尋找「申請人」的主管，因為是申請人發起的單據，要找申請人的上級
+          // 【修正邏輯】精細化不同角色碰到自己時的處理方式
+          if (step.role === '簽核' && (isSelf || isLowerRankApprover)) {
+            // 如果是「簽核」碰到自己或較低職級者，尋找「申請人」的主管進行上呈
             const supervisorId = findSupervisor(applicantStaff?.staffId || targetStaffId, staffList);
             if (supervisorId) {
               targetStaffId = supervisorId;
@@ -1223,7 +1225,11 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
               // 找不到主管則跳過此流程避免自己核准自己
               return null;
             }
+          } else if (isSelf && step.role !== '交辦') {
+            // 如果是「會簽」或「串會」碰到自己，直接跳過（不需自己會簽自己）
+            return null;
           }
+          // 若是「交辦」碰到自己，系統會直接略過上述判斷，將關卡完整保留給自己執行
 
           const actualStaffId = resolveDelegate(targetStaffId, staffList);
           const staff = staffList.find(s => s.staffId === actualStaffId);
