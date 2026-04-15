@@ -142,14 +142,10 @@ const resolveDelegate = (targetStaffId, currentStaffList, visited = new Set()) =
 const getPositionRank = (pos) => {
   if (!pos) return 0;
   const p = pos.toLowerCase();
-  if (p.includes('執行長') || p.includes('ceo')) return 110;
   if (p.includes('總經理') && !p.includes('副總經理')) return 100;
-  if (p.includes('副總') || p.includes('總監')) return 90;
-  if (p.includes('處長') || p.includes('協理')) return 80;
-  if (p.includes('經理') && !p.includes('副理') && !p.includes('總經理')) return 70;
-  if (p.includes('副理')) return 60;
-  if (p.includes('組長') || p.includes('課長') || p.includes('主任')) return 50;
-  if (p.includes('資深') || p.includes('高級')) return 30;
+  if (p.includes('協理')  return 90;
+  if (p.includes('經理')  return 80;
+  if (p.includes('副理')) return 70;
   return 10; // 一般員工/專員
 };
 
