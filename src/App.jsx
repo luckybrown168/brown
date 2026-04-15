@@ -900,6 +900,16 @@ const PersonnelManagementView = ({ isMockMode }) => {
   useEffect(() => { fetchStaffFromDB(); }, [isMockMode]);
 
   const handleSaveStaff = async (staffData) => {
+    // 【加強點】：檢查員編是否重複
+    // 只有在「新增」模式（即 editingStaff 為 null）下才需要檢查
+    if (!editingStaff) {
+      const isStaffIdExists = staffList.some(s => s.staffId === staffData.staffId);
+      if (isStaffIdExists) {
+        alert(`儲存失敗：員工編號 [${staffData.staffId}] 已存在於系統中，請使用其他編號。`);
+        return; // 中斷流程，不關閉視窗也不執行後續儲存
+      }
+    }
+
     try {
       setIsLoading(true);
       if (!isMockMode) {
@@ -918,8 +928,13 @@ const PersonnelManagementView = ({ isMockMode }) => {
         if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item)); } 
         else { setStaffList(prev => [...prev, staffData]); }
       }
-    } catch (err) { console.error("操作失敗", err); } 
-    finally { setIsLoading(false); setIsModalOpen(false); setEditingStaff(null); }
+      setIsModalOpen(false); // 儲存成功才關閉彈窗
+      setEditingStaff(null);
+    } catch (err) { 
+      console.error("操作失敗", err); 
+      alert("儲存人員資料時發生錯誤。");
+    } 
+    finally { setIsLoading(false); }
   };
 
   const handleDeleteStaff = async (staffId) => {
@@ -1278,10 +1293,10 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                              </div>
                            </div>
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                             <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
-                             <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
+                             <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
+                             <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
                              <div className="w-px h-6 bg-slate-100 mx-1"></div>
-                             <button onClick={() => removeFromWorkflow(step.staffId)} className="p-1.5 text-slate-300 hover:text-red-500"><X size={16} /></button>
+                             <button onClick={() => removeFromWorkflow(step.staffId)} className="p-1.5 text-slate-400 hover:text-red-500"><X size={16} /></button>
                            </div>
                         </div>
                       </div>
