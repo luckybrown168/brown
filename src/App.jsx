@@ -128,7 +128,6 @@ const resolveDelegate = (targetStaffId, currentStaffList, visited = new Set()) =
   if (!staff || !staff.oooActive || !staff.oooDelegateId) return targetStaffId;
 
   const now = new Date();
-  // 如果沒有設定日期，預設只要啟用就生效；若有設定則判斷區間
   if (staff.oooStartDate && staff.oooEndDate) {
     const start = new Date(staff.oooStartDate);
     const end = new Date(staff.oooEndDate);
@@ -137,6 +136,45 @@ const resolveDelegate = (targetStaffId, currentStaffList, visited = new Set()) =
   }
   
   return resolveDelegate(staff.oooDelegateId, currentStaffList, visited);
+};
+
+// --- 職級與自動上呈解析輔助函數 ---
+const getPositionRank = (pos) => {
+  if (!pos) return 0;
+  const p = pos.toLowerCase();
+  if (p.includes('總經理') && !p.includes('副總經理')) return 100;
+  if (p.includes('副總') || p.includes('總監')) return 90;
+  if (p.includes('協理')) return 80;
+  if (p.includes('經理') && !p.includes('副理') && !p.includes('總經理')) return 70;
+  if (p.includes('副理')) return 60;
+  if (p.includes('組長') || p.includes('課長') || p.includes('主任')) return 50;
+  return 10; // 一般員工/專員
+};
+
+const findSupervisor = (staffId, staffList) => {
+  const staff = staffList.find(s => s.staffId === staffId);
+  if (!staff) return null;
+
+  const staffRank = getPositionRank(staff.pos);
+
+  // 1. 同部門且職級較高的人
+  const deptSupervisors = staffList.filter(s => s.dept === staff.dept && getPositionRank(s.pos) > staffRank);
+  if (deptSupervisors.length > 0) {
+    // 找職級最接近的直屬主管
+    deptSupervisors.sort((a, b) => getPositionRank(a.pos) - getPositionRank(b.pos));
+    return deptSupervisors[0].staffId;
+  }
+
+  // 2. 若部門內沒有更高級別，則直接往上找總經理級別 (rank >= 90)
+  const topExecutives = staffList.filter(s => getPositionRank(s.pos) >= 90);
+  if (topExecutives.length > 0) {
+    // 找最高級別的
+    topExecutives.sort((a, b) => getPositionRank(b.pos) - getPositionRank(a.pos));
+    const gm = topExecutives.find(s => s.staffId !== staffId);
+    if (gm) return gm.staffId;
+  }
+
+  return null; // 若找不到則回傳null
 };
 
 // --- 登入頁面組件 ---
@@ -153,7 +191,6 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
 
     try {
       if (isMockMode) {
-        // 測試模式下，允許預設的 admin 或 0338 登入並給予最高權限
         if ((staffId === 'admin' || staffId === '0338') && password === '123456') {
           onLoginSuccess({ 
             name: staffId === '0338' ? '預設管理員' : '系統管理員', 
@@ -162,7 +199,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
             staffId: staffId === '0338' ? '0338' : 'ADMIN-01',
             annualLeave: 56.0,
             compLeave: 12.5,
-            isAdmin: true // 賦予系統管理員註記
+            isAdmin: true
           });
         } else if (staffId === 'user' && password === '123456') {
           onLoginSuccess({ 
@@ -388,7 +425,7 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div><label className={labelClass} style={mingLiUStyle}>部門</label>
               <select name="dept" value={formData.dept} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
                 <option value="">請選擇部門</option>
-                <option value="總經理">總經理</option><option value="財務行政部">財務行政部</option>
+                <option value="總經理室">總經理室</option><option value="財務行政部">財務行政部</option>
                 <option value="業務部">業務部</option><option value="系統暨工程部">系統暨工程部</option>
               </select>
             </div>
@@ -900,13 +937,11 @@ const PersonnelManagementView = ({ isMockMode }) => {
   useEffect(() => { fetchStaffFromDB(); }, [isMockMode]);
 
   const handleSaveStaff = async (staffData) => {
-    // 【加強點】：檢查員編是否重複
-    // 只有在「新增」模式（即 editingStaff 為 null）下才需要檢查
     if (!editingStaff) {
       const isStaffIdExists = staffList.some(s => s.staffId === staffData.staffId);
       if (isStaffIdExists) {
         alert(`儲存失敗：員工編號 [${staffData.staffId}] 已存在於系統中，請使用其他編號。`);
-        return; // 中斷流程，不關閉視窗也不執行後續儲存
+        return; 
       }
     }
 
@@ -928,7 +963,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
         if (editingStaff) { setStaffList(prev => prev.map(item => item.staffId === staffData.staffId ? staffData : item)); } 
         else { setStaffList(prev => [...prev, staffData]); }
       }
-      setIsModalOpen(false); // 儲存成功才關閉彈窗
+      setIsModalOpen(false); 
       setEditingStaff(null);
     } catch (err) { 
       console.error("操作失敗", err); 
@@ -1138,7 +1173,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
 };
 
 // --- 組件：預覽校對畫面 ---
-const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staffList, isProcessing, workflowRules }) => {
+const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staffList, isProcessing, workflowRules, currentUser }) => {
   const [workflowSteps, setWorkflowSteps] = useState(values.workflowPath || []);
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [selectedRole, setSelectedRole] = useState("簽核");
@@ -1154,15 +1189,36 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
         workflowRules?.find(r => r.category === values.category && r.formKind === '所有單據' && r.department === '所有組別');
 
       if (matchedRule) {
+        const applicantId = values.employee_id || currentUser?.staffId;
+
         const mappedSteps = matchedRule.steps.map(step => {
-          const actualStaffId = resolveDelegate(step.staffId, staffList);
+          let targetStaffId = step.staffId;
+          let escalationNote = '';
+
+          // 【新增邏輯】如果流程中的人剛好是申請人自己，自動替換為上一級主管
+          if (targetStaffId === applicantId) {
+            const supervisorId = findSupervisor(targetStaffId, staffList);
+            if (supervisorId) {
+              targetStaffId = supervisorId;
+              escalationNote = '(自動上呈)';
+            } else {
+              // 找不到主管則跳過此流程避免自己核准自己
+              return null;
+            }
+          }
+
+          const actualStaffId = resolveDelegate(targetStaffId, staffList);
           const staff = staffList.find(s => s.staffId === actualStaffId);
           const originalStaff = staffList.find(s => s.staffId === step.staffId);
 
           if (!staff) return null;
 
-          const isDelegated = actualStaffId !== step.staffId;
-          const delegateNote = isDelegated ? `(代理 ${originalStaff?.name})` : '';
+          const isDelegated = actualStaffId !== targetStaffId;
+          let delegateNote = isDelegated ? `(代理 ${staffList.find(s => s.staffId === targetStaffId)?.name})` : '';
+          
+          let finalNote = [];
+          if (escalationNote) finalNote.push(escalationNote);
+          if (delegateNote) finalNote.push(delegateNote);
 
           return { 
             staffId: staff.staffId, 
@@ -1171,12 +1227,17 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
             dept: staff.dept, 
             role: step.role,
             isDelegated,
-            originalStaffId: isDelegated ? step.staffId : null,
-            delegateNote
+            originalStaffId: isDelegated ? targetStaffId : null,
+            delegateNote: finalNote.join(' ')
           };
         }).filter(Boolean);
         
-        setWorkflowSteps(mappedSteps);
+        // 過濾掉連續重複的簽核人（若多關卡都替換為同一個主管，將其合併）
+        const uniqueSteps = mappedSteps.filter((step, index, self) => 
+          index === 0 || step.staffId !== self[index - 1].staffId
+        );
+        
+        setWorkflowSteps(uniqueSteps);
       }
     }
   }, []);
@@ -1780,9 +1841,11 @@ const App = () => {
   const fetchPersonnel = async () => {
     if (isMockMode) {
       setStaffList([
-        { staffId: 'ADMIN-01', name: '系統管理員', pos: 'Administrator', dept: '總經理室', isAdmin: true },
+        { staffId: 'ADMIN-01', name: '系統管理員', pos: 'Administrator', dept: '系統組', isAdmin: true },
+        { staffId: 'GM-01', name: '陳總', pos: '總經理', dept: '總經理室', isAdmin: true },
         { staffId: '0338', name: '王管理', pos: '系統總監', dept: '總經理室', isAdmin: true },
         { staffId: 'FIN-01', name: '王大美', pos: '經理', dept: '財務行政部', isAdmin: false },
+        { staffId: 'FIN-02', name: '李專員', pos: '專員', dept: '財務行政部', isAdmin: false },
         { staffId: 'SAL-01', name: '李小明', pos: '組長', dept: '業務部', isAdmin: false },
         { staffId: 'ENG-01', name: '張技術', pos: '協理', dept: '系統暨工程部', isAdmin: false }
       ]);
@@ -2292,7 +2355,7 @@ const App = () => {
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
             {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} applicantId={currentUser.staffId} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} staffList={staffList} submitDate={currentDocId ? submittedForms.find(f=>f.id===currentDocId)?.submitDate || new Date().toISOString() : new Date().toISOString()} /> : 
-              isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} workflowRules={workflowRules} /> : 
+              isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} workflowRules={workflowRules} currentUser={currentUser} /> : 
               <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} />}
           </div></div>
         );
