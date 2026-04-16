@@ -73,7 +73,9 @@ import {
   UserPlus2,
   ShieldCheck,
   ListChecks,
-  GitBranch
+  GitBranch,
+  History,
+  ShieldAlert
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -758,6 +760,105 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
   );
 };
 
+// --- 組件：稽核日誌視圖 ---
+const AuditLogView = ({ isMockMode }) => {
+  const [logs, setLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchLogs = async () => {
+    try {
+      setIsLoading(true);
+      if (isMockMode) {
+        // 模擬數據
+        setLogs([
+          { id: 'L001', user: 'ADMIN-01', name: '管理員', action: '系統登入', target: 'N/A', details: '成功從 192.168.1.5 登入', timestamp: new Date().toISOString() },
+          { id: 'L002', user: '0338', name: '王管理', action: '人員變更', target: 'USER-01', details: '修改 剩餘特休 時數: 10 -> 12', timestamp: new Date(Date.now() - 3600000).toISOString() },
+          { id: 'L003', user: 'USER-01', name: '一般測試員', action: '提交表單', target: 'F20240320-USER-01-001', details: '發起 [請假單] 申請', timestamp: new Date(Date.now() - 7200000).toISOString() },
+          { id: 'L004', user: '0338', name: '王管理', action: '表單簽核', target: 'F20240320-USER-01-001', details: '執行決策: 同意', timestamp: new Date(Date.now() - 10800000).toISOString() },
+        ]);
+      } else {
+        const response = await fetch(`${API_URL_ROOT}/api/audit_logs`, { headers: getRequestHeaders() });
+        if (response.ok) {
+          const data = await response.json();
+          setLogs(data);
+        }
+      }
+    } catch (err) {
+      console.error("無法載入日誌:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchLogs(); }, [isMockMode]);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
+      <div className="flex items-center justify-between bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg text-white">
+            <History size={28} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-slate-800" style={mingLiUStyle}>系統稽核日誌</h2>
+            <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>監控所有人員的操作行為與系統狀態變更記錄</p>
+          </div>
+        </div>
+        <button onClick={fetchLogs} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+          <RotateCcw size={20} className={isLoading ? "animate-spin" : ""} />
+        </button>
+      </div>
+
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-50/30">
+            <tr className="text-[12px] font-black text-slate-400 uppercase tracking-widest" style={mingLiUStyle}>
+              <th className="px-8 py-4">操作時間</th>
+              <th className="px-6 py-4">執行人員</th>
+              <th className="px-6 py-4">動作項目</th>
+              <th className="px-6 py-4">操作對象</th>
+              <th className="px-8 py-4">詳細說明</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {logs.length > 0 ? logs.map((log) => (
+              <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-8 py-5 text-xs font-bold text-slate-500" style={mingLiUStyle}>
+                  {new Date(log.timestamp).toLocaleString()}
+                </td>
+                <td className="px-6 py-5">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-black text-slate-700" style={mingLiUStyle}>{log.name}</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">{log.user}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-5">
+                  <span className={`px-2.5 py-1 rounded-lg text-[11px] font-black ${
+                    log.action.includes('刪除') || log.action.includes('異常') ? 'bg-red-50 text-red-600 border border-red-100' :
+                    log.action.includes('登入') ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+                    log.action.includes('變更') ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                    'bg-slate-100 text-slate-600'
+                  }`} style={mingLiUStyle}>
+                    {log.action}
+                  </span>
+                </td>
+                <td className="px-6 py-5 text-xs font-bold text-indigo-600" style={mingLiUStyle}>
+                  {log.target}
+                </td>
+                <td className="px-8 py-5 text-sm text-slate-600 font-bold" style={mingLiUStyle}>
+                  {log.details}
+                </td>
+              </tr>
+            )) : (
+              <tr><td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm">{isLoading ? "讀取中..." : "目前尚無日誌。"}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 // --- 時間/工時選擇器組件 ---
 const TimePicker = ({ id, value, onChange, defaultTime = '09:00' }) => {
   const h = value ? value.split(':')[0] : defaultTime.split(':')[0];
@@ -1427,25 +1528,25 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                       <div key={step.staffId} className="flex items-center gap-4 animate-in slide-in-from-left-4 duration-300">
                         <div className="flex flex-col items-center gap-1"><div className="w-8 h-8 bg-white border-2 border-indigo-100 rounded-full flex items-center justify-center text-xs font-black text-indigo-600 shadow-sm">{index + 1}</div>{index < workflowSteps.length - 1 && <div className="w-0.5 h-6 bg-indigo-100"></div>}</div>
                         <div className="flex-1 bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm group hover:border-indigo-300 transition-colors">
-                           <div className="flex items-center gap-4">
-                             <div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}><roleInfo.icon size={20} /></div>
-                             <div>
-                               <div className="flex items-center gap-2">
-                                 <p className="font-black text-slate-800" style={mingLiUStyle}>
-                                   {step.name}
-                                   {step.delegateNote && <span className="text-amber-600 ml-1.5 text-xs bg-amber-50 px-1.5 py-0.5 rounded">{step.delegateNote}</span>}
-                                 </p>
-                                 <span className={`px-2 py-0.5 rounded-md text-xs font-black text-white uppercase ${roleInfo.color}`} style={mingLiUStyle}>{step.role}</span>
-                               </div>
-                               <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p>
-                             </div>
-                           </div>
-                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                             <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
-                             <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
-                             <div className="w-px h-6 bg-slate-100 mx-1"></div>
-                             <button onClick={() => removeFromWorkflow(step.staffId)} className="p-1.5 text-slate-400 hover:text-red-500"><X size={16} /></button>
-                           </div>
+                            <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 ${roleInfo.color} rounded-xl flex items-center justify-center text-white shadow-inner`}><roleInfo.icon size={20} /></div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-black text-slate-800" style={mingLiUStyle}>
+                                    {step.name}
+                                    {step.delegateNote && <span className="text-amber-600 ml-1.5 text-xs bg-amber-50 px-1.5 py-0.5 rounded">{step.delegateNote}</span>}
+                                  </p>
+                                  <span className={`px-2 py-0.5 rounded-md text-xs font-black text-white uppercase ${roleInfo.color}`} style={mingLiUStyle}>{step.role}</span>
+                                </div>
+                                <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>{step.pos} · {step.dept}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
+                              <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
+                              <div className="w-px h-6 bg-slate-100 mx-1"></div>
+                              <button onClick={() => removeFromWorkflow(step.staffId)} className="p-1.5 text-slate-400 hover:text-red-500"><X size={16} /></button>
+                            </div>
                         </div>
                       </div>
                     );
@@ -1723,15 +1824,15 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
               
               {canApprove && status === 'Pending' && (
                 <div className="flex flex-col sm:flex-row items-center gap-3 p-4 mt-4 border border-dashed border-indigo-200 rounded-2xl bg-white/50 animate-in fade-in transition-all">
-                   <div className="text-xs font-black text-indigo-500 whitespace-nowrap flex items-center gap-1" style={mingLiUStyle}><PlusCircle size={14}/> 增加後續簽核者</div>
-                   <select value={newStaffId} onChange={e => setNewStaffId(e.target.value)} className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 font-bold" style={mingLiUStyle}>
-                     <option value="">-- 選取指定人員 --</option>
-                     {staffList.filter(s => s.staffId !== currentUser.staffId).map(s => <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>)}
-                   </select>
-                   <select value={newRole} onChange={e => setNewRole(e.target.value)} className="w-24 p-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 font-bold" style={mingLiUStyle}>
-                     {["簽核", "會簽", "串會", "交辦"].map(r => <option key={r} value={r}>{r}</option>)}
-                   </select>
-                   <button type="button" onClick={handleAddNewStep} className="px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-200 text-sm font-black rounded-xl hover:bg-indigo-100 transition-all shrink-0 active:scale-95" style={mingLiUStyle}>加入</button>
+                    <div className="text-xs font-black text-indigo-500 whitespace-nowrap flex items-center gap-1" style={mingLiUStyle}><PlusCircle size={14}/> 增加後續簽核者</div>
+                    <select value={newStaffId} onChange={e => setNewStaffId(e.target.value)} className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 font-bold" style={mingLiUStyle}>
+                      <option value="">-- 選取指定人員 --</option>
+                      {staffList.filter(s => s.staffId !== currentUser.staffId).map(s => <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>)}
+                    </select>
+                    <select value={newRole} onChange={e => setNewRole(e.target.value)} className="w-24 p-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 font-bold" style={mingLiUStyle}>
+                      {["簽核", "會簽", "串會", "交辦"].map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    <button type="button" onClick={handleAddNewStep} className="px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-200 text-sm font-black rounded-xl hover:bg-indigo-100 transition-all shrink-0 active:scale-95" style={mingLiUStyle}>加入</button>
                 </div>
               )}
             </div>
@@ -1787,11 +1888,11 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                     </label>
                     <label className="flex items-center gap-2.5 cursor-pointer group">
                       <input type="radio" name="approvalAction" value="reject_to_step" checked={approvalAction === 'reject_to_step'} 
-                             onChange={(e) => { 
-                               setApprovalAction(e.target.value); 
-                               if(!rejectTarget && previousApprovers.length > 0) setRejectTarget(previousApprovers[0].staffId); 
-                             }} 
-                             className="w-4 h-4 text-red-600 focus:ring-red-500 border-slate-300" />
+                               onChange={(e) => { 
+                                 setApprovalAction(e.target.value); 
+                                 if(!rejectTarget && previousApprovers.length > 0) setRejectTarget(previousApprovers[0].staffId); 
+                               }} 
+                               className="w-4 h-4 text-red-600 focus:ring-red-500 border-slate-300" />
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className={`text-[13px] font-bold transition-colors ${approvalAction === 'reject_to_step' ? 'text-red-600' : 'text-slate-700'}`} style={mingLiUStyle}>不同意 (退</span>
                         <select 
@@ -1957,11 +2058,8 @@ const App = () => {
   const fetchMyForms = async (userId) => {
     if (isMockMode || !userId) return;
     try {
-      // 【修正重點】原本只會拉取自己發起的單據，導致被分享者從後端接收不到資料
-      // 改為優先嘗試拉取所有單據，讓前端可以正確過濾並顯示共享單據
       let res = await fetch(`${API_URL_ROOT}/api/forms`, { headers: getRequestHeaders() });
       
-      // 降級保護：如果後端沒有開放 /api/forms 路由，則退回原來的個人抓取模式
       if (!res.ok || res.status === 404) {
         res = await fetch(`${API_URL_ROOT}/api/forms/${userId}`, { headers: getRequestHeaders() });
       }
@@ -2388,7 +2486,6 @@ const App = () => {
 
   if (!currentUser) return <LoginView onLoginSuccess={handleLoginSuccess} isMockMode={isMockMode} />;
 
-  // 【修改邏輯】擴大過濾條件：除了是自己發起的單據，如果自己被加在 shared_with（副本/共享）名單內，也能在流程中與已結案列表中看到
   const myPendingList = submittedForms.filter(f => 
     (f.staffId === currentUser?.staffId || (f.values?.shared_with || []).includes(currentUser?.staffId)) && 
     f.status === 'Pending'
@@ -2425,7 +2522,7 @@ const App = () => {
       ); 
     }
 
-    if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings') && !isUserAdmin) {
+    if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings' || activeTab === 'audit_log') && !isUserAdmin) {
       setActiveTab('dashboard');
       return null;
     }
@@ -2485,6 +2582,8 @@ const App = () => {
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} />;
       case 'workflow_settings': 
         return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} teamOptions={TEAM_OPTIONS} />;
+      case 'audit_log': 
+        return <AuditLogView isMockMode={isMockMode} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
@@ -2509,6 +2608,7 @@ const App = () => {
   if (isUserAdmin) {
     navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users });
     navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); 
+    navItems.push({ id: 'audit_log', label: '稽核日誌', icon: History }); 
   }
 
   const handleSaveDelegateSettings = async (settingsData) => {
@@ -2548,7 +2648,12 @@ const App = () => {
       </aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
-          <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>{activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'personnel_management' ? '人員管理中心' : activeTab === 'workflow_settings' ? '簽核流程配置' : '智慧管理系統'}</div>
+          <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>
+            {activeTab === 'dashboard' ? '數位儀表板' : 
+             activeTab === 'personnel_management' ? '人員管理中心' : 
+             activeTab === 'workflow_settings' ? '簽核流程配置' : 
+             activeTab === 'audit_log' ? '稽核日誌檢視' : '智慧管理系統'}
+          </div>
           <div className="flex items-center gap-4 border-l border-gray-100 pl-6">
             <div className="text-right">
               <p className="text-[14px] font-black text-slate-800 leading-tight flex items-center justify-end gap-1.5" style={mingLiUStyle}>
