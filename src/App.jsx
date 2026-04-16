@@ -212,6 +212,26 @@ const findSupervisor = (staffId, staffList) => {
   return null; // 真的沒有任何人可以呈報了
 };
 
+// --- 人員選單優化輔助函數 (分群組顯示) ---
+const renderStaffOptions = (list, filterFn = () => true) => {
+  const grouped = list.filter(filterFn).reduce((acc, s) => {
+    const dept = s.dept || '未分類部門';
+    if (!acc[dept]) acc[dept] = [];
+    acc[dept].push(s);
+    return acc;
+  }, {});
+
+  return Object.entries(grouped).map(([dept, members]) => (
+    <optgroup label={dept} key={dept}>
+      {members.map(s => (
+        <option key={s.staffId} value={s.staffId}>
+          {s.name} ({s.pos}) - {s.staffId}
+        </option>
+      ))}
+    </optgroup>
+  ));
+};
+
 // --- 登入頁面組件 ---
 const LoginView = ({ onLoginSuccess, isMockMode }) => {
   const [staffId, setStaffId] = useState('');
@@ -579,13 +599,8 @@ const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList
               <label className={labelClass} style={mingLiUStyle}>指定代理人 (僅限同部門)</label>
               <select name="oooDelegateId" value={formData.oooDelegateId} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
                 <option value="">-- 請選擇同部門代理人 --</option>
-                {/* 修改：過濾條件增加 s.dept === currentUser?.dept */}
-                {staffList
-                  .filter(s => s.staffId !== currentUser?.staffId && s.dept === currentUser?.dept)
-                  .map(s => (
-                    <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
-                  ))
-                }
+                {/* 使用分組優化選單 */}
+                {renderStaffOptions(staffList, s => s.staffId !== currentUser?.staffId && s.dept === currentUser?.dept)}
               </select>
             </div>
             
@@ -601,7 +616,8 @@ const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList
             </div>
             <p className="text-[11px] text-slate-400 font-bold leading-relaxed" style={mingLiUStyle}>
               * 若未設定日期，則只要「啟用」即刻生效。<br/>
-              * 若設定日期區間，系統將以您設定的起訖日自動判斷是否轉派。
+              * 若設定日期區間，系統將以您設定的起訖日自動判斷是否轉派。<br/>
+              * 為了確保流程正確，代理人必須與您隸屬於相同部門。
             </p>
           </div>
         </div>
@@ -750,7 +766,7 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
                     return (
                       <div key={idx} className="flex items-center gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm">
                         <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-black shrink-0">{idx + 1}</div>
-                        <div className="flex-1 flex justify-between items-center">
+                        <div className="flex-1 flex justify-between項 items-center">
                           <div><span className="font-bold text-sm text-slate-700" style={mingLiUStyle}>{staffInfo.name}</span> <span className="text-xs text-slate-400">({staffInfo.pos})</span></div>
                           <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-black rounded uppercase" style={mingLiUStyle}>{step.role}</span>
                         </div>
@@ -764,7 +780,8 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
               <div className="flex gap-2 items-center">
                 <select value={tempStaffId} onChange={e => setTempStaffId(e.target.value)} className="flex-1 p-2.5 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500" style={mingLiUStyle}>
                   <option value="">-- 選擇指定人員 --</option>
-                  {staffList.map(s => <option key={s.staffId} value={s.staffId}>{s.name} - {s.dept}</option>)}
+                  {/* 使用分組優化選單 */}
+                  {renderStaffOptions(staffList)}
                 </select>
                 <select value={tempRole} onChange={e => setTempRole(e.target.value)} className="w-24 p-2.5 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:border-indigo-500" style={mingLiUStyle}>
                   <option value="簽核">簽核</option><option value="會簽">會簽</option><option value="交辦">交辦</option>
@@ -1291,10 +1308,9 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                         }
                       }}
                     >
-                      <option value="">-- 請選擇欲分享的同仁 --</option>
-                      {staffList?.filter(s => s.staffId !== formValues.employee_id).map(s => (
-                        <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
-                      ))}
+                      <option value="">-- 請選擇欲分享的同仁 (依部門分組) --</option>
+                      {/* 使用分組優化選單 */}
+                      {renderStaffOptions(staffList, s => s.staffId !== formValues.employee_id)}
                     </select>
                   </div>
                 )}
@@ -1391,29 +1407,22 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
           const targetRank = targetStaff ? getPositionRank(targetStaff.pos) : 0;
 
           const isSelf = String(targetStaffId).trim().toLowerCase() === applicantId;
-          // 只針對「簽核」角色做職級檢測，避免把「交辦」或「會簽」的行政人員也誤判升級給總經理
           const isLowerRankApprover = step.role === '簽核' && targetRank < applicantRank;
 
-          // 【修正邏輯】精細化不同角色碰到自己時的處理方式
           if (step.role === '簽核' && (isSelf || isLowerRankApprover)) {
-            // 如果是「簽核」碰到自己或較低職級者，尋找「申請人」的主管進行上呈
             const supervisorId = findSupervisor(applicantStaff?.staffId || targetStaffId, staffList);
             if (supervisorId) {
               targetStaffId = supervisorId;
               escalationNote = '(自動上呈)';
             } else {
-              // 找不到主管則跳過此流程避免自己核准自己
               return null;
             }
           } else if (isSelf && step.role !== '交辦') {
-            // 如果是「會簽」或「串會」碰到自己，直接跳過（不需自己會簽自己）
             return null;
           }
-          // 若是「交辦」碰到自己，系統會直接略過上述判斷，將關卡完整保留給自己執行
 
           const actualStaffId = resolveDelegate(targetStaffId, staffList);
           const staff = staffList.find(s => s.staffId === actualStaffId);
-          const originalStaff = staffList.find(s => s.staffId === step.staffId);
 
           if (!staff) return null;
 
@@ -1436,7 +1445,6 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
           };
         }).filter(Boolean);
         
-        // 過濾掉連續重複的簽核人（若多關卡都替換為同一個主管，將其合併）
         const uniqueSteps = mappedSteps.filter((step, index, self) => 
           index === 0 || step.staffId !== self[index - 1].staffId
         );
@@ -1532,8 +1540,9 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
             <div className="flex flex-col md:flex-row gap-3 mb-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm items-end">
               <div className="flex-1 space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase ml-1" style={mingLiUStyle}>1. 選擇人員</label>
                 <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-bold text-sm" value={selectedStaffId} onChange={(e) => setSelectedStaffId(e.target.value)} style={mingLiUStyle}>
-                  <option value="">-- 搜尋/選取簽核人員 --</option>
-                  {staffList.map(s => (<option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>))}
+                  <option value="">-- 搜尋/選取人員 (依部門分組) --</option>
+                  {/* 使用分組優化選單 */}
+                  {renderStaffOptions(staffList)}
                 </select>
               </div>
               <div className="flex-1 space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase ml-1" style={mingLiUStyle}>2. 指派任務角色</label>
@@ -1851,8 +1860,9 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                 <div className="flex flex-col sm:flex-row items-center gap-3 p-4 mt-4 border border-dashed border-indigo-200 rounded-2xl bg-white/50 animate-in fade-in transition-all">
                     <div className="text-xs font-black text-indigo-500 whitespace-nowrap flex items-center gap-1" style={mingLiUStyle}><PlusCircle size={14}/> 增加後續簽核者</div>
                     <select value={newStaffId} onChange={e => setNewStaffId(e.target.value)} className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 font-bold" style={mingLiUStyle}>
-                      <option value="">-- 選取指定人員 --</option>
-                      {staffList.filter(s => s.staffId !== currentUser.staffId).map(s => <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>)}
+                      <option value="">-- 選取指定人員 (依部門分組) --</option>
+                      {/* 使用分組優化選單 */}
+                      {renderStaffOptions(staffList, s => s.staffId !== currentUser.staffId)}
                     </select>
                     <select value={newRole} onChange={e => setNewRole(e.target.value)} className="w-24 p-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 font-bold" style={mingLiUStyle}>
                       {["簽核", "會簽", "串會", "交辦"].map(r => <option key={r} value={r}>{r}</option>)}
@@ -2112,7 +2122,6 @@ const App = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        // 初次連線測試，如果沒登入不會被 apiFetch 的 401 影響，因為只是單純 fetch 測試
         const res = await fetch(`${API_URL_ROOT}/api/personnel`, { headers: getRequestHeaders() });
         if (res.ok) setIsMockMode(false);
       } catch (err) { setIsMockMode(true); }
@@ -2125,7 +2134,7 @@ const App = () => {
     if (!currentUser || isMockMode) return;
     const interval = setInterval(() => {
       apiFetch(`${API_URL_ROOT}/api/personnel`, { headers: getRequestHeaders() })
-        .catch(err => { /* 若被登出，apiFetch 內會自動拋錯並發送全域事件 */ });
+        .catch(err => { });
     }, 15000);
     return () => clearInterval(interval);
   }, [currentUser, isMockMode]);
@@ -2318,23 +2327,17 @@ const App = () => {
         }
       } else {
         if (isNew) {
-          const response = await apiFetch(`${API_URL_ROOT}/api/forms`, { 
+          await apiFetch(`${API_URL_ROOT}/api/forms`, { 
             method: 'POST', 
             headers: getRequestHeaders(), 
             body: JSON.stringify(draftData) 
           });
-          await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-            method: 'PUT', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
-          });
-        } else {
-          await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-            method: 'PUT', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
-          });
         }
+        await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+          method: 'PUT', 
+          headers: getRequestHeaders(), 
+          body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
+        });
         await fetchMyForms(currentUser.staffId);
       }
       alert('已成功儲存至草稿匣！');
