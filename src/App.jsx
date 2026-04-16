@@ -2048,7 +2048,7 @@ const App = () => {
       { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       
-      { id: "shared_with", label: "選擇副本與共享對象", type: "multi_select_staff", description: "表單送出後，這些被指定的同仁將可於系統中檢視此單據內容", width: "w-full" },
+      { id: "shared_with", label: "選擇公開對象", type: "multi_select_staff", description: "表單送出後，這些被指定的同仁將可於系統中檢視此單據內容", width: "w-full" },
       
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
