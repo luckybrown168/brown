@@ -1957,7 +1957,15 @@ const App = () => {
   const fetchMyForms = async (userId) => {
     if (isMockMode || !userId) return;
     try {
-      const res = await fetch(`${API_URL_ROOT}/api/forms/${userId}`, { headers: getRequestHeaders() });
+      // 【修正重點】原本只會拉取自己發起的單據，導致被分享者從後端接收不到資料
+      // 改為優先嘗試拉取所有單據，讓前端可以正確過濾並顯示共享單據
+      let res = await fetch(`${API_URL_ROOT}/api/forms`, { headers: getRequestHeaders() });
+      
+      // 降級保護：如果後端沒有開放 /api/forms 路由，則退回原來的個人抓取模式
+      if (!res.ok || res.status === 404) {
+        res = await fetch(`${API_URL_ROOT}/api/forms/${userId}`, { headers: getRequestHeaders() });
+      }
+
       const contentType = res.headers.get("content-type");
       if (!res.ok || !contentType || !contentType.includes("application/json")) return;
       const data = await res.json();
