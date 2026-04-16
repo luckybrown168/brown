@@ -1063,7 +1063,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
 };
 
 // --- 組件：智慧渲染引擎 ---
-const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProcessing }) => {
+const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProcessing, staffList }) => {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = async (fieldId, e) => {
@@ -1108,7 +1108,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
             }
             return (
               <div key={field.id} className={`${field.width} px-2 animate-in fade-in slide-in-from-top-2 duration-300`}>
-                {field.type !== "button" && field.type !== "notice" && field.type !== "ot_notice" && field.type !== "anomaly_notice" && (
+                {field.type !== "button" && field.type !== "notice" && field.type !== "ot_notice" && field.type !== "anomaly_notice" && field.type !== "switch" && field.type !== "multi_select_staff" && (
                   <div className="flex items-center gap-2 mb-2"><div className="w-1.5 h-1.5 bg-[#1677FF] rounded-full"></div><label className="text-sm font-bold text-slate-700 underline decoration-slate-200 underline-offset-4" style={mingLiUStyle}>{field.label}：</label></div>
                 )}
                 {field.type === "select" && <select style={mingLiUStyle} value={formValues[field.id] || ""} onChange={(e) => onInputChange(field.id, e.target.value)} className="w-full border border-slate-400 p-2 rounded text-sm outline-none focus:border-blue-500 bg-white shadow-sm"><option value="">-- 請選擇 --</option>{field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>}
@@ -1119,6 +1119,60 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                 {field.type === "duration" && <DurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} />}
                 {field.type === "leave_duration" && <LeaveDurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} />}
                 
+                {field.type === "switch" && (
+                  <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm mt-2">
+                    <div>
+                      <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.label}</p>
+                      {field.description && <p className="text-xs text-slate-400 mt-1" style={mingLiUStyle}>{field.description}</p>}
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" checked={!!formValues[field.id]} onChange={(e) => onInputChange(field.id, e.target.checked)} className="sr-only peer" />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
+                )}
+
+                {field.type === "multi_select_staff" && (
+                  <div className="flex flex-col bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm mt-2">
+                    <div>
+                      <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{field.label}</p>
+                      {field.description && <p className="text-xs text-slate-400 mt-1" style={mingLiUStyle}>{field.description}</p>}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {(formValues[field.id] || []).map(id => {
+                        const s = staffList?.find(staff => staff.staffId === id);
+                        return (
+                          <span key={id} className="px-2.5 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-black rounded-lg flex items-center gap-1.5 shadow-sm" style={mingLiUStyle}>
+                            <User size={12} />
+                            {s?.name || id}
+                            <button type="button" onClick={() => {
+                              const newArr = (formValues[field.id] || []).filter(item => item !== id);
+                              onInputChange(field.id, newArr);
+                            }} className="hover:text-red-500 hover:bg-white rounded-full p-0.5 transition-colors"><X size={12}/></button>
+                          </span>
+                        )
+                      })}
+                    </div>
+                    <select 
+                      className="w-full mt-3 border border-slate-300 p-2.5 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 bg-white shadow-sm"
+                      style={mingLiUStyle}
+                      value=""
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        const currentArr = formValues[field.id] || [];
+                        if (!currentArr.includes(e.target.value)) {
+                          onInputChange(field.id, [...currentArr, e.target.value]);
+                        }
+                      }}
+                    >
+                      <option value="">-- 請選擇欲分享的同仁 --</option>
+                      {staffList?.filter(s => s.staffId !== formValues.employee_id).map(s => (
+                        <option key={s.staffId} value={s.staffId}>{s.name} ({s.pos}) - {s.dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {field.type === "file" && (
                   <div className="relative group">
                     <input type="file" className="hidden" id={`file-${field.id}`} onChange={(e) => handleFileChange(field.id, e)} />
@@ -1327,7 +1381,16 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                   if (!showConditions.includes(parentValue)) return null;
                 }
                 const val = values[field.id];
-                const displayVal = field.type === 'file' ? (val?.name ? `📎 ${val.name}` : '(未上傳)') : (val || '(未填寫)');
+                
+                let displayVal = val || '(未填寫)';
+                if (field.type === 'file') {
+                  displayVal = val?.name ? `📎 ${val.name}` : '(未上傳)';
+                } else if (field.type === 'switch') {
+                  displayVal = val ? '✅ 是 (公開)' : '❌ 否 (不公開)';
+                } else if (field.type === 'multi_select_staff') {
+                  displayVal = (Array.isArray(val) && val.length > 0) ? val.map(id => staffList.find(s => s.staffId === id)?.name || id).join('、') : '(未指定)';
+                }
+
                 return (
                   <div key={field.id} className={`${field.width} px-2`}>
                     <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col">
@@ -1604,6 +1667,10 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                         <button type="button" onClick={() => handleViewFile(val)} className="print:hidden flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-black hover:bg-blue-100 transition-colors" style={mingLiUStyle}><DownloadCloud size={14} /> 點擊下載/檢視附件</button>
                       </div>
                     ) : <p className="text-sm font-bold text-slate-400 italic" style={mingLiUStyle}>(無附件)</p>
+                  ) : field.type === 'switch' ? (
+                    <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{val ? '✅ 是 (公開)' : '❌ 否 (不公開)'}</p>
+                  ) : field.type === 'multi_select_staff' ? (
+                    <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{(Array.isArray(val) && val.length > 0) ? val.map(id => staffList.find(s => s.staffId === id)?.name || id).join('、') : '(未指定)'}</p>
                   ) : (<p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{val || '(未填寫)'}</p>)}
                 </div>
               </div>
@@ -1973,6 +2040,8 @@ const App = () => {
       { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       
+      { id: "shared_with", label: "選擇副本與共享對象", type: "multi_select_staff", description: "表單送出後，這些被指定的同仁將可於系統中檢視此單據內容", width: "w-full" },
+      
       { id: "submit_btn", label: "預覽填寫內容", type: "button", width: "w-full" }
     ]
   };
@@ -2311,8 +2380,17 @@ const App = () => {
 
   if (!currentUser) return <LoginView onLoginSuccess={handleLoginSuccess} isMockMode={isMockMode} />;
 
-  const myPendingList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Pending');
-  const myCompletedList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Completed');
+  // 【修改邏輯】擴大過濾條件：除了是自己發起的單據，如果自己被加在 shared_with（副本/共享）名單內，也能在流程中與已結案列表中看到
+  const myPendingList = submittedForms.filter(f => 
+    (f.staffId === currentUser?.staffId || (f.values?.shared_with || []).includes(currentUser?.staffId)) && 
+    f.status === 'Pending'
+  );
+  
+  const myCompletedList = submittedForms.filter(f => 
+    (f.staffId === currentUser?.staffId || (f.values?.shared_with || []).includes(currentUser?.staffId)) && 
+    f.status === 'Completed'
+  );
+
   const draftList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Draft');
   const trashList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted');
   
@@ -2404,7 +2482,7 @@ const App = () => {
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className="w-full max-w-4xl bg-[#F8FAFC] rounded-[3rem] border border-gray-200 p-12 overflow-y-auto shadow-inner relative">
             {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} applicantId={currentUser.staffId} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} staffList={staffList} submitDate={currentDocId ? submittedForms.find(f=>f.id===currentDocId)?.submitDate || new Date().toISOString() : new Date().toISOString()} /> : 
               isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} workflowRules={workflowRules} currentUser={currentUser} /> : 
-              <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} />}
+              <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} staffList={staffList} />}
           </div></div>
         );
       case 'inbox_list': return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" data={inboxList} onItemClick={setViewingForm} />;
