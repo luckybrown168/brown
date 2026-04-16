@@ -90,12 +90,35 @@ const isLocalhost = window.location.hostname === 'localhost' || window.location.
 const PROD_API_URL = "https://subdiapasonic-raylan-cheerless.ngrok-free.dev";
 const API_URL_ROOT = isLocalhost ? `http://localhost:3001` : PROD_API_URL;
 
-// 通用的 Fetch Headers 處理
-const getRequestHeaders = (extraHeaders = {}) => ({
-  'Content-Type': 'application/json',
-  'ngrok-skip-browser-warning': 'true', 
-  ...extraHeaders
-});
+// --- 單一登入限制：全域 Token 管理 ---
+let globalTokenData = null;
+const setGlobalToken = (staffId, token) => { globalTokenData = { staffId, token }; };
+const clearGlobalToken = () => { globalTokenData = null; };
+
+// 通用的 Fetch Headers 處理，自動帶入 Session Token
+const getRequestHeaders = (extraHeaders = {}) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true', 
+    ...extraHeaders
+  };
+  if (globalTokenData) {
+    headers['x-staff-id'] = globalTokenData.staffId;
+    headers['x-session-token'] = globalTokenData.token;
+  }
+  return headers;
+};
+
+// 全域 API 請求封裝，自動攔截 401 無效的 Token
+const apiFetch = async (url, options = {}) => {
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    // 觸發自訂的全域登出事件
+    window.dispatchEvent(new CustomEvent('session-expired'));
+    throw new Error("Session Invalid");
+  }
+  return res;
+};
 
 // --- 效期計算輔助函數 ---
 const getExpirationStatus = (submitDateStr) => {
@@ -211,11 +234,13 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
             staffId: staffId === '0338' ? '0338' : 'ADMIN-01',
             annualLeave: 56.0,
             compLeave: 12.5,
-            isAdmin: true
+            isAdmin: true,
+            sessionToken: 'mock-admin-token'
           });
         } else if (staffId === 'user' && password === '123456') {
           onLoginSuccess({ 
-            name: '一般測試員', pos: '專員', dept: '業務部', staffId: 'USER-01', annualLeave: 10, compLeave: 5, isAdmin: false 
+            name: '一般測試員', pos: '專員', dept: '業務部', staffId: 'USER-01', annualLeave: 10, compLeave: 5, isAdmin: false,
+            sessionToken: 'mock-user-token'
           });
         } else {
           setError('連線中斷或測試模式請輸入 admin(或0338) / 123456');
@@ -777,7 +802,7 @@ const AuditLogView = ({ isMockMode }) => {
           { id: 'L004', user: '0338', name: '王管理', action: '表單簽核', target: 'F20240320-USER-01-001', details: '執行決策: 同意', timestamp: new Date(Date.now() - 10800000).toISOString() },
         ]);
       } else {
-        const response = await fetch(`${API_URL_ROOT}/api/audit_logs`, { headers: getRequestHeaders() });
+        const response = await apiFetch(`${API_URL_ROOT}/api/audit_logs`, { headers: getRequestHeaders() });
         if (response.ok) {
           const data = await response.json();
           setLogs(data);
@@ -1028,7 +1053,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
     try {
       if (isMockMode) return;
       setIsLoading(true);
-      const response = await fetch(API_BASE_URL, {
+      const response = await apiFetch(API_BASE_URL, {
         headers: getRequestHeaders()
       });
       
@@ -1062,7 +1087,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
         const url = editingStaff ? `${API_BASE_URL}/${staffData.staffId}` : API_BASE_URL;
         const method = editingStaff ? 'PUT' : 'POST';
         
-        const response = await fetch(url, { 
+        const response = await apiFetch(url, { 
           method, 
           headers: getRequestHeaders(), 
           body: JSON.stringify(staffData) 
@@ -1087,7 +1112,7 @@ const PersonnelManagementView = ({ isMockMode }) => {
     if (!window.confirm(`確定要刪除成員 [${staffId}] 嗎？`)) return;
     try {
       if (!isMockMode) { 
-        const response = await fetch(`${API_BASE_URL}/${staffId}`, { 
+        const response = await apiFetch(`${API_BASE_URL}/${staffId}`, { 
           method: 'DELETE',
           headers: getRequestHeaders()
         }); 
@@ -1966,6 +1991,16 @@ const App = () => {
   const [staffList, setStaffList] = useState([]);
   const [workflowRules, setWorkflowRules] = useState([]);
 
+  // --- 全域攔截登出事件監聽 ---
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      alert("偵測到您的帳號已在其他裝置或瀏覽器登入，為保護帳號安全，系統已將您登出。");
+      handleLogout();
+    };
+    window.addEventListener('session-expired', handleSessionExpired);
+    return () => window.removeEventListener('session-expired', handleSessionExpired);
+  }, []);
+
   const fetchWorkflowRules = async () => {
     if (isMockMode) {
       setWorkflowRules([
@@ -1983,7 +2018,7 @@ const App = () => {
       return;
     }
     try {
-      const res = await fetch(`${API_URL_ROOT}/api/workflow_rules`, { headers: getRequestHeaders() });
+      const res = await apiFetch(`${API_URL_ROOT}/api/workflow_rules`, { headers: getRequestHeaders() });
       if (res.ok) {
         const data = await res.json();
         setWorkflowRules(data);
@@ -1995,7 +2030,7 @@ const App = () => {
     try {
       if (!isMockMode) {
         setIsProcessing(true);
-        const res = await fetch(`${API_URL_ROOT}/api/workflow_rules`, {
+        const res = await apiFetch(`${API_URL_ROOT}/api/workflow_rules`, {
           method: 'POST',
           headers: getRequestHeaders(),
           body: JSON.stringify(newRule)
@@ -2020,7 +2055,7 @@ const App = () => {
       try {
         if (!isMockMode) {
           setIsProcessing(true);
-          const res = await fetch(`${API_URL_ROOT}/api/workflow_rules/${ruleId}`, {
+          const res = await apiFetch(`${API_URL_ROOT}/api/workflow_rules/${ruleId}`, {
             method: 'DELETE',
             headers: getRequestHeaders()
           });
@@ -2049,7 +2084,7 @@ const App = () => {
       return;
     }
     try {
-      const res = await fetch(`${API_URL_ROOT}/api/personnel`, { headers: getRequestHeaders() });
+      const res = await apiFetch(`${API_URL_ROOT}/api/personnel`, { headers: getRequestHeaders() });
       const data = await res.json();
       setStaffList(data);
     } catch (err) { console.error("人員列表讀取失敗"); }
@@ -2058,10 +2093,10 @@ const App = () => {
   const fetchMyForms = async (userId) => {
     if (isMockMode || !userId) return;
     try {
-      let res = await fetch(`${API_URL_ROOT}/api/forms`, { headers: getRequestHeaders() });
+      let res = await apiFetch(`${API_URL_ROOT}/api/forms`, { headers: getRequestHeaders() });
       
       if (!res.ok || res.status === 404) {
-        res = await fetch(`${API_URL_ROOT}/api/forms/${userId}`, { headers: getRequestHeaders() });
+        res = await apiFetch(`${API_URL_ROOT}/api/forms/${userId}`, { headers: getRequestHeaders() });
       }
 
       const contentType = res.headers.get("content-type");
@@ -2077,12 +2112,23 @@ const App = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
+        // 初次連線測試，如果沒登入不會被 apiFetch 的 401 影響，因為只是單純 fetch 測試
         const res = await fetch(`${API_URL_ROOT}/api/personnel`, { headers: getRequestHeaders() });
         if (res.ok) setIsMockMode(false);
       } catch (err) { setIsMockMode(true); }
     };
     checkConnection();
   }, []);
+
+  // --- Session 每 15 秒同步檢查防踢功能 ---
+  useEffect(() => {
+    if (!currentUser || isMockMode) return;
+    const interval = setInterval(() => {
+      apiFetch(`${API_URL_ROOT}/api/personnel`, { headers: getRequestHeaders() })
+        .catch(err => { /* 若被登出，apiFetch 內會自動拋錯並發送全域事件 */ });
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [currentUser, isMockMode]);
 
   useEffect(() => {
     if (currentUser) { 
@@ -2093,13 +2139,15 @@ const App = () => {
   }, [currentUser, activeTab]);
 
   const handleLogout = () => { 
-    setCurrentUser(null); 
+    setCurrentUser(null);
+    clearGlobalToken(); 
     setActiveTab('dashboard'); 
     setFormValues({}); 
   };
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
+    setGlobalToken(user.staffId, user.sessionToken);
     setActiveTab('dashboard'); 
     setFormValues({});
     setCurrentDocId('');
@@ -2193,7 +2241,7 @@ const App = () => {
     setIsProcessing(true);
     try {
       if (!docId) {
-        const res = await fetch(`${API_URL_ROOT}/api/forms/${currentUser.staffId}`, { headers: getRequestHeaders() });
+        const res = await apiFetch(`${API_URL_ROOT}/api/forms/${currentUser.staffId}`, { headers: getRequestHeaders() });
         const list = await res.json();
         docId = generateSequentialId(list);
         isNew = true;
@@ -2214,7 +2262,7 @@ const App = () => {
       } 
       else {
         if (isNew) {
-          const response = await fetch(`${API_URL_ROOT}/api/forms`, { 
+          const response = await apiFetch(`${API_URL_ROOT}/api/forms`, { 
             method: 'POST', 
             headers: getRequestHeaders(), 
             body: JSON.stringify(submissionData) 
@@ -2224,7 +2272,7 @@ const App = () => {
             throw new Error(`提交失敗: ${errData.details || response.statusText}`);
           }
         } else {
-          const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+          const response = await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
             method: 'PUT', 
             headers: getRequestHeaders(), 
             body: JSON.stringify({
@@ -2250,7 +2298,7 @@ const App = () => {
     setIsProcessing(true);
     try {
       if (!docId) {
-        const res = await fetch(`${API_URL_ROOT}/api/forms/${currentUser.staffId}`, { headers: getRequestHeaders() });
+        const res = await apiFetch(`${API_URL_ROOT}/api/forms/${currentUser.staffId}`, { headers: getRequestHeaders() });
         const list = await res.json();
         docId = generateSequentialId(list);
         isNew = true;
@@ -2270,18 +2318,18 @@ const App = () => {
         }
       } else {
         if (isNew) {
-          const response = await fetch(`${API_URL_ROOT}/api/forms`, { 
+          const response = await apiFetch(`${API_URL_ROOT}/api/forms`, { 
             method: 'POST', 
             headers: getRequestHeaders(), 
             body: JSON.stringify(draftData) 
           });
-          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+          await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
             method: 'PUT', 
             headers: getRequestHeaders(), 
             body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
           });
         } else {
-          await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+          await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
             method: 'PUT', 
             headers: getRequestHeaders(), 
             body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
@@ -2350,7 +2398,7 @@ const App = () => {
         setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, status: newStatus, values: updatedValues } : f)); 
       } 
       else {
-        const response = await fetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+        const response = await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
           method: 'PUT', 
           headers: getRequestHeaders(), 
           body: JSON.stringify({ status: newStatus, values: updatedValues }) 
@@ -2390,7 +2438,7 @@ const App = () => {
                   setStaffList(prev => prev.map(s => s.staffId === updatedApplicant.staffId ? updatedApplicant : s));
                   if (currentUser.staffId === updatedApplicant.staffId) setCurrentUser(updatedApplicant);
                 } else {
-                  await fetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, {
+                  await apiFetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, {
                     method: 'PUT',
                     headers: getRequestHeaders(),
                     body: JSON.stringify(updatedApplicant)
@@ -2427,7 +2475,7 @@ const App = () => {
         if (isMockMode) {
           setSubmittedForms(prev => prev.filter(f => f.id !== formItem.id));
         } else {
-          const response = await fetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
+          const response = await apiFetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
             method: 'DELETE',
             headers: getRequestHeaders()
           });
@@ -2440,7 +2488,7 @@ const App = () => {
         if (isMockMode) {
           setSubmittedForms(prev => prev.map(f => f.id === formItem.id ? updatedItem : f));
         } else {
-          const response = await fetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
+          const response = await apiFetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
             method: 'PUT',
             headers: getRequestHeaders(),
             body: JSON.stringify({ status: 'Deleted', values: formItem.values })
@@ -2619,7 +2667,7 @@ const App = () => {
         setStaffList(prev => prev.map(s => s.staffId === updatedUser.staffId ? updatedUser : s));
         setCurrentUser(updatedUser);
       } else {
-        const res = await fetch(`${API_URL_ROOT}/api/personnel/${updatedUser.staffId}`, {
+        const res = await apiFetch(`${API_URL_ROOT}/api/personnel/${updatedUser.staffId}`, {
           method: 'PUT',
           headers: getRequestHeaders(),
           body: JSON.stringify(updatedUser)
