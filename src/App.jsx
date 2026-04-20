@@ -702,7 +702,7 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   );
 };
 
-// --- 職務代理設定彈出視窗 ---
+// --- 職務代理設定彈出視窗 (恢復小視窗版本) ---
 const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList }) => {
   const [formData, setFormData] = useState({
     oooActive: false,
@@ -730,12 +730,12 @@ const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList
   };
 
   const labelClass = "text-[12px] font-black text-slate-500 mb-1.5 block";
-  const inputClass = "w-full border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 transition-all bg-slate-50 shadow-sm";
+  const inputClass = "w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 transition-all bg-slate-50 shadow-sm";
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={mingLiUStyle}>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}></div>
-      <div className="bg-white w-full max-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300" style={mingLiUStyle}>
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300" style={mingLiUStyle}>
         <div className="bg-purple-600 px-8 py-6 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Briefcase size={20} /></div>
@@ -751,7 +751,7 @@ const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList
           <div className="bg-purple-50/50 p-5 rounded-2xl border border-purple-100 flex items-center justify-between">
             <div>
               <p className="font-black text-purple-800 text-sm mb-1" style={mingLiUStyle}>啟用職務代理</p>
-              <p className="text-xs text-purple-600/70 font-bold" style={mingLiUStyle}>開啟後，指派給您的表單將自動轉派</p>
+              <p className="text-xs text-purple-600/70 font-bold" style={mingLiUStyle}>自動轉派指派單據</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" name="oooActive" checked={formData.oooActive} onChange={handleChange} className="sr-only peer" />
@@ -759,31 +759,25 @@ const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList
             </label>
           </div>
 
-          <div className={`space-y-5 transition-opacity duration-300 ${!formData.oooActive ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+          <div className={`space-y-4 transition-opacity duration-300 ${!formData.oooActive ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
             <div>
-              <label className={labelClass} style={mingLiUStyle}>指定代理人 (僅限同部門)</label>
+              <label className={labelClass} style={mingLiUStyle}>指定代理人</label>
               <select name="oooDelegateId" value={formData.oooDelegateId} onChange={handleChange} className={inputClass} style={mingLiUStyle}>
                 <option value="">-- 請選擇同部門代理人 --</option>
-                {/* 使用分組優化選單 */}
                 {renderStaffOptions(staffList, s => s.staffId !== currentUser?.staffId && s.dept === currentUser?.dept)}
               </select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass} style={mingLiUStyle}>開始日期 (選填)</label>
+                <label className={labelClass} style={mingLiUStyle}>開始日期</label>
                 <input type="date" name="oooStartDate" value={formData.oooStartDate} onChange={handleChange} className={inputClass} style={mingLiUStyle} />
               </div>
               <div>
-                <label className={labelClass} style={mingLiUStyle}>結束日期 (選填)</label>
+                <label className={labelClass} style={mingLiUStyle}>結束日期</label>
                 <input type="date" name="oooEndDate" value={formData.oooEndDate} onChange={handleChange} className={inputClass} style={mingLiUStyle} />
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 font-bold leading-relaxed" style={mingLiUStyle}>
-              * 若未設定日期，則只要「啟用」即刻生效。<br/>
-              * 若設定日期區間，系統將以您設定的起訖日自動判斷是否轉派。<br/>
-              * 為了確保流程正確，代理人必須與您隸屬於相同部門。
-            </p>
           </div>
         </div>
 
