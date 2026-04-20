@@ -77,7 +77,8 @@ import {
   History,
   ShieldAlert,
   Calculator,
-  Shield
+  Shield,
+  CalendarDays
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -365,6 +366,141 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           </p>
         </form>
       </div>
+    </div>
+  );
+};
+
+// --- 考勤日曆組件 ---
+const AttendanceCalendar = ({ staffList, submittedForms, currentUser }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDayEvents, setSelectedDayEvents] = useState(null);
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  // 權限邏輯：協理級以上可看部門所有組，其餘僅看同組
+  const userRank = getPositionRank(currentUser.pos);
+  const isSeniorManager = userRank >= 80;
+
+  // 過濾出符合組別隱私的假單
+  const groupLeaveForms = submittedForms.filter(f => {
+    if (f.status !== 'Completed') return false;
+    const isLeave = f.values?.form_kind === '請假單';
+    if (!isLeave) return false;
+
+    const applicant = staffList.find(s => s.staffId === f.staffId);
+    if (!applicant) return false;
+
+    if (isSeniorManager) {
+      return applicant.dept === currentUser.dept;
+    } else {
+      return applicant.dept === currentUser.dept && applicant.team === currentUser.team;
+    }
+  });
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+
+  const getEventsForDay = (day) => {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return groupLeaveForms.filter(f => {
+      const start = f.values?.leave_start_time?.split(' ')[0];
+      const end = f.values?.leave_end_time?.split(' ')[0];
+      return dateStr >= start && dateStr <= end;
+    });
+  };
+
+  const days = [];
+  for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <div className="bg-indigo-600 px-8 py-6 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <CalendarDays size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black tracking-tight" style={mingLiUStyle}>組別考勤日曆</h3>
+              <p className="text-xs opacity-70 font-bold uppercase tracking-widest" style={mingLiUStyle}>
+                {isSeniorManager ? `部門範圍：${currentUser.dept}` : `組別範圍：${currentUser.team}`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 bg-black/10 rounded-2xl px-4 py-2">
+            <button onClick={prevMonth} className="hover:text-indigo-200 transition-colors"><ChevronLeft size={20}/></button>
+            <span className="text-sm font-black min-w-[100px] text-center">{year}年 {month + 1}月</span>
+            <button onClick={nextMonth} className="hover:text-indigo-200 transition-colors"><ChevronRight size={20}/></button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          <div className="grid grid-cols-7 gap-px bg-slate-100 border border-slate-100 rounded-2xl overflow-hidden shadow-inner">
+            {['日', '一', '二', '三', '四', '五', '六'].map(d => (
+              <div key={d} className="bg-slate-50 py-3 text-center text-xs font-black text-slate-400 uppercase tracking-widest">{d}</div>
+            ))}
+            {days.map((day, idx) => {
+              if (day === null) return <div key={idx} className="bg-white/50 h-24 md:h-32"></div>;
+              const events = getEventsForDay(day);
+              const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+
+              return (
+                <div key={idx} onClick={() => events.length > 0 && setSelectedDayEvents({ day, events })}
+                  className={`bg-white h-24 md:h-32 p-2 border-t border-l border-slate-50 transition-all hover:bg-indigo-50/30 cursor-pointer relative ${isToday ? 'ring-2 ring-inset ring-indigo-500/20' : ''}`}>
+                  <span className={`text-xs font-black ${isToday ? 'w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center' : 'text-slate-400'}`}>
+                    {day}
+                  </span>
+                  <div className="mt-1 space-y-1 overflow-hidden">
+                    {events.slice(0, 3).map((e, ei) => {
+                      const applicant = staffList.find(s => s.staffId === e.staffId);
+                      return (
+                        <div key={ei} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold truncate border border-blue-100">
+                          {applicant?.name || '人員'} ({e.values?.leave_type})
+                        </div>
+                      );
+                    })}
+                    {events.length > 3 && <div className="text-[9px] text-slate-300 font-black text-center">+ {events.length - 3} 筆</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 當日詳情 Modal */}
+      {selectedDayEvents && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedDayEvents(null)}></div>
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95">
+            <div className="bg-indigo-50 px-8 py-6 flex items-center justify-between border-b border-indigo-100">
+              <h4 className="font-black text-slate-800" style={mingLiUStyle}>{year} / {month + 1} / {selectedDayEvents.day} 休假清單</h4>
+              <button onClick={() => setSelectedDayEvents(null)} className="p-2 hover:bg-indigo-100 rounded-full transition-colors"><X size={20}/></button>
+            </div>
+            <div className="p-8 space-y-3 max-h-[60vh] overflow-y-auto">
+              {selectedDayEvents.events.map((e, idx) => {
+                const applicant = staffList.find(s => s.staffId === e.staffId);
+                return (
+                  <div key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+                    <div className="w-10 h-10 bg-white rounded-full border border-slate-200 overflow-hidden shrink-0">
+                      <img src={`https://robohash.org/${encodeURIComponent(applicant?.name || 'User')}?set=set4`} alt="avatar" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-black text-slate-800" style={mingLiUStyle}>{applicant?.name} <span className="text-xs text-slate-400">({applicant?.pos})</span></p>
+                      <p className="text-xs font-bold text-indigo-600 mt-0.5" style={mingLiUStyle}>{e.values?.leave_type} · {e.values?.leave_total}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -2668,22 +2804,13 @@ const App = () => {
         const isAtLeastViceManager = userRank >= 60; // 達到副理等級
         const isAtLeastSeniorManager = userRank >= 80; // 達到協理等級
 
-        // 根據權限過濾可調閱的部門成員
+        // 根據權限過濾可調閱的部門成員 (用於列表顯示)
         const deptMembers = isAtLeastViceManager ? staffList.filter(s => {
-          if (s.staffId === currentUser.staffId) return false; // 排除自己
-          
+          if (s.staffId === currentUser.staffId) return false;
           const targetRank = getPositionRank(s.pos);
-          // 規則 A: 不能調閱職稱比自己高或同級的人 (s.rank < userRank)
           if (targetRank >= userRank) return false;
-
-          // 規則 B: 範圍限制
-          if (isAtLeastSeniorManager) {
-            // 協理級以上：可調閱「同部門」內「所有組別」
-            return s.dept === currentUser.dept;
-          } else {
-            // 副理、經理級：僅能調閱「同部門」且「同組別 (Team)」
-            return s.dept === currentUser.dept && s.team === currentUser.team;
-          }
+          if (isAtLeastSeniorManager) return s.dept === currentUser.dept;
+          return s.dept === currentUser.dept && s.team === currentUser.team;
         }) : [];
 
         return (
@@ -2720,6 +2847,9 @@ const App = () => {
                   </div>
                 </div>
             </div>
+
+            {/* 新增：組別考勤日曆 (整合隱私邏輯) */}
+            <AttendanceCalendar staffList={staffList} submittedForms={submittedForms} currentUser={currentUser} />
 
             {/* 主管專用：部門成員時數概覽區塊 */}
             {isAtLeastViceManager && (
