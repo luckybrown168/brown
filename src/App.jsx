@@ -384,17 +384,23 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser }) => {
 
   // 過濾出符合組別隱私的假單
   const groupLeaveForms = submittedForms.filter(f => {
+    // 必須是已完成簽核的單據
     if (f.status !== 'Completed') return false;
-    const isLeave = f.values?.form_kind === '請假單';
+    
+    // 必須是請假單
+    const isLeave = (f.form_subject?.includes('請假單') || f.values?.form_kind === '請假單');
     if (!isLeave) return false;
 
+    // 尋找申請人資訊
     const applicant = staffList.find(s => s.staffId === f.staffId);
     if (!applicant) return false;
 
+    // 邏輯：
+    // 1. 如果我是高階主管，可以看到整個部門的人
+    // 2. 如果我是一般人員，可以看到同部門且同組別的人 (這包含我的組長、經理等)
     if (isSeniorManager) {
       return applicant.dept === currentUser.dept;
     } else {
-      // 一般同仁可以看到同組 (team) 的所有人，包含主管
       return applicant.dept === currentUser.dept && applicant.team === currentUser.team;
     }
   });
@@ -461,7 +467,7 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser }) => {
                       const applicant = staffList.find(s => s.staffId === e.staffId);
                       return (
                         <div key={ei} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold truncate border border-blue-100">
-                          {applicant?.name || '人員'} ({e.values?.leave_type})
+                          {applicant?.name || '人員'} ({e.values?.leave_type || '假'})
                         </div>
                       );
                     })}
@@ -492,7 +498,7 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser }) => {
                       <img src={`https://robohash.org/${encodeURIComponent(applicant?.name || 'User')}?set=set4`} alt="avatar" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-black text-slate-800" style={mingLiUStyle}>{applicant?.name} <span className="text-xs text-slate-400">({applicant?.pos})</span></p>
+                      <p className="text-sm font-black text-slate-800" style={mingLiUStyle}>{applicant?.name || '未知同仁'} <span className="text-xs text-slate-400">({applicant?.pos || '職稱'})</span></p>
                       <p className="text-xs font-bold text-indigo-600 mt-0.5" style={mingLiUStyle}>{e.values?.leave_type} · {e.values?.leave_total}</p>
                     </div>
                   </div>
