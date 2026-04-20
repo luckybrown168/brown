@@ -426,7 +426,7 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser }) => {
               <CalendarDays size={20} />
             </div>
             <div>
-              <h3 className="text-lg font-black tracking-tight" style={mingLiUStyle}>組別考勤日曆</h3>
+              <h3 className="text-lg font-black tracking-tight" style={mingLiUStyle}>組內同仁休假表</h3>
               <p className="text-xs opacity-70 font-bold uppercase tracking-widest" style={mingLiUStyle}>
                 {isSeniorManager ? `部門範圍：${currentUser.dept}` : `組別範圍：${currentUser.team}`}
               </p>
@@ -2842,10 +2842,22 @@ const App = () => {
                 </div>
             </div>
 
-            {/* 新增：組別考勤日曆 (整合隱私邏輯) */}
-            <AttendanceCalendar staffList={staffList} submittedForms={submittedForms} currentUser={currentUser} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { id: 'inbox_stat', label: '收件匣', value: inboxList.length, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
+                { id: 'pending_stat', label: '流程中案件', value: myPendingList.length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
+                { id: 'completed_stat', label: '已結案', value: myCompletedList.length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
+                { id: 'draft_stat', label: '草稿匣', value: draftList.length, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
+                { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX, targetTab: 'rejected' },
+                { id: 'trash_stat', label: '垃圾桶', value: trashList.length, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
+              ].map((stat, idx) => (
+                <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group">
+                  <div className="flex justify-between items-start"><div><p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
+                </div>
+              ))}
+            </div>
 
-            {/* 主管專用：部門成員時數概覽區塊 */}
+            {/* 主管專用：下屬同仁時數調閱區塊 */}
             {isAtLeastViceManager && (
               <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm animate-in slide-in-from-top-4 duration-700">
                 <div className="flex items-center justify-between mb-6 border-b border-slate-50 pb-4">
@@ -2928,20 +2940,8 @@ const App = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                { id: 'inbox_stat', label: '收件匣', value: inboxList.length, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
-                { id: 'pending_stat', label: '流程中案件', value: myPendingList.length, color: 'text-amber-600', bg: 'bg-amber-600', icon: Activity, targetTab: 'pending_list' },
-                { id: 'completed_stat', label: '已結案', value: myCompletedList.length, color: 'text-green-600', bg: 'bg-green-600', icon: FileCheck, targetTab: 'completed_list' },
-                { id: 'draft_stat', label: '草稿匣', value: draftList.length, color: 'text-indigo-600', bg: 'bg-indigo-600', icon: FileSearch, targetTab: 'draft_list' },
-                { id: 'rejected_stat', label: '退件/抽單', value: submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected').length, color: 'text-red-600', bg: 'bg-red-600', icon: FileX, targetTab: 'rejected' },
-                { id: 'trash_stat', label: '垃圾桶', value: trashList.length, color: 'text-slate-600', bg: 'bg-slate-600', icon: Trash, targetTab: 'trash_list' },
-              ].map((stat, idx) => (
-                <div key={idx} onClick={() => setActiveTab(stat.targetTab)} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer active:scale-95 group">
-                  <div className="flex justify-between items-start"><div><p className="text-xs text-slate-400 mb-1 font-bold" style={mingLiUStyle}>{stat.label}</p><h3 className="text-2xl font-black" style={{ ...mingLiUStyle, color: 'inherit' }}>{stat.value}</h3></div><div className={`p-2.5 rounded-xl ${stat.bg} text-white shadow-lg`}><stat.icon size={18} /></div></div>
-                </div>
-              ))}
-            </div>
+            {/* 最下方：組內同仁休假表 (整合隱私邏輯) */}
+            <AttendanceCalendar staffList={staffList} submittedForms={submittedForms} currentUser={currentUser} />
           </div>
         );
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} />;
