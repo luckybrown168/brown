@@ -702,7 +702,7 @@ const PersonnelFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   );
 };
 
-// --- 職務代理設定彈出視窗 (恢復小視窗版本) ---
+// --- 職務代理設定彈出視窗 ---
 const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList }) => {
   const [formData, setFormData] = useState({
     oooActive: false,
@@ -1764,7 +1764,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => moveStep(index, -1)} disabled={index === 0} className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20"><ChevronUp size={16} /></button>
                               <button onClick={() => moveStep(index, 1)} disabled={index === workflowSteps.length - 1} className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20"><ChevronDown size={16} /></button>
-                              <div className="w-px h-6 bg-slate-100 mx-1"></div>
+                              <div className="w-px h-4 bg-slate-100 mx-1"></div>
                               <button onClick={() => removeFromWorkflow(step.staffId)} className="p-1.5 text-slate-400 hover:text-red-500"><X size={16} /></button>
                             </div>
                         </div>
@@ -2842,11 +2842,12 @@ const App = () => {
                 </div>
               ))}
             </div>
-
-            {/* 最下方：組內同仁休假表 (整合隱私邏輯) */}
-            <AttendanceCalendar staffList={staffList} submittedForms={submittedForms} currentUser={currentUser} />
           </div>
         );
+      case 'team_leave_calendar':
+        // --- 獨立頁面：組內同仁休假表 ---
+        return <AttendanceCalendar staffList={staffList} submittedForms={submittedForms} currentUser={currentUser} />;
+      
       case 'leave_balance_lookup':
         // --- 獨立頁面：下屬同仁時數調閱 ---
         const lookupUserRank = getPositionRank(currentUser.pos);
@@ -2967,7 +2968,8 @@ const App = () => {
   };
 
   const navItems = [
-    { id: 'dashboard', label: '首頁', icon: LayoutDashboard }
+    { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
+    { id: 'team_leave_calendar', label: '休假表', icon: CalendarDays } // 新增：休假表入口
   ];
 
   // 調閱特休入口：僅副理(60分)以上主管可見
@@ -3021,6 +3023,7 @@ const App = () => {
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-10 z-10 print:hidden">
           <div className="text-slate-800 font-black text-lg" style={mingLiUStyle}>
             {activeTab === 'dashboard' ? '數位儀表板' : 
+             activeTab === 'team_leave_calendar' ? '組內同仁休假表' :
              activeTab === 'leave_balance_lookup' ? '同仁時數調閱' :
              activeTab === 'personnel_management' ? '人員管理中心' : 
              activeTab === 'workflow_settings' ? '簽核流程配置' : 
