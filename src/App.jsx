@@ -75,7 +75,8 @@ import {
   ListChecks,
   GitBranch,
   History,
-  ShieldAlert
+  ShieldAlert,
+  Calculator
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -142,6 +143,32 @@ const getExpirationStatus = (submitDateStr) => {
   } else {
     return { isExpired: false, text: `剩餘 ${diffHours} 小時`, color: 'bg-orange-50 text-orange-600 border-orange-300 animate-pulse' };
   }
+};
+
+// --- 加班補休計算輔助函數 ---
+const calculateCompensatoryLeave = (durationStr) => {
+  if (!durationStr) return 0;
+  const match = durationStr.match(/(\d+)\s*日\s*(\d+)\s*時\s*(\d+)\s*分/);
+  if (!match) return 0;
+  
+  const days = parseInt(match[1], 10);
+  const hours = parseInt(match[2], 10);
+  const mins = parseInt(match[3], 10);
+  
+  // 總工時(小時)
+  const totalHours = (days * 8) + hours + (mins / 60);
+  
+  let result = 0;
+  if (totalHours <= 2) {
+    // 前 1-2 小時乘以 1.33
+    result = totalHours * 1.33;
+  } else {
+    // 前 2 小時 1.33 + 之後每小時 1.66
+    result = (2 * 1.33) + ((totalHours - 2) * 1.66);
+  }
+  
+  // 無條件進位
+  return Math.ceil(result);
 };
 
 // --- 職務代理人解析輔助函數 ---
@@ -1251,7 +1278,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
             }
             return (
               <div key={field.id} className={`${field.width} px-2 animate-in fade-in slide-in-from-top-2 duration-300`}>
-                {field.type !== "button" && field.type !== "notice" && field.type !== "ot_notice" && field.type !== "anomaly_notice" && field.type !== "switch" && field.type !== "multi_select_staff" && (
+                {field.type !== "button" && field.type !== "notice" && field.type !== "ot_notice" && field.type !== "anomaly_notice" && field.type !== "switch" && field.type !== "multi_select_staff" && field.type !== "ot_calc_display" && (
                   <div className="flex items-center gap-2 mb-2"><div className="w-1.5 h-1.5 bg-[#1677FF] rounded-full"></div><label className="text-sm font-bold text-slate-700 underline decoration-slate-200 underline-offset-4" style={mingLiUStyle}>{field.label}：</label></div>
                 )}
                 {field.type === "select" && <select style={mingLiUStyle} value={formValues[field.id] || ""} onChange={(e) => onInputChange(field.id, e.target.value)} className="w-full border border-slate-400 p-2 rounded text-sm outline-none focus:border-blue-500 bg-white shadow-sm"><option value="">-- 請選擇 --</option>{field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>}
@@ -1350,6 +1377,33 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                 {field.type === "notice" && <LeaveNoticeBlock />}
                 {field.type === "ot_notice" && <OvertimeNoticeBlock />}
                 {field.type === "anomaly_notice" && <AnomalyNoticeBlock />}
+                
+                {/* 新增加班補休計算顯示方塊 */}
+                {field.type === "ot_calc_display" && (
+                  <div className="bg-indigo-50/60 border-2 border-indigo-200 rounded-2xl p-6 mt-2 shadow-sm animate-in zoom-in-95 duration-300">
+                    <div className="flex items-center gap-3 mb-3 text-indigo-700">
+                      <Calculator size={20} />
+                      <span className="font-black text-sm" style={mingLiUStyle}>補休時數預估計算</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-indigo-100 shadow-inner">
+                      <div>
+                        <p className="text-xs text-slate-400 font-bold mb-1" style={mingLiUStyle}>預計換發時數</p>
+                        <p className="text-2xl font-black text-indigo-600" style={mingLiUStyle}>
+                          {calculateCompensatoryLeave(formValues.ot_duration)} <span className="text-xs">hr</span>
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[11px] text-slate-500 font-bold leading-relaxed" style={mingLiUStyle}>
+                          依工時數階梯計算：<br />
+                          前 2 小時 × 1.33<br />
+                          第 3 小時起 × 1.66
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-indigo-400 font-bold mt-2 text-center" style={mingLiUStyle}>* 計算結果採無條件進位至整數小時</p>
+                  </div>
+                )}
+
                 {field.type === "button" && (
                   <div className="w-full mt-4">
                     <button 
@@ -1427,7 +1481,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
           if (!staff) return null;
 
           const isDelegated = actualStaffId !== targetStaffId;
-          let delegateNote = isDelegated ? `(代理 ${staffList.find(s => s.staffId === targetStaffId)?.name})` : '';
+          const delegateNote = isDelegated ? `(代理 ${staffList.find(s => s.staffId === targetStaffId)?.name})` : '';
           
           let finalNote = [];
           if (escalationNote) finalNote.push(escalationNote);
@@ -1508,7 +1562,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
             </div>
           </div>
           <div className="flex flex-wrap -mx-2 gap-y-4 mb-10">
-              {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice' && f.type !== 'anomaly_notice').map(field => {
+              {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice' && f.type !== 'anomaly_notice' && f.type !== 'ot_calc_display').map(field => {
                 if (field.dependsOn) {
                   const parentValue = values[field.dependsOn];
                   const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
@@ -1785,7 +1839,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
             </div>
         </div>
         <div className="flex flex-wrap -mx-2 gap-y-6 border-l-4 border-blue-500 pl-4 mb-10">
-          {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice' && f.type !== 'anomaly_notice').map(field => {
+          {schema.fields.filter(f => f.type !== 'button' && f.type !== 'notice' && f.type !== 'ot_notice' && f.type !== 'anomaly_notice' && f.type !== 'ot_calc_display').map(field => {
              if (field.dependsOn) {
                const parentValue = safeValues[field.dependsOn];
                const showConditions = Array.isArray(field.showIf) ? field.showIf : [field.showIf];
@@ -2201,6 +2255,10 @@ const App = () => {
       { id: "ot_end_time", label: "加班結束日期時間", type: "datetime", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
+      
+      // 新增補休計算虛擬欄位，當補償方式選擇「換補休」時顯示
+      { id: "ot_compensation_calc", type: "ot_calc_display", dependsOn: "ot_compensation", showIf: "換補休", width: "w-full" },
+      
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       
       { id: "shared_with", label: "選擇公開對象", type: "multi_select_staff", description: "表單送出後，這些被指定的同仁將可於系統中檢視此單據內容", width: "w-full" },
