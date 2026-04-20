@@ -76,7 +76,8 @@ import {
   GitBranch,
   History,
   ShieldAlert,
-  Calculator
+  Calculator,
+  Shield
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -278,6 +279,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
             name: staffId === '0338' ? '預設管理員' : '系統管理員', 
             pos: 'Administrator', 
             dept: '總經理室', 
+            team: '總經理室',
             staffId: staffId === '0338' ? '0338' : 'ADMIN-01',
             annualLeave: 56.0,
             compLeave: 12.5,
@@ -286,7 +288,7 @@ const LoginView = ({ onLoginSuccess, isMockMode }) => {
           });
         } else if (staffId === 'user' && password === '123456') {
           onLoginSuccess({ 
-            name: '一般測試員', pos: '專員', dept: '業務部', staffId: 'USER-01', annualLeave: 10, compLeave: 5, isAdmin: false,
+            name: '一般測試員', pos: '專員', dept: '業務部', team: '北區營業組', staffId: 'USER-01', annualLeave: 10, compLeave: 5, isAdmin: false,
             sessionToken: 'mock-user-token'
           });
         } else {
@@ -597,7 +599,7 @@ const DelegateSettingsModal = ({ isOpen, onClose, onSave, currentUser, staffList
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={mingLiUStyle}>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}></div>
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300" style={mingLiUStyle}>
+      <div className="bg-white w-full max-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300" style={mingLiUStyle}>
         <div className="bg-purple-600 px-8 py-6 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Briefcase size={20} /></div>
@@ -2137,13 +2139,17 @@ const App = () => {
   const fetchPersonnel = async () => {
     if (isMockMode) {
       setStaffList([
-        { staffId: 'ADMIN-01', name: '系統管理員', pos: 'Administrator', dept: '系統組', isAdmin: true },
-        { staffId: 'GM-01', name: '陳總', pos: '總經理', dept: '總經理室', isAdmin: true },
-        { staffId: '0338', name: '王管理', pos: '系統總監', dept: '總經理室', isAdmin: true },
-        { staffId: 'FIN-01', name: '王大美', pos: '經理', dept: '財務行政部', isAdmin: false },
-        { staffId: 'FIN-02', name: '李專員', pos: '專員', dept: '財務行政部', isAdmin: false },
-        { staffId: 'SAL-01', name: '李小明', pos: '組長', dept: '業務部', isAdmin: false },
-        { staffId: 'ENG-01', name: '張技術', pos: '協理', dept: '系統暨工程部', isAdmin: false }
+        { staffId: 'ADMIN-01', name: '系統管理員', pos: 'Administrator', dept: '系統組', team: '系統組', isAdmin: true, annualLeave: 120, compLeave: 10 },
+        { staffId: 'GM-01', name: '陳總', pos: '總經理', dept: '總經理室', team: '總經理室', isAdmin: true, annualLeave: 240, compLeave: 0 },
+        { staffId: '0338', name: '王管理', pos: '系統總監', dept: '總經理室', team: '總經理室', isAdmin: true, annualLeave: 56.0, compLeave: 12.5 },
+        { staffId: 'FIN-01', name: '王大美', pos: '經理', dept: '財務行政部', team: '財務行政部', isAdmin: false, annualLeave: 40, compLeave: 5 },
+        { staffId: 'FIN-02', name: '李專員', pos: '專員', dept: '財務行政部', team: '財務行政部', isAdmin: false, annualLeave: 16, compLeave: 2 },
+        { staffId: 'SAL-01', name: '李小明', pos: '組長', dept: '業務部', team: '北區營業組', isAdmin: false, annualLeave: 8, compLeave: 0 },
+        { staffId: 'SAL-02', name: '王專員', pos: '專員', dept: '業務部', team: '北區營業組', isAdmin: false, annualLeave: 10, compLeave: 4 },
+        { staffId: 'SAL-03', name: '張專員', pos: '專員', dept: '業務部', team: '南區營業組', isAdmin: false, annualLeave: 12, compLeave: 2 },
+        { staffId: 'ENG-01', name: '張技術', pos: '協理', dept: '系統暨工程部', team: '工程組', isAdmin: false, annualLeave: 80, compLeave: 15 },
+        { staffId: 'ENG-02', name: '陳工程', pos: '經理', dept: '系統暨工程部', team: '工程組', isAdmin: false, annualLeave: 60, compLeave: 8 },
+        { staffId: 'ENG-03', name: '林系統', pos: '經理', dept: '系統暨工程部', team: '系統組', isAdmin: false, annualLeave: 45, compLeave: 5 }
       ]);
       return;
     }
@@ -2657,6 +2663,29 @@ const App = () => {
 
     switch (activeTab) {
       case 'dashboard':
+        // --- 權限邏輯計算 ---
+        const userRank = getPositionRank(currentUser.pos);
+        const isAtLeastViceManager = userRank >= 60; // 達到副理等級
+        const isAtLeastSeniorManager = userRank >= 80; // 達到協理等級
+
+        // 根據權限過濾可調閱的部門成員
+        const deptMembers = isAtLeastViceManager ? staffList.filter(s => {
+          if (s.staffId === currentUser.staffId) return false; // 排除自己
+          
+          const targetRank = getPositionRank(s.pos);
+          // 規則 A: 不能調閱職稱比自己高或同級的人 (s.rank < userRank)
+          if (targetRank >= userRank) return false;
+
+          // 規則 B: 範圍限制
+          if (isAtLeastSeniorManager) {
+            // 協理級以上：可調閱「同部門」內「所有組別」
+            return s.dept === currentUser.dept;
+          } else {
+            // 副理、經理級：僅能調閱「同部門」且「同組別 (Team)」
+            return s.dept === currentUser.dept && s.team === currentUser.team;
+          }
+        }) : [];
+
         return (
           <div className="space-y-8 animate-in fade-in duration-500" style={mingLiUStyle}>
             <div className="flex flex-col lg:flex-row gap-6">
@@ -2691,6 +2720,90 @@ const App = () => {
                   </div>
                 </div>
             </div>
+
+            {/* 主管專用：部門成員時數概覽區塊 */}
+            {isAtLeastViceManager && (
+              <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm animate-in slide-in-from-top-4 duration-700">
+                <div className="flex items-center justify-between mb-6 border-b border-slate-50 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                      <Shield size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-lg font-black text-slate-700" style={mingLiUStyle}>下屬同仁時數調閱</h4>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${isAtLeastSeniorManager ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`} style={mingLiUStyle}>
+                          {isAtLeastSeniorManager ? '跨組別權限' : '組內權限'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>
+                        {isAtLeastSeniorManager 
+                          ? `檢視 ${currentUser.dept} 全體成員 (僅限職級低於本人者)` 
+                          : `檢視 ${currentUser.team} 組員 (僅限職級低於本人者)`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-300 text-[11px] font-bold">
+                    <AlertCircle size={14} />
+                    <span>依系統安全規則：僅能調閱職級較低之成員資料</span>
+                  </div>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                        <th className="px-4 py-3">姓名 / 職稱</th>
+                        <th className="px-4 py-3">員工編號 / 組別</th>
+                        <th className="px-4 py-3">特休餘額 (hr)</th>
+                        <th className="px-4 py-3">補休餘額 (hr)</th>
+                        <th className="px-4 py-3 text-right">狀態</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {deptMembers.length > 0 ? deptMembers.map(member => (
+                        <tr key={member.staffId} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-slate-100 rounded-full overflow-hidden border border-white shadow-sm">
+                                <img src={`https://robohash.org/${encodeURIComponent(member.name)}?set=set4`} alt="avatar" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-700" style={mingLiUStyle}>{member.name}</p>
+                                <p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{member.pos}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <p className="text-xs font-bold text-slate-500" style={mingLiUStyle}>{member.staffId}</p>
+                            <p className="text-[10px] text-indigo-400 font-bold" style={mingLiUStyle}>{member.team}</p>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-sm font-black text-blue-600" style={mingLiUStyle}>{member.annualLeave || 0}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="text-sm font-black text-emerald-600" style={mingLiUStyle}>{member.compLeave || 0}</span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            {member.oooActive ? (
+                              <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 rounded text-[10px] font-black" style={mingLiUStyle}>休假中</span>
+                            ) : (
+                              <span className="text-slate-300 text-[10px] font-bold" style={mingLiUStyle}>在勤</span>
+                            )}
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan="5" className="px-4 py-10 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>目前沒有符合權限可調閱的成員資料</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
                 { id: 'inbox_stat', label: '收件匣', value: inboxList.length, color: 'text-blue-600', bg: 'bg-blue-600', icon: Inbox, targetTab: 'inbox_list' },
