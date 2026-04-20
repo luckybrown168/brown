@@ -378,7 +378,7 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser }) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // 權限邏輯：協理級以上可看部門所有組，其餘僅看同組
+  // 權限邏輯：協理級以上可看部門所有組，其餘僅看同組 (在此邏輯下一般同仁也可看到同組主管休假)
   const userRank = getPositionRank(currentUser.pos);
   const isSeniorManager = userRank >= 80;
 
@@ -394,6 +394,7 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser }) => {
     if (isSeniorManager) {
       return applicant.dept === currentUser.dept;
     } else {
+      // 一般同仁可以看到同組 (team) 的所有人，包含主管
       return applicant.dept === currentUser.dept && applicant.team === currentUser.team;
     }
   });
@@ -2392,7 +2393,7 @@ const App = () => {
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       
-      // 新增補休計算虛擬欄位，當補償方式選擇「換補休」時顯示
+      // 新增加班補休計算顯示方塊
       { id: "ot_compensation_calc", type: "ot_calc_display", dependsOn: "ot_compensation", showIf: "換補休", width: "w-full" },
       
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
