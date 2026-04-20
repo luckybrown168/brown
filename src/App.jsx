@@ -2468,47 +2468,66 @@ const App = () => {
         await fetchMyForms(currentUser.staffId);
       }
 
+      // --- 表單結案後的時數回寫邏輯 ---
       if (newStatus === 'Completed' && updatedValues.category === '差勤類') {
         const formKind = updatedValues.form_kind;
-        if (formKind === '請假單' || formKind === '銷假單') {
-          const leaveType = updatedValues.leave_type;
-          if (leaveType === '特休' || leaveType === '補休') {
-            const leaveTotalStr = updatedValues.leave_total || "0 日 0 時";
-            const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
-            if (match) {
-              const totalProcessHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
-              const targetStaffId = updatedValues.employee_id || formToProcess.staffId;
-              const applicant = staffList.find(s => s.staffId === targetStaffId);
-              
-              if (applicant && totalProcessHours > 0) {
-                const updatedApplicant = { ...applicant };
-                const isDeducting = formKind === '請假單'; 
-                if (leaveType === '特休') {
-                  const currentAnnual = parseFloat(updatedApplicant.annualLeave) || 0;
-                  updatedApplicant.annualLeave = isDeducting 
-                    ? Math.max(0, parseFloat((currentAnnual - totalProcessHours).toFixed(1)))
-                    : parseFloat((currentAnnual + totalProcessHours).toFixed(1));
-                } else if (leaveType === '補休') {
-                  const currentComp = parseFloat(updatedApplicant.compLeave) || 0;
-                  updatedApplicant.compLeave = isDeducting
-                    ? Math.max(0, parseFloat((currentComp - totalProcessHours).toFixed(1)))
-                    : parseFloat((currentComp + totalProcessHours).toFixed(1));
-                }
-                
-                if (isMockMode) {
-                  setStaffList(prev => prev.map(s => s.staffId === updatedApplicant.staffId ? updatedApplicant : s));
-                  if (currentUser.staffId === updatedApplicant.staffId) setCurrentUser(updatedApplicant);
-                } else {
-                  await apiFetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, {
-                    method: 'PUT',
-                    headers: getRequestHeaders(),
-                    body: JSON.stringify(updatedApplicant)
-                  });
-                  await fetchPersonnel();
-                  if (currentUser.staffId === updatedApplicant.staffId) {
-                    setCurrentUser(prev => ({...prev, annualLeave: updatedApplicant.annualLeave, compLeave: updatedApplicant.compLeave}));
+        const targetStaffId = updatedValues.employee_id || formToProcess.staffId;
+        const applicant = staffList.find(s => s.staffId === targetStaffId);
+
+        if (applicant) {
+          const updatedApplicant = { ...applicant };
+          let hasBalanceChange = false;
+
+          // 1. 處理請假與銷假 (特休/補休)
+          if (formKind === '請假單' || formKind === '銷假單') {
+            const leaveType = updatedValues.leave_type;
+            if (leaveType === '特休' || leaveType === '補休') {
+              const leaveTotalStr = updatedValues.leave_total || "0 日 0 時";
+              const match = leaveTotalStr.match(/(\d+)\s*日\s*(\d+)\s*時/);
+              if (match) {
+                const totalProcessHours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
+                if (totalProcessHours > 0) {
+                  const isDeducting = formKind === '請假單'; 
+                  if (leaveType === '特休') {
+                    const currentAnnual = parseFloat(updatedApplicant.annualLeave) || 0;
+                    updatedApplicant.annualLeave = isDeducting 
+                      ? Math.max(0, parseFloat((currentAnnual - totalProcessHours).toFixed(1)))
+                      : parseFloat((currentAnnual + totalProcessHours).toFixed(1));
+                  } else if (leaveType === '補休') {
+                    const currentComp = parseFloat(updatedApplicant.compLeave) || 0;
+                    updatedApplicant.compLeave = isDeducting
+                      ? Math.max(0, parseFloat((currentComp - totalProcessHours).toFixed(1)))
+                      : parseFloat((currentComp + totalProcessHours).toFixed(1));
                   }
+                  hasBalanceChange = true;
                 }
+              }
+            }
+          } 
+          // 2. 處理加班單 (補休增加)
+          else if (formKind === '加班單' && updatedValues.ot_compensation === '換補休') {
+            const totalOTHoursToAdd = calculateCompensatoryLeave(updatedValues.ot_duration);
+            if (totalOTHoursToAdd > 0) {
+              const currentComp = parseFloat(updatedApplicant.compLeave) || 0;
+              updatedApplicant.compLeave = parseFloat((currentComp + totalOTHoursToAdd).toFixed(1));
+              hasBalanceChange = true;
+            }
+          }
+
+          // 如果有時數變動，執行資料庫更新
+          if (hasBalanceChange) {
+            if (isMockMode) {
+              setStaffList(prev => prev.map(s => s.staffId === updatedApplicant.staffId ? updatedApplicant : s));
+              if (currentUser.staffId === updatedApplicant.staffId) setCurrentUser(updatedApplicant);
+            } else {
+              await apiFetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, {
+                method: 'PUT',
+                headers: getRequestHeaders(),
+                body: JSON.stringify(updatedApplicant)
+              });
+              await fetchPersonnel();
+              if (currentUser.staffId === updatedApplicant.staffId) {
+                setCurrentUser(prev => ({...prev, annualLeave: updatedApplicant.annualLeave, compLeave: updatedApplicant.compLeave}));
               }
             }
           }
