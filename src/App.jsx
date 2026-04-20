@@ -147,6 +147,38 @@ const getExpirationStatus = (submitDateStr) => {
   }
 };
 
+// --- 進假日倒數計算輔助函數 ---
+const getNextCreditInfo = (hireDateStr) => {
+  if (!hireDateStr) return { date: '-', days: '-' };
+  const hireDate = new Date(hireDateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 1. 計算滿半年的日期 (6個月)
+  let nextPoint = new Date(hireDate);
+  nextPoint.setMonth(nextPoint.getMonth() + 6);
+  
+  // 如果滿半年已經過了，就找下一個週年
+  if (nextPoint < today) {
+    nextPoint = new Date(hireDate);
+    let years = today.getFullYear() - hireDate.getFullYear();
+    nextPoint.setFullYear(hireDate.getFullYear() + years);
+    
+    // 如果今年的週年也過了，就是明年的週年
+    if (nextPoint < today) {
+      nextPoint.setFullYear(nextPoint.getFullYear() + 1);
+    }
+  }
+
+  const diffTime = nextPoint - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return { 
+    date: nextPoint.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }), 
+    days: diffDays 
+  };
+};
+
 // --- 加班補休計算輔助函數 ---
 const calculateCompensatoryLeave = (durationStr) => {
   if (!durationStr) return 0;
@@ -384,20 +416,13 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser }) => {
 
   // 過濾出符合組別隱私的假單
   const groupLeaveForms = submittedForms.filter(f => {
-    // 必須是已完成簽核的單據
     if (f.status !== 'Completed') return false;
-    
-    // 必須是請假單
     const isLeave = (f.form_subject?.includes('請假單') || f.values?.form_kind === '請假單');
     if (!isLeave) return false;
 
-    // 尋找申請人資訊
     const applicant = staffList.find(s => s.staffId === f.staffId);
     if (!applicant) return false;
 
-    // 邏輯：
-    // 1. 如果我是高階主管，可以看到整個部門的人
-    // 2. 如果我是一般人員，可以看到同部門且同組別的人 (這包含我的組長、經理等)
     if (isSeniorManager) {
       return applicant.dept === currentUser.dept;
     } else {
@@ -1185,7 +1210,7 @@ const LeaveNoticeBlock = () => (
           { title: "二. 喪假", content: "以日為單位，可分次或連續實施。檢附訃文。" },
           { title: "三. 普通傷病假", content: "以日或時為單位，請假日數超過一日以上，檢附健保醫院 or 公立醫院 or 公司特約醫院診斷證明(附醫囑建議休息天數)。" },
           { title: "四. 事假", content: "以日或時為單位。" },
-          { title: "五. 分娩假", content: "以日為單位。檢附診斷證明或出生證明。" },
+          { title: "五. 分娩假", content: "以日為單位. 檢附診斷證明或出生證明。" },
           { title: "六. 陪產假", content: "以日為單位，於配偶分娩之當日及其前後合計十五日期間內，擇其中之五日請假。檢附診斷證明或毀生證明。" },
           { title: "七. 產檢假", content: "以半日或小時為單位，一經選定不得更改。檢附診斷證明或媽媽手冊。" }
         ].map((item, idx) => (
@@ -2276,17 +2301,10 @@ const App = () => {
   const fetchPersonnel = async () => {
     if (isMockMode) {
       setStaffList([
-        { staffId: 'ADMIN-01', name: '系統管理員', pos: 'Administrator', dept: '系統組', team: '系統組', isAdmin: true, annualLeave: 120, compLeave: 10 },
-        { staffId: 'GM-01', name: '陳總', pos: '總經理', dept: '總經理室', team: '總經理室', isAdmin: true, annualLeave: 240, compLeave: 0 },
-        { staffId: '0338', name: '王管理', pos: '系統總監', dept: '總經理室', team: '總經理室', isAdmin: true, annualLeave: 56.0, compLeave: 12.5 },
-        { staffId: 'FIN-01', name: '王大美', pos: '經理', dept: '財務行政部', team: '財務行政部', isAdmin: false, annualLeave: 40, compLeave: 5 },
-        { staffId: 'FIN-02', name: '李專員', pos: '專員', dept: '財務行政部', team: '財務行政部', isAdmin: false, annualLeave: 16, compLeave: 2 },
-        { staffId: 'SAL-01', name: '李小明', pos: '組長', dept: '業務部', team: '北區營業組', isAdmin: false, annualLeave: 8, compLeave: 0 },
-        { staffId: 'SAL-02', name: '王專員', pos: '專員', dept: '業務部', team: '北區營業組', isAdmin: false, annualLeave: 10, compLeave: 4 },
-        { staffId: 'SAL-03', name: '張專員', pos: '專員', dept: '業務部', team: '南區營業組', isAdmin: false, annualLeave: 12, compLeave: 2 },
-        { staffId: 'ENG-01', name: '張技術', pos: '協理', dept: '系統暨工程部', team: '工程組', isAdmin: false, annualLeave: 80, compLeave: 15 },
-        { staffId: 'ENG-02', name: '陳工程', pos: '經理', dept: '系統暨工程部', team: '工程組', isAdmin: false, annualLeave: 60, compLeave: 8 },
-        { staffId: 'ENG-03', name: '林系統', pos: '經理', dept: '系統暨工程部', team: '系統組', isAdmin: false, annualLeave: 45, compLeave: 5 }
+        { staffId: 'ADMIN-01', name: '系統管理員', pos: 'Administrator', dept: '系統組', team: '系統組', isAdmin: true, annualLeave: 120, compLeave: 10, hireDate: '2020-01-15' },
+        { staffId: 'GM-01', name: '陳總', pos: '總經理', dept: '總經理室', team: '總經理室', isAdmin: true, annualLeave: 240, compLeave: 0, hireDate: '2015-06-01' },
+        { staffId: '0338', name: '王管理', pos: '系統總監', dept: '總經理室', team: '總經理室', isAdmin: true, annualLeave: 56.0, compLeave: 12.5, hireDate: '2023-05-20' },
+        { staffId: 'FIN-01', name: '王大美', pos: '經理', dept: '財務行政部', team: '財務行政部', isAdmin: false, annualLeave: 40, compLeave: 5, hireDate: '2021-11-10' }
       ]);
       return;
     }
@@ -2300,12 +2318,7 @@ const App = () => {
   const fetchMyForms = async (userId) => {
     if (isMockMode || !userId) return;
     try {
-      let res = await apiFetch(`${API_URL_ROOT}/api/forms`, { headers: getRequestHeaders() });
-      
-      if (!res.ok || res.status === 404) {
-        res = await apiFetch(`${API_URL_ROOT}/api/forms/${userId}`, { headers: getRequestHeaders() });
-      }
-
+      let res = await apiFetch(`${API_URL_ROOT}/api/forms/${userId}`, { headers: getRequestHeaders() });
       const contentType = res.headers.get("content-type");
       if (!res.ok || !contentType || !contentType.includes("application/json")) return;
       const data = await res.json();
@@ -2399,7 +2412,6 @@ const App = () => {
       { id: "ot_duration", label: "工時數", type: "duration", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       { id: "ot_compensation", label: "補償方式", type: "select", options: ["換補休", "計薪"], dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
       
-      // 新增加班補休計算顯示方塊
       { id: "ot_compensation_calc", type: "ot_calc_display", dependsOn: "ot_compensation", showIf: "換補休", width: "w-full" },
       
       { id: "ot_reason", label: "加班事由", type: "text", dependsOn: "ot_type", showIf: ["事前", "事後"], width: "w-full" },
@@ -2611,7 +2623,6 @@ const App = () => {
         await fetchMyForms(currentUser.staffId);
       }
 
-      // --- 表單結案後的時數回寫邏輯 ---
       if (newStatus === 'Completed' && updatedValues.category === '差勤類') {
         const formKind = updatedValues.form_kind;
         const targetStaffId = updatedValues.employee_id || formToProcess.staffId;
@@ -2621,7 +2632,6 @@ const App = () => {
           const updatedApplicant = { ...applicant };
           let hasBalanceChange = false;
 
-          // 1. 處理請假與銷假 (特休/補休)
           if (formKind === '請假單' || formKind === '銷假單') {
             const leaveType = updatedValues.leave_type;
             if (leaveType === '特休' || leaveType === '補休') {
@@ -2647,7 +2657,6 @@ const App = () => {
               }
             }
           } 
-          // 2. 處理加班單 (補休增加)
           else if (formKind === '加班單' && updatedValues.ot_compensation === '換補休') {
             const totalOTHoursToAdd = calculateCompensatoryLeave(updatedValues.ot_duration);
             if (totalOTHoursToAdd > 0) {
@@ -2657,7 +2666,6 @@ const App = () => {
             }
           }
 
-          // 如果有時數變動，執行資料庫更新
           if (hasBalanceChange) {
             if (isMockMode) {
               setStaffList(prev => prev.map(s => s.staffId === updatedApplicant.staffId ? updatedApplicant : s));
@@ -2744,11 +2752,11 @@ const App = () => {
     if (!window.confirm("確定要將此單據內容複製為一份新草稿並重新編輯嗎？\n(系統將為您帶入原內容，並產生全新的文件單號)")) return;
 
     const clonedValues = { ...formToClone.values };
-    delete clonedValues.workflowPath; // 清除舊的簽核路徑
-    delete clonedValues.currentStep;  // 清除舊的進度
+    delete clonedValues.workflowPath; 
+    delete clonedValues.currentStep;  
 
     setFormValues(clonedValues);
-    setCurrentDocId(''); // 清空 ID，讓系統在儲存/送出時產生新單號
+    setCurrentDocId(''); 
     setIsSubmitted(false);
     setIsPreviewing(false);
     setViewingForm(null);
@@ -2852,11 +2860,9 @@ const App = () => {
           </div>
         );
       case 'team_leave_calendar':
-        // --- 獨立頁面：組內同仁休假表 ---
         return <AttendanceCalendar staffList={staffList} submittedForms={submittedForms} currentUser={currentUser} />;
       
       case 'leave_balance_lookup':
-        // --- 獨立頁面：下屬同仁時數調閱 ---
         const lookupUserRank = getPositionRank(currentUser.pos);
         const lookupIsAtLeastSeniorManager = lookupUserRank >= 80;
         
@@ -2905,7 +2911,7 @@ const App = () => {
                       <th className="px-4 py-3">員工編號 / 組別</th>
                       <th className="px-4 py-3">特休餘額 (hr)</th>
                       <th className="px-4 py-3">補休餘額 (hr)</th>
-                      <th className="px-4 py-3 text-right">狀態</th>
+                      <th className="px-4 py-3 text-right">進假日</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -2933,11 +2939,17 @@ const App = () => {
                           <span className="text-sm font-black text-emerald-600" style={mingLiUStyle}>{member.compLeave || 0}</span>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          {member.oooActive ? (
-                            <span className="px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 rounded text-[10px] font-black" style={mingLiUStyle}>休假中</span>
-                          ) : (
-                            <span className="text-slate-300 text-[10px] font-bold" style={mingLiUStyle}>在勤</span>
-                          )}
+                          {(() => {
+                            const info = getNextCreditInfo(member.hireDate);
+                            return (
+                              <div className="flex flex-col items-end">
+                                <span className="text-[13px] font-black text-indigo-600" style={mingLiUStyle}>
+                                  倒數 <span className="text-base">{info.days}</span> 天
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>預計 {info.date}</span>
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     )) : (
@@ -2976,10 +2988,9 @@ const App = () => {
 
   const navItems = [
     { id: 'dashboard', label: '首頁', icon: LayoutDashboard },
-    { id: 'team_leave_calendar', label: '休假表', icon: CalendarDays } // 新增：休假表入口
+    { id: 'team_leave_calendar', label: '休假表', icon: CalendarDays }
   ];
 
-  // 調閱特休入口：僅副理(60分)以上主管可見
   const userRankForNav = getPositionRank(currentUser.pos);
   if (userRankForNav >= 60) {
     navItems.push({ id: 'leave_balance_lookup', label: '調閱特休', icon: Search });
