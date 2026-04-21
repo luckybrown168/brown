@@ -147,35 +147,42 @@ const getExpirationStatus = (submitDateStr) => {
   }
 };
 
-// --- 進假日倒數計算輔助函數 ---
+// --- 進假日倒數計算輔助函數 (修正時區偏移導致多一天的問題) ---
 const getNextCreditInfo = (hireDateStr) => {
   if (!hireDateStr) return { date: '-', days: '-' };
-  const hireDate = new Date(hireDateStr);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // 1. 計算滿半年的日期 (6個月)
-  let nextPoint = new Date(hireDate);
-  nextPoint.setMonth(nextPoint.getMonth() + 6);
   
-  // 如果滿半年已經過了，就找下一個週年
+  // 修正解析：手動拆解 YYYY-MM-DD 避免瀏覽器將其視為 UTC 造成 8 小時時差
+  const parts = hireDateStr.split('-');
+  const hy = parseInt(parts[0], 10);
+  const hm = parseInt(parts[1], 10);
+  const hd = parseInt(parts[2], 10);
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 歸零今日時間
+
+  // 1. 計算滿半年的日期 (Hire Date + 6 Months)
+  let nextPoint = new Date(hy, hm - 1 + 6, hd);
+  
+  // 如果滿半年日期已經過去，則計算下一個週年
   if (nextPoint < today) {
-    nextPoint = new Date(hireDate);
-    let years = today.getFullYear() - hireDate.getFullYear();
-    nextPoint.setFullYear(hireDate.getFullYear() + years);
+    let yearsOfService = today.getFullYear() - hy;
+    nextPoint = new Date(hy + yearsOfService, hm - 1, hd);
     
-    // 如果今年的週年也過了，就是明年的週年
+    // 如果今年的週年也已經過了，則計算明年的週年
     if (nextPoint < today) {
-      nextPoint.setFullYear(nextPoint.getFullYear() + 1);
+      nextPoint = new Date(hy + yearsOfService + 1, hm - 1, hd);
     }
   }
 
-  const diffTime = nextPoint - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  nextPoint.setHours(0, 0, 0, 0); // 確保目標日也是 0 點
+
+  const diffTime = nextPoint.getTime() - today.getTime();
+  // 使用 Math.round 並加上 0.1 容錯，確保 24 小時整除為 1 天
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
   return { 
     date: nextPoint.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }), 
-    days: diffDays 
+    days: diffDays < 0 ? 0 : diffDays 
   };
 };
 
@@ -410,7 +417,7 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser }) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // 權限邏輯：協理級以上可看部門所有組，其餘僅看同組 (在此邏輯下一般同仁也可看到同組主管休假)
+  // 權限邏輯：協理級以上可看部門所有組，其餘僅看同組
   const userRank = getPositionRank(currentUser.pos);
   const isSeniorManager = userRank >= 80;
 
