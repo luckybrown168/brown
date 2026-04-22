@@ -986,7 +986,7 @@ const AuditLogView = ({ isMockMode, theme }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const pageSize = 30; // 每頁最多 30 筆
+  const pageSize = 15; // 這裡從 30 改成 15
 
   const fetchLogs = async () => {
     try {
