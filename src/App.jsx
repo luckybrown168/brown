@@ -1006,20 +1006,21 @@ const AuditLogView = ({ isMockMode, theme }) => {
         setLogs(mockData.slice(startIndex, startIndex + pageSize));
         setTotalPages(Math.ceil(mockData.length / pageSize));
       } else {
-        // 將 startIndex 與 limit 傳遞給後端 API 進行對應
-        const response = await apiFetch(`${API_URL_ROOT}/api/audit_logs?startIndex=${startIndex}&limit=${pageSize}`, { headers: getRequestHeaders() });
+        // 將 page、startIndex 與 limit 傳遞給後端 API
+        // 因為 server.js 是抓取 req.query.page，所以這裡補上 page 參數確保後端能正確換頁
+        const response = await apiFetch(`${API_URL_ROOT}/api/audit_logs?page=${currentPage}&startIndex=${startIndex}&limit=${pageSize}`, { headers: getRequestHeaders() });
         if (response.ok) {
           const data = await response.json();
-          // 支援多種後端常見的分頁回傳格式，增加穩定性
-          if (Array.isArray(data)) {
+          // 根據 server.js 回傳的格式精準備析
+          if (data.pagination) {
+            setLogs(data.data);
+            setTotalPages(data.pagination.totalPages);
+          } else if (Array.isArray(data)) {
             setLogs(data);
             setTotalPages(data.length === pageSize ? currentPage + 1 : currentPage);
           } else if (data.data) {
             setLogs(data.data);
             setTotalPages(Math.ceil((data.total || data.data.length) / pageSize));
-          } else if (data.logs) {
-            setLogs(data.logs);
-            setTotalPages(Math.ceil((data.total || data.logs.length) / pageSize));
           }
         }
       }
