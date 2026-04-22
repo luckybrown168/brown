@@ -78,9 +78,7 @@ import {
   ShieldAlert,
   Calculator,
   Shield,
-  CalendarDays,
-  ChevronsLeft,
-  ChevronsRight
+  CalendarDays
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -987,31 +985,44 @@ const AuditLogView = ({ isMockMode, theme }) => {
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 30;
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 30; // 每頁最多 30 筆
 
   const fetchLogs = async () => {
     try {
       setIsLoading(true);
+      
+      // 重點要求：優先定義 startIndex 變數
+      const startIndex = (currentPage - 1) * pageSize;
+
       if (isMockMode) {
-        // 生成模擬資料以便測試分頁
-        const mockLogs = Array.from({ length: 105 }, (_, i) => ({
-          id: `L${1000 - i}`,
-          user: i % 2 === 0 ? 'ADMIN-01' : 'USER-01',
-          name: i % 2 === 0 ? '管理員' : '一般測試員',
-          action: i % 5 === 0 ? '系統登入' : i % 3 === 0 ? '人員變更' : '表單簽核',
-          target: i % 3 === 0 ? `USER-0${i % 9}` : `F20240320-ID-00${i}`,
-          details: `操作描述內容 #${i + 1}`,
-          timestamp: new Date(Date.now() - i * 3600000).toISOString()
-        }));
-        setLogs(mockLogs);
+        const mockData = [
+          { id: 'L001', user: 'ADMIN-01', name: '管理員', action: '系統登入', target: 'N/A', details: '成功從 192.168.1.5 登入', timestamp: new Date().toISOString() },
+          { id: 'L002', user: '0338', name: '王管理', action: '人員變更', target: 'USER-01', details: '修改 剩餘特休 時數: 10 -> 12', timestamp: new Date(Date.now() - 3600000).toISOString() },
+          { id: 'L003', user: 'USER-01', name: '一般測試員', action: '提交表單', target: 'F20240320-USER-01-001', details: '發起 [請假單] 申請', timestamp: new Date(Date.now() - 7200000).toISOString() },
+          { id: 'L004', user: '0338', name: '王管理', action: '表單簽核', target: 'F20240320-USER-01-001', details: '執行決策: 同意', timestamp: new Date(Date.now() - 10800000).toISOString() },
+        ];
+        // 模擬分頁切割
+        setLogs(mockData.slice(startIndex, startIndex + pageSize));
+        setTotalPages(Math.ceil(mockData.length / pageSize));
       } else {
-        const response = await apiFetch(`${API_URL_ROOT}/api/audit_logs`, { headers: getRequestHeaders() });
+        // 將 startIndex 與 limit 傳遞給後端 API 進行對應
+        const response = await apiFetch(`${API_URL_ROOT}/api/audit_logs?startIndex=${startIndex}&limit=${pageSize}`, { headers: getRequestHeaders() });
         if (response.ok) {
           const data = await response.json();
-          setLogs(data);
+          // 支援多種後端常見的分頁回傳格式，增加穩定性
+          if (Array.isArray(data)) {
+            setLogs(data);
+            setTotalPages(data.length === pageSize ? currentPage + 1 : currentPage);
+          } else if (data.data) {
+            setLogs(data.data);
+            setTotalPages(Math.ceil((data.total || data.data.length) / pageSize));
+          } else if (data.logs) {
+            setLogs(data.logs);
+            setTotalPages(Math.ceil((data.total || data.logs.length) / pageSize));
+          }
         }
       }
-      setCurrentPage(1); // 重新讀取後回到第一頁
     } catch (err) {
       console.error("無法載入日誌:", err);
     } finally {
@@ -1019,16 +1030,7 @@ const AuditLogView = ({ isMockMode, theme }) => {
     }
   };
 
-  useEffect(() => { fetchLogs(); }, [isMockMode]);
-
-  const totalPages = Math.max(1, Math.ceil(logs.length / itemsPerPage));
-  const displayedLogs = logs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
-  };
+  useEffect(() => { fetchLogs(); }, [isMockMode, currentPage]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
@@ -1039,7 +1041,7 @@ const AuditLogView = ({ isMockMode, theme }) => {
           </div>
           <div>
             <h2 className={`text-2xl font-black ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'}`} style={mingLiUStyle}>系統稽核日誌</h2>
-            <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>監控所有人員的操作行為與系統狀態變更記錄 (每頁顯示 30 筆)</p>
+            <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>監控所有人員的操作行為與系統狀態變更記錄</p>
           </div>
         </div>
         <button onClick={fetchLogs} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/10 rounded-xl transition-all">
@@ -1048,96 +1050,76 @@ const AuditLogView = ({ isMockMode, theme }) => {
       </div>
 
       <div className={`${theme === 'light' ? 'bg-white border-slate-100' : 'bg-slate-900 border-slate-800'} rounded-[2.5rem] border shadow-sm overflow-hidden transition-colors`}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className={theme === 'light' ? 'bg-slate-50/30' : 'bg-slate-800/30'}>
-              <tr className="text-[12px] font-black text-slate-400 uppercase tracking-widest" style={mingLiUStyle}>
-                <th className="px-8 py-4">操作時間</th>
-                <th className="px-6 py-4">執行人員</th>
-                <th className="px-6 py-4">動作項目</th>
-                <th className="px-6 py-4">操作對象</th>
-                <th className="px-8 py-4">詳細說明</th>
+        <table className="w-full text-left">
+          <thead className={theme === 'light' ? 'bg-slate-50/30' : 'bg-slate-800/30'}>
+            <tr className="text-[12px] font-black text-slate-400 uppercase tracking-widest" style={mingLiUStyle}>
+              <th className="px-8 py-4">操作時間</th>
+              <th className="px-6 py-4">執行人員</th>
+              <th className="px-6 py-4">動作項目</th>
+              <th className="px-6 py-4">操作對象</th>
+              <th className="px-8 py-4">詳細說明</th>
+            </tr>
+          </thead>
+          <tbody className={`divide-y ${theme === 'light' ? 'divide-slate-50' : 'divide-slate-800'}`}>
+            {logs.length > 0 ? logs.map((log) => (
+              <tr key={log.id} className={`${theme === 'light' ? 'hover:bg-slate-50/50' : 'hover:bg-slate-800/30'} transition-colors`}>
+                <td className="px-8 py-5 text-xs font-bold text-slate-500" style={mingLiUStyle}>
+                  {new Date(log.timestamp).toLocaleString()}
+                </td>
+                <td className="px-6 py-5">
+                  <div className="flex flex-col">
+                    <span className={`text-sm font-black ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`} style={mingLiUStyle}>{log.name}</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">{log.user}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-5">
+                  <span className={`px-2.5 py-1 rounded-lg text-[11px] font-black ${
+                    log.action.includes('刪除') || log.action.includes('異常') ? 'bg-red-50 text-red-600 border border-red-100' :
+                    log.action.includes('登入') ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+                    log.action.includes('變更') ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                    (theme === 'light' ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-400')
+                  }`} style={mingLiUStyle}>
+                    {log.action}
+                  </span>
+                </td>
+                <td className="px-6 py-5 text-xs font-bold text-indigo-600" style={mingLiUStyle}>
+                  {log.target}
+                </td>
+                <td className={`px-8 py-5 text-sm ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'} font-bold`} style={mingLiUStyle}>
+                  {log.details}
+                </td>
               </tr>
-            </thead>
-            <tbody className={`divide-y ${theme === 'light' ? 'divide-slate-50' : 'divide-slate-800'}`}>
-              {displayedLogs.length > 0 ? displayedLogs.map((log) => (
-                <tr key={log.id} className={`${theme === 'light' ? 'hover:bg-slate-50/50' : 'hover:bg-slate-800/30'} transition-colors`}>
-                  <td className="px-8 py-5 text-xs font-bold text-slate-500" style={mingLiUStyle}>
-                    {new Date(log.timestamp).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex flex-col">
-                      <span className={`text-sm font-black ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`} style={mingLiUStyle}>{log.name}</span>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">{log.user}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className={`px-2.5 py-1 rounded-lg text-[11px] font-black ${
-                      log.action.includes('刪除') || log.action.includes('異常') ? 'bg-red-50 text-red-600 border border-red-100' :
-                      log.action.includes('登入') ? 'bg-blue-50 text-blue-600 border border-blue-100' :
-                      log.action.includes('變更') ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                      (theme === 'light' ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-400')
-                    }`} style={mingLiUStyle}>
-                      {log.action}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-xs font-bold text-indigo-600" style={mingLiUStyle}>
-                    {log.target}
-                  </td>
-                  <td className={`px-8 py-5 text-sm ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'} font-bold`} style={mingLiUStyle}>
-                    {log.details}
-                  </td>
-                </tr>
-              )) : (
-                <tr><td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm">{isLoading ? "讀取中..." : "目前尚無日誌。"}</td></tr>
-              )}
-            </tbody>
-          </table>
+            )) : (
+              <tr><td colSpan="5" className="px-8 py-20 text-center text-slate-300 italic text-sm">{isLoading ? "讀取中..." : "目前尚無日誌。"}</td></tr>
+            )}
+          </tbody>
+        </table>
+
+        {/* --- 分頁控制區塊 --- */}
+        <div className={`px-8 py-4 border-t flex items-center justify-between ${theme === 'light' ? 'border-slate-100 bg-slate-50/50' : 'border-slate-800 bg-slate-900/50'} transition-colors`}>
+          <span className={`text-xs font-bold ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`} style={mingLiUStyle}>
+            第 {currentPage} 頁 {totalPages > 1 ? `/ 共 ${totalPages} 頁` : ''}
+          </span>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+              disabled={currentPage === 1 || isLoading} 
+              className={`px-3 py-1.5 rounded-lg border text-xs font-black flex items-center gap-1 transition-all ${currentPage === 1 || isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'} ${theme === 'light' ? 'bg-white border-slate-200 text-slate-600' : 'bg-slate-800 border-slate-700 text-slate-300'}`}
+              style={mingLiUStyle}
+            >
+              <ChevronLeft size={14} /> 上一頁
+            </button>
+            <button 
+              onClick={() => setCurrentPage(p => p + 1)} 
+              disabled={currentPage >= totalPages || isLoading} 
+              className={`px-3 py-1.5 rounded-lg border text-xs font-black flex items-center gap-1 transition-all ${currentPage >= totalPages || isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'} ${theme === 'light' ? 'bg-white border-slate-200 text-slate-600' : 'bg-slate-800 border-slate-700 text-slate-300'}`}
+              style={mingLiUStyle}
+            >
+              下一頁 <ChevronRight size={14} />
+            </button>
+          </div>
         </div>
 
-        {/* 分頁控制列 */}
-        {logs.length > itemsPerPage && (
-          <div className={`p-6 border-t ${theme === 'light' ? 'bg-slate-50/50 border-slate-100' : 'bg-slate-900 border-slate-800'} flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors`}>
-            <div className="text-xs font-bold text-slate-400" style={mingLiUStyle}>
-              顯示第 <span className="text-slate-600">{startIndex + 1}</span> 至 <span className="text-slate-600">{Math.min(startIndex + itemsPerPage, logs.length)}</span> 筆，共 <span className="text-indigo-600 font-black">{logs.length}</span> 筆記錄
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => handlePageChange(1)} 
-                disabled={currentPage === 1}
-                className={`p-2 rounded-xl border ${theme === 'light' ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-400' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-500'} disabled:opacity-30 transition-all`}
-              >
-                <ChevronsLeft size={16} />
-              </button>
-              <button 
-                onClick={() => handlePageChange(currentPage - 1)} 
-                disabled={currentPage === 1}
-                className={`p-2 rounded-xl border ${theme === 'light' ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-400' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-500'} disabled:opacity-30 transition-all`}
-              >
-                <ChevronLeft size={16} />
-              </button>
-              
-              <div className={`px-4 py-2 rounded-xl border font-black text-sm ${theme === 'light' ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-indigo-900/30 border-indigo-800 text-indigo-400'}`} style={mingLiUStyle}>
-                {currentPage} / {totalPages}
-              </div>
-
-              <button 
-                onClick={() => handlePageChange(currentPage + 1)} 
-                disabled={currentPage === totalPages}
-                className={`p-2 rounded-xl border ${theme === 'light' ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-400' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-500'} disabled:opacity-30 transition-all`}
-              >
-                <ChevronRight size={16} />
-              </button>
-              <button 
-                onClick={() => handlePageChange(totalPages)} 
-                disabled={currentPage === totalPages}
-                className={`p-2 rounded-xl border ${theme === 'light' ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-400' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-500'} disabled:opacity-30 transition-all`}
-              >
-                <ChevronsRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -2693,7 +2675,7 @@ const App = () => {
                     const currentComp = parseFloat(updatedApplicant.compLeave) || 0;
                     updatedApplicant.compLeave = isDeducting
                       ? Math.max(0, parseFloat((currentComp - totalProcessHours).toFixed(1)))
-                      : parseFloat((currentAnnual + totalProcessHours).toFixed(1));
+                      : parseFloat((currentComp + totalProcessHours).toFixed(1));
                   }
                   hasBalanceChange = true;
                 }
