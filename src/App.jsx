@@ -2036,7 +2036,12 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
           </div>
         )}
 
-        <div className="text-center mb-6 md:mb-10"><h2 className={`text-xl md:text-2xl font-black ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'} underline decoration-4 underline-offset-8`} style={mingLiUStyle}>電子表單申請存根</h2></div>
+        <div className="text-center mb-6 md:mb-10">
+          <h2 className={`text-xl md:text-2xl font-black ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'} underline decoration-4 underline-offset-8`} style={mingLiUStyle}>電子表單申請存根</h2>
+          <p className={`mt-3 md:mt-4 text-sm md:text-base font-bold tracking-widest ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`} style={mingLiUStyle}>
+            員工申請{safeValues.form_kind && safeValues.form_kind !== '所有單據' ? safeValues.form_kind : (safeValues.category ? `${safeValues.category}單據` : '表單')}
+          </p>
+        </div>
         <div className={`mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 border-b pb-4 ${theme === 'light' ? 'border-slate-100' : 'border-slate-800'}`}>
             <div>
               <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase" style={mingLiUStyle}>文件單號 Document ID</p>
