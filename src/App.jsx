@@ -407,8 +407,12 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser, theme }) =
 
   const groupLeaveForms = submittedForms.filter(f => {
     if (f.status !== 'Completed') return false;
-    const isLeave = (f.form_subject?.includes('請假單') || f.values?.form_kind === '請假單');
-    if (!isLeave) return false;
+    // 修改：同時抓取請假單與銷假單
+    const isLeaveRelated = (
+      f.form_subject?.includes('請假單') || f.values?.form_kind === '請假單' ||
+      f.form_subject?.includes('銷假單') || f.values?.form_kind === '銷假單'
+    );
+    if (!isLeaveRelated) return false;
 
     const applicant = staffList.find(s => s.staffId === f.staffId);
     if (!applicant) return false;
@@ -428,10 +432,26 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser, theme }) =
 
   const getEventsForDay = (day) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return groupLeaveForms.filter(f => {
+    
+    // 先找出當天所有的「請假單」
+    const leaves = groupLeaveForms.filter(f => {
+      if (f.values?.form_kind === '銷假單' || f.form_subject?.includes('銷假單')) return false;
       const start = f.values?.leave_start_time?.split(' ')[0];
       const end = f.values?.leave_end_time?.split(' ')[0];
       return dateStr >= start && dateStr <= end;
+    });
+
+    // 過濾掉該員工在當天已有對應「銷假單」的紀錄
+    return leaves.filter(leaveForm => {
+      const isCancelled = groupLeaveForms.some(cancelForm => {
+        if (cancelForm.values?.form_kind !== '銷假單' && !cancelForm.form_subject?.includes('銷假單')) return false;
+        if (cancelForm.staffId !== leaveForm.staffId) return false; // 必須是同一個人的銷假單
+        
+        const cancelStart = cancelForm.values?.leave_start_time?.split(' ')[0];
+        const cancelEnd = cancelForm.values?.leave_end_time?.split(' ')[0];
+        return dateStr >= cancelStart && dateStr <= cancelEnd;
+      });
+      return !isCancelled; // 如果沒有被銷假，才回傳 true 顯示在日曆上
     });
   };
 
