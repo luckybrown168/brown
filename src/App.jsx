@@ -846,10 +846,10 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
   const [tempStaffId, setTempStaffId] = useState('');
   const [tempRole, setTempRole] = useState('簽核');
 
-  const categories = ["行政類", "銷售類", "差勤類", "系統類"];
+  const categories = ["財務類", "差勤類"];
   const formKinds = {
     "差勤類": ["所有單據", "出勤異常單", "銷假單", "加班單", "請假單"],
-    "行政類": ["所有單據"], "銷售類": ["所有單據"], "系統類": ["所有單據"]
+    "財務類": ["所有單據", "開立發票申請單"]
   };
 
   const handleEdit = (rule) => {
@@ -2467,14 +2467,27 @@ const App = () => {
   const TEAM_OPTIONS = ["總經理室", "財務行政部", "北區營業組", "中區營業組", "南區營業組", "客服組", "產品組", "工程組", "系統組"];
   const LEAVE_TYPES = ["特休", "事假", "病假", "喪假", "補休", "婚假", "公假", "產假", "家庭照顧假"];
 
+  const CATEGORY_FORM_KINDS = {
+    "差勤類": ["出勤異常單", "銷假單", "加班單", "請假單"],
+    "財務類": ["開立發票申請單"]
+  };
+
   const myFormSchema = {
     title: "電子智慧表單",
     fields: [
       { id: "form_subject", label: "單據主旨", type: "text", width: "w-full" },
       { id: "employee_id", label: "員工編號", type: "text", width: "w-1/2" },
       { id: "department", label: "組別", type: "select", options: TEAM_OPTIONS, width: "w-1/2" },
-      { id: "category", label: "選擇類別", type: "select", options: ["行政類", "銷售類", "差勤類", "系統類"], width: "w-full" },
-      { id: "form_kind", label: "表單種類", type: "select", options: ["出勤異常單", "銷假單", "加班單", "請假單"], dependsOn: "category", showIf: "差勤類", width: "w-full" },
+      { id: "category", label: "選擇類別", type: "select", options: ["財務類", "差勤類"], width: "w-full" },
+      { id: "form_kind", label: "表單種類", type: "select", options: CATEGORY_FORM_KINDS[formValues.category] || [], dependsOn: "category", showIf: ["差勤類", "財務類"], width: "w-full" },
+      { id: "invoice_customer_name", label: "客戶名稱", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
+      { id: "invoice_title", label: "發票抬頭", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
+      { id: "invoice_contact", label: "連絡人", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
+      { id: "invoice_tax_id", label: "統一編號", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
+      { id: "invoice_phone", label: "電話", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
+      { id: "invoice_address", label: "發票地址", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
+      { id: "invoice_mailing_address", label: "發票寄達地址", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
+      { id: "invoice_email", label: "E-mail address", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
       { id: "anomaly_rules_notice", type: "anomaly_notice", dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
       { id: "leave_rules_notice", type: "notice", dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
@@ -2505,6 +2518,12 @@ const App = () => {
   const handleInputChange = (id, value) => {
     setFormValues(prev => {
       const nextValues = { ...prev, [id]: value };
+      
+      // 當大分類切換時，自動清空原先選擇的子分類，避免狀態殘留
+      if (id === 'category' && prev.category !== value) {
+        delete nextValues.form_kind;
+      }
+
       const cleanupChildren = (parentId) => {
         myFormSchema.fields.forEach(field => {
           if (field.dependsOn === parentId) {
