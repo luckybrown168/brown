@@ -78,7 +78,8 @@ import {
   ShieldAlert,
   Calculator,
   Shield,
-  CalendarDays
+  CalendarDays,
+  Minus
 } from 'lucide-react';
 
 // --- 全域設計規範 (Design Tokens) ---
@@ -1232,6 +1233,93 @@ const LeaveDurationPicker = ({ id, value, onChange, theme }) => {
   );
 };
 
+// --- 發票明細動態表格組件 ---
+const InvoiceItemsTable = ({ id, value = [], onChange, theme }) => {
+  const items = Array.isArray(value) && value.length > 0 ? value : [{ name: '', price: '', qty: '', amount: 0 }];
+
+  useEffect(() => {
+    if (!value || value.length === 0) {
+      onChange(id, [{ name: '', price: '', qty: '', amount: 0 }]);
+    }
+  }, []);
+
+  const handleItemChange = (index, field, val) => {
+    const newItems = [...items];
+    newItems[index][field] = val;
+    // 自動計算金額
+    if (field === 'price' || field === 'qty') {
+      const p = parseFloat(newItems[index].price) || 0;
+      const q = parseFloat(newItems[index].qty) || 0;
+      newItems[index].amount = p * q;
+    }
+    onChange(id, newItems);
+  };
+
+  const addRow = () => {
+    onChange(id, [...items, { name: '', price: '', qty: '', amount: 0 }]);
+  };
+
+  const removeRow = (index) => {
+    if (items.length <= 1) return;
+    const newItems = items.filter((_, i) => i !== index);
+    onChange(id, newItems);
+  };
+
+  const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+
+  return (
+    <div className={`mt-2 border ${theme === 'light' ? 'border-slate-300 bg-white' : 'border-slate-700 bg-slate-900'} rounded-xl overflow-hidden shadow-sm`} style={mingLiUStyle}>
+      <div className="overflow-x-auto w-full">
+        <table className="w-full min-w-[600px] text-left text-sm">
+          <thead className={`${theme === 'light' ? 'bg-slate-50' : 'bg-slate-800'} border-b ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'}`}>
+            <tr>
+              <th className="px-4 py-3 font-black text-slate-500">品名(性質與說明)</th>
+              <th className="px-4 py-3 font-black text-slate-500 w-32">單價(未稅)</th>
+              <th className="px-4 py-3 font-black text-slate-500 w-24">數量</th>
+              <th className="px-4 py-3 font-black text-slate-500 w-32 text-right">金額(未稅)</th>
+              <th className="px-3 py-3 w-12 text-center"></th>
+            </tr>
+          </thead>
+          <tbody className={`divide-y ${theme === 'light' ? 'divide-slate-100' : 'divide-slate-800'}`}>
+            {items.map((item, idx) => (
+              <tr key={idx} className={`${theme === 'light' ? 'hover:bg-slate-50/50' : 'hover:bg-slate-800/50'} transition-colors`}>
+                <td className="px-3 py-2">
+                  <input type="text" value={item.name} onChange={(e) => handleItemChange(idx, 'name', e.target.value)} placeholder="請輸入品名" className={`w-full border ${theme === 'light' ? 'border-slate-300 bg-white text-slate-800' : 'border-slate-600 bg-slate-800 text-slate-100'} p-2 rounded text-[13px] outline-none focus:border-blue-500`} style={mingLiUStyle} />
+                </td>
+                <td className="px-3 py-2">
+                  <input type="number" min="0" value={item.price} onChange={(e) => handleItemChange(idx, 'price', e.target.value)} placeholder="單價" className={`w-full border ${theme === 'light' ? 'border-slate-300 bg-white text-slate-800' : 'border-slate-600 bg-slate-800 text-slate-100'} p-2 rounded text-[13px] outline-none focus:border-blue-500`} style={mingLiUStyle} />
+                </td>
+                <td className="px-3 py-2">
+                  <input type="number" min="0" value={item.qty} onChange={(e) => handleItemChange(idx, 'qty', e.target.value)} placeholder="數量" className={`w-full border ${theme === 'light' ? 'border-slate-300 bg-white text-slate-800' : 'border-slate-600 bg-slate-800 text-slate-100'} p-2 rounded text-[13px] outline-none focus:border-blue-500`} style={mingLiUStyle} />
+                </td>
+                <td className="px-4 py-2 text-right font-bold text-blue-600">
+                  {item.amount.toLocaleString()}
+                </td>
+                <td className="px-3 py-2 text-center">
+                  <button type="button" onClick={() => removeRow(idx)} disabled={items.length <= 1} className={`p-1.5 rounded-lg transition-colors ${items.length <= 1 ? 'opacity-30 cursor-not-allowed text-slate-400' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}>
+                    <Minus size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className={`${theme === 'light' ? 'bg-slate-50' : 'bg-slate-800'} border-t ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'}`}>
+            <tr>
+              <td colSpan="3" className="px-4 py-3 text-right font-black text-slate-500">總計：</td>
+              <td className="px-4 py-3 text-right font-black text-blue-600 text-lg">{totalAmount.toLocaleString()}</td>
+              <td className="px-3 py-3 text-center">
+                <button type="button" onClick={addRow} className="p-1.5 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-colors" title="新增一列">
+                  <Plus size={18} />
+                </button>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 // --- 規章備註區塊 ---
 const AnomalyNoticeBlock = ({ theme }) => (
   <div className={`${theme === 'light' ? 'bg-red-50/40 border-red-200 text-slate-700' : 'bg-red-900/20 border-red-900 text-red-200/70'} border rounded-xl md:rounded-2xl p-4 md:p-6 mt-4 shadow-inner transition-colors`} style={mingLiUStyle}>
@@ -1506,7 +1594,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
             
             return (
               <div key={field.id} className={`${responsiveWidth} px-2 animate-in fade-in slide-in-from-top-2 duration-300`}>
-                {field.type !== "button" && field.type !== "notice" && field.type !== "ot_notice" && field.type !== "anomaly_notice" && field.type !== "switch" && field.type !== "multi_select_staff" && field.type !== "ot_calc_display" && (
+                {field.type !== "button" && field.type !== "notice" && field.type !== "ot_notice" && field.type !== "anomaly_notice" && field.type !== "switch" && field.type !== "multi_select_staff" && field.type !== "ot_calc_display" && field.type !== "invoice_items_table" && (
                   <div className="flex items-center gap-2 mb-1.5 md:mb-2"><div className="w-1 h-1 md:w-1.5 md:h-1.5 bg-[#1677FF] rounded-full"></div><label className={`text-xs md:text-sm font-bold ${theme === 'light' ? 'text-slate-700 underline decoration-slate-200' : 'text-slate-300 underline decoration-slate-800'} underline-offset-4`} style={mingLiUStyle}>{field.label}：</label></div>
                 )}
                 {field.type === "select" && <select style={mingLiUStyle} value={formValues[field.id] || ""} onChange={(e) => onInputChange(field.id, e.target.value)} className={`w-full border ${theme === 'light' ? 'border-slate-400 bg-white text-slate-800' : 'border-slate-700 bg-slate-800 text-slate-100'} p-2 rounded text-sm outline-none focus:border-blue-500 shadow-sm transition-colors`}><option value="">-- 請選擇 --</option>{field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>}
@@ -1517,6 +1605,13 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                 {field.type === "duration" && <DurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} theme={theme} />}
                 {field.type === "leave_duration" && <LeaveDurationPicker id={field.id} value={formValues[field.id]} onChange={onInputChange} theme={theme} />}
                 
+                {field.type === "invoice_items_table" && (
+                  <div className="w-full mt-4">
+                    <div className="flex items-center gap-2 mb-2"><div className="w-1.5 h-1.5 bg-[#1677FF] rounded-full"></div><label className={`text-sm font-bold ${theme === 'light' ? 'text-slate-700 underline decoration-slate-200' : 'text-slate-300 underline decoration-slate-800'} underline-offset-4`} style={mingLiUStyle}>{field.label}：</label></div>
+                    <InvoiceItemsTable id={field.id} value={formValues[field.id]} onChange={onInputChange} theme={theme} />
+                  </div>
+                )}
+
                 {field.type === "switch" && (
                   <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700'} p-3 md:p-4 rounded-xl border shadow-sm mt-2 transition-colors`}>
                     <div>
@@ -1804,6 +1899,39 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                   displayVal = val ? '✅ 是 (公開)' : '❌ 否 (不公開)';
                 } else if (field.type === 'multi_select_staff') {
                   displayVal = (Array.isArray(val) && val.length > 0) ? val.map(id => staffList.find(s => s.staffId === id)?.name || id).join('、') : '(未指定)';
+                } else if (field.type === 'invoice_items_table') {
+                  const items = Array.isArray(val) ? val : [];
+                  const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                  displayVal = (
+                    <div className={`w-full mt-2 overflow-x-auto border rounded-xl ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'}`}>
+                      <table className="w-full min-w-[500px] text-sm text-left">
+                        <thead className={`${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700'} border-b`}>
+                          <tr>
+                            <th className="px-4 py-2 text-slate-500">品名(性質與說明)</th>
+                            <th className="px-4 py-2 w-24 text-slate-500">單價(未稅)</th>
+                            <th className="px-4 py-2 w-20 text-slate-500">數量</th>
+                            <th className="px-4 py-2 w-28 text-right text-slate-500">金額(未稅)</th>
+                          </tr>
+                        </thead>
+                        <tbody className={`divide-y ${theme === 'light' ? 'divide-slate-100' : 'divide-slate-800'}`}>
+                          {items.map((item, idx) => (
+                            <tr key={idx}>
+                              <td className="px-4 py-2">{item.name || '-'}</td>
+                              <td className="px-4 py-2">{item.price || '0'}</td>
+                              <td className="px-4 py-2">{item.qty || '0'}</td>
+                              <td className="px-4 py-2 text-right text-blue-600 font-bold">{item.amount?.toLocaleString() || '0'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className={`${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700'} border-t font-bold`}>
+                          <tr>
+                            <td colSpan="3" className="px-4 py-2 text-right text-slate-500">總計：</td>
+                            <td className="px-4 py-2 text-right text-blue-600 text-lg">{totalAmount.toLocaleString()}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  );
                 }
 
                 // RWD 調整預覽欄位寬度
@@ -1813,7 +1941,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                   <div key={field.id} className={`${responsiveWidth} px-2`}>
                     <div className={`${theme === 'light' ? 'bg-slate-50/50 border-slate-100' : 'bg-slate-800/30 border-slate-700'} p-2.5 md:p-3 rounded-xl border flex flex-col transition-colors`}>
                       <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase mb-0.5 tracking-widest" style={mingLiUStyle}>{field.label}</p>
-                      <p className={`text-[13px] md:text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} break-words`} style={mingLiUStyle}>{displayVal}</p>
+                      <div className={`text-[13px] md:text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} break-words w-full`} style={mingLiUStyle}>{displayVal}</div>
                     </div>
                   </div>
                 );
@@ -2087,7 +2215,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
              return (
               <div key={field.id} className={`${responsiveWidth} px-2`} style={mingLiUStyle}>
                 <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase mb-0.5 md:mb-1" style={mingLiUStyle}>{field.label}</p>
-                <div className="flex items-center gap-2 overflow-hidden">
+                <div className="flex items-center gap-2 overflow-hidden w-full">
                   {field.type === 'file' ? (
                     val?.base64 ? (
                       <div className="flex flex-col gap-1.5 md:gap-2 w-full"><p className={`text-xs md:text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} truncate`} style={mingLiUStyle}>📎 {val.name}</p>
@@ -2098,7 +2226,42 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                     <p className={`text-xs md:text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`} style={mingLiUStyle}>{val ? '✅ 是 (公開)' : '❌ 否 (不公開)'}</p>
                   ) : field.type === 'multi_select_staff' ? (
                     <p className={`text-xs md:text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`} style={mingLiUStyle}>{(Array.isArray(val) && val.length > 0) ? val.map(id => staffList.find(s => s.staffId === id)?.name || id).join('、') : '(未指定)'}</p>
-                  ) : (<p className={`text-xs md:text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} break-words w-full`} style={mingLiUStyle}>{val || '(未填寫)'}</p>)}
+                  ) : field.type === 'invoice_items_table' ? (
+                    (()=>{
+                      const items = Array.isArray(val) ? val : [];
+                      const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                      return (
+                        <div className={`w-full mt-2 overflow-x-auto border rounded-xl ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'}`}>
+                          <table className="w-full min-w-[500px] text-sm text-left">
+                            <thead className={`${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700'} border-b`}>
+                              <tr>
+                                <th className="px-4 py-2 text-slate-500">品名(性質與說明)</th>
+                                <th className="px-4 py-2 w-24 text-slate-500">單價(未稅)</th>
+                                <th className="px-4 py-2 w-20 text-slate-500">數量</th>
+                                <th className="px-4 py-2 w-28 text-right text-slate-500">金額(未稅)</th>
+                              </tr>
+                            </thead>
+                            <tbody className={`divide-y ${theme === 'light' ? 'divide-slate-100' : 'divide-slate-800'}`}>
+                              {items.map((item, idx) => (
+                                <tr key={idx}>
+                                  <td className="px-4 py-2">{item.name || '-'}</td>
+                                  <td className="px-4 py-2">{item.price || '0'}</td>
+                                  <td className="px-4 py-2">{item.qty || '0'}</td>
+                                  <td className="px-4 py-2 text-right text-blue-600 font-bold">{item.amount?.toLocaleString() || '0'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot className={`${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700'} border-t font-bold`}>
+                              <tr>
+                                <td colSpan="3" className="px-4 py-2 text-right text-slate-500">總計：</td>
+                                <td className="px-4 py-2 text-right text-blue-600 text-lg">{totalAmount.toLocaleString()}</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )
+                    })()
+                  ) : (<div className={`text-xs md:text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} break-words w-full`} style={mingLiUStyle}>{val || '(未填寫)'}</div>)}
                 </div>
               </div>
              );
@@ -2488,6 +2651,7 @@ const App = () => {
       { id: "invoice_address", label: "發票地址", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
       { id: "invoice_mailing_address", label: "發票寄達地址", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
       { id: "invoice_email", label: "E-mail address", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
+      { id: "invoice_items", label: "發票開立明細", type: "invoice_items_table", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-full" },
       { id: "anomaly_rules_notice", type: "anomaly_notice", dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
       { id: "leave_rules_notice", type: "notice", dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
