@@ -1266,6 +1266,8 @@ const InvoiceItemsTable = ({ id, value = [], onChange, theme }) => {
   };
 
   const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+  const taxAmount = Math.round(totalAmount * 0.05);
+  const grandTotal = totalAmount + taxAmount;
 
   return (
     <div className={`mt-2 border ${theme === 'light' ? 'border-slate-300 bg-white' : 'border-slate-700 bg-slate-900'} rounded-xl overflow-hidden shadow-sm`} style={mingLiUStyle}>
@@ -1305,8 +1307,18 @@ const InvoiceItemsTable = ({ id, value = [], onChange, theme }) => {
           </tbody>
           <tfoot className={`${theme === 'light' ? 'bg-slate-50' : 'bg-slate-800'} border-t ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'}`}>
             <tr>
-              <td colSpan="3" className="px-4 py-3 text-right font-black text-slate-500">總計：</td>
-              <td className="px-4 py-3 text-right font-black text-blue-600 text-lg">{totalAmount.toLocaleString()}</td>
+              <td colSpan="3" className="px-4 py-2 text-right font-black text-slate-500">銷售額合計：</td>
+              <td className="px-4 py-2 text-right font-black text-blue-600 text-lg">{totalAmount.toLocaleString()}</td>
+              <td className="px-3 py-2 text-center"></td>
+            </tr>
+            <tr>
+              <td colSpan="3" className="px-4 py-2 text-right font-black text-slate-500">稅金 (5%)：</td>
+              <td className="px-4 py-2 text-right font-black text-blue-600 text-lg">{taxAmount.toLocaleString()}</td>
+              <td className="px-3 py-2 text-center"></td>
+            </tr>
+            <tr>
+              <td colSpan="3" className="px-4 py-3 text-right font-black text-slate-500">總計 (含稅)：</td>
+              <td className="px-4 py-3 text-right font-black text-blue-600 text-xl">{grandTotal.toLocaleString()}</td>
               <td className="px-3 py-3 text-center">
                 <button type="button" onClick={addRow} className="p-1.5 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-colors" title="新增一列">
                   <Plus size={18} />
@@ -1902,6 +1914,8 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                 } else if (field.type === 'invoice_items_table') {
                   const items = Array.isArray(val) ? val : [];
                   const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                  const taxAmount = Math.round(totalAmount * 0.05);
+                  const grandTotal = totalAmount + taxAmount;
                   displayVal = (
                     <div className={`w-full mt-2 overflow-x-auto border rounded-xl ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'}`}>
                       <table className="w-full min-w-[500px] text-sm text-left">
@@ -1925,8 +1939,16 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                         </tbody>
                         <tfoot className={`${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700'} border-t font-bold`}>
                           <tr>
-                            <td colSpan="3" className="px-4 py-2 text-right text-slate-500">總計：</td>
+                            <td colSpan="3" className="px-4 py-2 text-right text-slate-500">銷售額合計：</td>
                             <td className="px-4 py-2 text-right text-blue-600 text-lg">{totalAmount.toLocaleString()}</td>
+                          </tr>
+                          <tr>
+                            <td colSpan="3" className="px-4 py-2 text-right text-slate-500">稅金 (5%)：</td>
+                            <td className="px-4 py-2 text-right text-blue-600 text-lg">{taxAmount.toLocaleString()}</td>
+                          </tr>
+                          <tr>
+                            <td colSpan="3" className="px-4 py-2 text-right text-slate-500">總計 (含稅)：</td>
+                            <td className="px-4 py-2 text-right text-blue-600 text-xl">{grandTotal.toLocaleString()}</td>
                           </tr>
                         </tfoot>
                       </table>
@@ -2230,6 +2252,8 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                     (()=>{
                       const items = Array.isArray(val) ? val : [];
                       const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                      const taxAmount = Math.round(totalAmount * 0.05);
+                      const grandTotal = totalAmount + taxAmount;
                       return (
                         <div className={`w-full mt-2 overflow-x-auto border rounded-xl ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'}`}>
                           <table className="w-full min-w-[500px] text-sm text-left">
@@ -2253,8 +2277,16 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                             </tbody>
                             <tfoot className={`${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700'} border-t font-bold`}>
                               <tr>
-                                <td colSpan="3" className="px-4 py-2 text-right text-slate-500">總計：</td>
+                                <td colSpan="3" className="px-4 py-2 text-right text-slate-500">銷售額合計：</td>
                                 <td className="px-4 py-2 text-right text-blue-600 text-lg">{totalAmount.toLocaleString()}</td>
+                              </tr>
+                              <tr>
+                                <td colSpan="3" className="px-4 py-2 text-right text-slate-500">稅金 (5%)：</td>
+                                <td className="px-4 py-2 text-right text-blue-600 text-lg">{taxAmount.toLocaleString()}</td>
+                              </tr>
+                              <tr>
+                                <td colSpan="3" className="px-4 py-2 text-right text-slate-500">總計 (含稅)：</td>
+                                <td className="px-4 py-2 text-right text-blue-600 text-xl">{grandTotal.toLocaleString()}</td>
                               </tr>
                             </tfoot>
                           </table>
@@ -3088,7 +3120,8 @@ const App = () => {
                 <div className={`lg:w-1/3 ${theme === 'light' ? 'bg-white border-slate-100' : 'bg-slate-900 border-slate-800'} rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-8 border shadow-sm flex flex-col justify-between transition-colors duration-500`}>
                   <div className="flex items-center justify-between mb-4 md:mb-6"><h4 className={`text-base md:text-lg font-black ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} flex items-center gap-2`} style={mingLiUStyle}><Clock size={18} className="md:w-5 md:h-5 text-blue-600" /> 休假剩餘時數</h4><span className="text-[10px] md:text-xs font-bold text-slate-400 tracking-widest uppercase" style={mingLiUStyle}>Balance</span></div>
                   <div className="space-y-4 md:space-y-6">
-                    <div className={`${theme === 'light' ? 'bg-blue-50/50 border-blue-100/50' : 'bg-blue-900/10 border-blue-900/30'} p-3 md:p-4 rounded-xl md:rounded-2xl border transition-colors`}><div className="flex justify-between items-end mb-1.5 md:mb-2"><span className={`text-[13px] md:text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`} style={mingLiUStyle}>特休 (Annual)</span><span className="text-lg md:text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-[10px] md:text-xs text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-1.5 md:h-2 bg-blue-100/30 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 240) * 100, 100)}%` }}></div></div></div>
+                    <div className={`${theme === 'light' ? 'bg-blue-50/50 border-blue-100/50' : 'bg-blue-900/10 border-blue-900/30'} p-3 md:p-4 rounded-xl md:rounded-2xl border transition-colors`}><div className="flex justify-between items-end mb-1.5 md:mb-2"><span className={`text-[13px] md:text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`} style={mingLiUStyle}>特休 (Annual)</span><span className="text-lg md:text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-[10px] md:text-
+xs text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-1.5 md:h-2 bg-blue-100/30 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 240) * 100, 100)}%` }}></div></div></div>
                     <div className={`${theme === 'light' ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-emerald-900/10 border-emerald-900/30'} p-3 md:p-4 rounded-xl md:rounded-2xl border transition-colors`}><div className="flex justify-between items-end mb-1.5 md:mb-2"><span className={`text-[13px] md:text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`} style={mingLiUStyle}>補休 (Comp.)</span><span className="text-lg md:text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-[10px] md:text-xs text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-1.5 md:h-2 bg-emerald-100/30 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.compLeave || 0) / 80) * 100, 100)}%` }}></div></div></div>
                     
                     <div className={`${theme === 'light' ? 'bg-purple-50/50 border-purple-100/50' : 'bg-purple-900/10 border-purple-900/30'} p-3 md:p-4 rounded-xl md:rounded-2xl border flex flex-col gap-3 transition-colors`}>
