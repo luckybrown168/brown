@@ -1232,6 +1232,97 @@ const LeaveDurationPicker = ({ id, value, onChange, theme }) => {
   );
 };
 
+// --- 新增: 可選擇引用歷史結案檔案的檔案上傳器 ---
+const FileWithReferencePicker = ({ id, value, onChange, completedForms, theme }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+
+  // 過濾出包含附檔的結案表單
+  const formsWithAttachments = (completedForms || []).filter(f =>
+    Object.values(f.values || {}).some(v => v && typeof v === 'object' && v.base64)
+  );
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert("檔案太大，請上傳小於 5MB 的檔案"); return; }
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      onChange(id, { name: file.name, type: file.type, base64: reader.result });
+      setIsUploading(false);
+    };
+    reader.onerror = () => { alert("檔案讀取失敗"); setIsUploading(false); };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSelectRef = (form) => {
+    const attachmentObj = Object.values(form.values).find(v => v && typeof v === 'object' && v.base64);
+    if (attachmentObj) {
+      onChange(id, { ...attachmentObj, name: `(引用單號:${form.id}) ${attachmentObj.name}` });
+    }
+    setShowModal(false);
+  };
+
+  return (
+    <div className="relative group w-full" style={mingLiUStyle}>
+      <input type="file" className="hidden" id={`file-ref-${id}`} onChange={handleFileChange} />
+      <div className={`flex flex-col sm:flex-row sm:items-center gap-3 w-full border-2 border-dashed ${value ? (theme === 'light' ? 'border-green-400 bg-green-50/30' : 'border-green-800 bg-green-900/10') : (theme === 'light' ? 'border-slate-300 bg-transparent' : 'border-slate-800 bg-transparent')} p-3 md:p-4 rounded-xl transition-all group`}>
+        <label htmlFor={`file-ref-${id}`} className="flex flex-1 items-center gap-3 cursor-pointer">
+          <div className={`w-10 h-10 ${value ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'} rounded-lg flex items-center justify-center transition-colors shrink-0`}>
+            {isUploading ? <RotateCcw size={20} className="animate-spin" /> : <Paperclip size={20} />}
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <p className={`text-[13px] md:text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-300'} truncate`}>
+              {isUploading ? "正在處理檔案..." : (value?.name || "點擊或拖曳檔案至此處上傳")}
+            </p>
+            <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-tight">支援 PDF, JPG, PNG (最大 5MB)</p>
+          </div>
+        </label>
+        <div className={`flex items-center gap-2 border-t sm:border-t-0 sm:border-l ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'} pt-3 sm:pt-0 sm:pl-3 mt-2 sm:mt-0 w-full sm:w-auto`}>
+          <button type="button" onClick={(e) => { e.preventDefault(); setShowModal(true); }} className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] md:text-xs font-black transition-colors shadow-sm ${theme === 'light' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' : 'bg-indigo-900/30 text-indigo-400 hover:bg-indigo-900/50'}`}>
+             <FileSearch size={14} /> 引用已結案附件
+          </button>
+          {value && !isUploading && (
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(id, null); }} className="flex items-center justify-center p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors shadow-sm shrink-0" title="移除附件">
+              <Trash size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowModal(false); }}></div>
+          <div className={`${theme === 'light' ? 'bg-white' : 'bg-slate-900'} w-full max-w-lg rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95`}>
+            <div className={`px-5 py-4 border-b flex justify-between items-center ${theme === 'light' ? 'border-slate-100 bg-slate-50' : 'border-slate-800 bg-slate-800/50'}`}>
+              <h3 className={`font-black flex items-center gap-2 text-sm ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'}`}><FileSearch size={16} className="text-indigo-600"/> 選擇要引用的結案附件</h3>
+              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+            </div>
+            <div className="p-4 max-h-[50vh] overflow-y-auto space-y-2 custom-scrollbar">
+              {formsWithAttachments.length > 0 ? formsWithAttachments.map(f => {
+                const attachmentObj = Object.values(f.values).find(v => v && typeof v === 'object' && v.base64);
+                return (
+                  <div key={f.id} onClick={() => handleSelectRef(f)} className={`p-3 border rounded-xl cursor-pointer transition-all hover:-translate-y-0.5 shadow-sm flex items-center justify-between group ${theme === 'light' ? 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 bg-white' : 'border-slate-700 hover:border-indigo-500 hover:bg-indigo-900/20 bg-slate-800/50'}`}>
+                    <div className="overflow-hidden pr-2">
+                       <p className={`text-xs font-black mb-1 truncate ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`}>{f.form_subject || f.values?.form_subject}</p>
+                       <p className="text-[10px] text-slate-500 font-bold truncate">單號: {f.id} | 檔案: {attachmentObj?.name}</p>
+                    </div>
+                    <CheckCircle size={18} className="text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </div>
+                )
+              }) : (
+                <div className="py-8 text-center text-slate-400 text-xs font-bold">目前沒有包含附件的已結案單據。</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 // --- 發票明細動態表格組件 ---
 const InvoiceItemsTable = ({ id, value, onChange, theme }) => {
   const data = (value && !Array.isArray(value)) ? value : { 
@@ -1587,7 +1678,7 @@ const PersonnelManagementView = ({ isMockMode, theme }) => {
 };
 
 // --- 組件：智慧渲染引擎 ---
-const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProcessing, staffList, theme }) => {
+const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProcessing, staffList, completedForms = [], theme }) => {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = async (fieldId, e) => {
@@ -1736,6 +1827,16 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                       )}
                     </div>
                   </div>
+                )}
+                
+                {field.type === "file_with_reference" && (
+                  <FileWithReferencePicker 
+                    id={field.id} 
+                    value={formValues[field.id]} 
+                    onChange={onInputChange} 
+                    completedForms={completedForms} 
+                    theme={theme} 
+                  />
                 )}
 
                 {field.type === "notice" && <LeaveNoticeBlock theme={theme} />}
@@ -1934,7 +2035,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                 const val = values[field.id];
                 
                 let displayVal = val || '(未填寫)';
-                if (field.type === 'file') {
+                if (field.type === 'file' || field.type === 'file_with_reference') {
                   displayVal = val?.name ? `📎 ${val.name}` : '(未上傳)';
                 } else if (field.type === 'switch') {
                   displayVal = val ? '✅ 是 (公開)' : '❌ 否 (不公開)';
@@ -2279,7 +2380,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
               <div key={field.id} className={`${responsiveWidth} px-2`} style={mingLiUStyle}>
                 <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase mb-0.5 md:mb-1" style={mingLiUStyle}>{field.label}</p>
                 <div className="flex items-center gap-2 overflow-hidden w-full">
-                  {field.type === 'file' ? (
+                  {(field.type === 'file' || field.type === 'file_with_reference') ? (
                     val?.base64 ? (
                       <div className="flex flex-col gap-1.5 md:gap-2 w-full"><p className={`text-xs md:text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} truncate`} style={mingLiUStyle}>📎 {val.name}</p>
                         <button type="button" onClick={() => handleViewFile(val)} className="print:hidden w-fit flex items-center gap-1.5 px-2.5 md:px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] md:text-xs font-black hover:bg-blue-100 transition-colors" style={mingLiUStyle}><DownloadCloud size={14} /> <span className="whitespace-nowrap">點擊下載/檢視附件</span></button>
@@ -2737,6 +2838,8 @@ const App = () => {
       { id: "invoice_mailing_address", label: "發票寄達地址", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
       { id: "invoice_email", label: "E-mail address", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-1/2" },
       { id: "invoice_items", label: "發票開立明細", type: "invoice_items_table", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-full" },
+      { id: "invoice_attachment", label: "發票相關附件(可引用)", type: "file_with_reference", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-full" },
+      { id: "invoice_comment", label: "意見", type: "text", dependsOn: "form_kind", showIf: "開立發票申請單", width: "w-full" },
       { id: "anomaly_rules_notice", type: "anomaly_notice", dependsOn: "form_kind", showIf: "出勤異常單", width: "w-full" },
       { id: "leave_rules_notice", type: "notice", dependsOn: "form_kind", showIf: ["請假單", "銷假單"], width: "w-full" },
       { id: "ot_rules_notice", type: "ot_notice", dependsOn: "form_kind", showIf: "加班單", width: "w-full" },
@@ -3321,13 +3424,13 @@ const App = () => {
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className={`w-full max-w-4xl ${theme === 'light' ? 'bg-[#F8FAFC] border-gray-200 shadow-inner' : 'bg-slate-900 border-slate-800 shadow-2xl'} rounded-[3rem] border p-12 overflow-y-auto relative transition-colors duration-500`}>
             {isSubmitted ? <SubmissionSummary schema={myFormSchema} values={formValues} status="Pending" onReset={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} currentDocId={currentDocId} currentUser={currentUser} applicantId={currentUser.staffId} onBack={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setActiveTab('dashboard'); }} isProcessing={isProcessing} staffList={staffList} submitDate={currentDocId ? submittedForms.find(f=>f.id===currentDocId)?.submitDate || new Date().toISOString() : new Date().toISOString()} theme={theme} /> : 
               isPreviewing ? <SubmissionPreview schema={myFormSchema} values={formValues} onEdit={() => setIsPreviewing(false)} onSubmit={handleFinalSubmit} onSaveDraft={handleSaveDraft} staffList={staffList} isProcessing={isProcessing} workflowRules={workflowRules} currentUser={currentUser} theme={theme} /> : 
-              <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} staffList={staffList} theme={theme} />}
+              <SmartFormEngine schema={myFormSchema} formValues={formValues} onInputChange={handleInputChange} onPreview={() => setIsPreviewing(true)} isProcessing={isProcessing} staffList={staffList} completedForms={myCompletedList} theme={theme} />}
           </div></div>
         );
       case 'inbox_list': return <ListView title="收件匣" icon={Inbox} color="bg-blue-600" data={inboxList} onItemClick={setViewingForm} theme={theme} />;
       case 'pending_list': return <ListView title="流程中案件" icon={Activity} color="bg-amber-600" data={myPendingList} onItemClick={setViewingForm} theme={theme} />;
       case 'completed_list': return <ListView title="已結案案件" icon={FileCheck} color="bg-green-600" data={myCompletedList} onItemClick={setViewingForm} onDelete={handleDeleteForm} theme={theme} />;
-      case 'rejected': return <ListView title="退回/抽單" icon={FileX} color="bg-red-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected')} onItemClick={setViewingForm} onDelete={handleDeleteForm} theme={theme} />;
+      case 'rejected': return <ListView title="退件/抽單" icon={FileX} color="bg-red-600" data={submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Rejected')} onItemClick={setViewingForm} onDelete={handleDeleteForm} theme={theme} />;
       case 'draft_list': return <ListView title="草稿匣" icon={FileSearch} color="bg-indigo-600" data={draftList} onItemClick={handleEditDraft} onDelete={handleDeleteForm} theme={theme} />;
       case 'trash_list': return <ListView title="垃圾桶" icon={Trash} color="bg-slate-600" data={trashList} onItemClick={setViewingForm} onDelete={handleDeleteForm} theme={theme} />;
       default: return null;
