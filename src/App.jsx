@@ -1234,27 +1234,12 @@ const LeaveDurationPicker = ({ id, value, onChange, theme }) => {
 
 // --- 新增: 可選擇引用歷史結案檔案的檔案上傳器 ---
 const FileWithReferencePicker = ({ id, value, onChange, completedForms, theme }) => {
-  const [isUploading, setIsUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   // 過濾出包含附檔的結案表單
   const formsWithAttachments = (completedForms || []).filter(f =>
     Object.values(f.values || {}).some(v => v && typeof v === 'object' && v.base64)
   );
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("檔案太大，請上傳小於 5MB 的檔案"); return; }
-    setIsUploading(true);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      onChange(id, { name: file.name, type: file.type, base64: reader.result });
-      setIsUploading(false);
-    };
-    reader.onerror = () => { alert("檔案讀取失敗"); setIsUploading(false); };
-    reader.readAsDataURL(file);
-  };
 
   const handleSelectRef = (form) => {
     const attachmentObj = Object.values(form.values).find(v => v && typeof v === 'object' && v.base64);
@@ -1266,24 +1251,27 @@ const FileWithReferencePicker = ({ id, value, onChange, completedForms, theme })
 
   return (
     <div className="relative group w-full" style={mingLiUStyle}>
-      <input type="file" className="hidden" id={`file-ref-${id}`} onChange={handleFileChange} />
       <div className={`flex flex-col sm:flex-row sm:items-center gap-3 w-full border-2 border-dashed ${value ? (theme === 'light' ? 'border-green-400 bg-green-50/30' : 'border-green-800 bg-green-900/10') : (theme === 'light' ? 'border-slate-300 bg-transparent' : 'border-slate-800 bg-transparent')} p-3 md:p-4 rounded-xl transition-all group`}>
-        <label htmlFor={`file-ref-${id}`} className="flex flex-1 items-center gap-3 cursor-pointer">
+        <div className="flex flex-1 items-center gap-3">
           <div className={`w-10 h-10 ${value ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'} rounded-lg flex items-center justify-center transition-colors shrink-0`}>
-            {isUploading ? <RotateCcw size={20} className="animate-spin" /> : <Paperclip size={20} />}
+            <Paperclip size={20} />
           </div>
           <div className="flex-1 overflow-hidden">
             <p className={`text-[13px] md:text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-300'} truncate`}>
-              {isUploading ? "正在處理檔案..." : (value?.name || "點擊或拖曳檔案至此處上傳")}
+              {value?.name || "尚未選擇引用的附件"}
             </p>
-            <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-tight">支援 PDF, JPG, PNG (最大 5MB)</p>
+            {!value && (
+              <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-tight mt-0.5">
+                請點選右方按鈕選擇
+              </p>
+            )}
           </div>
-        </label>
+        </div>
         <div className={`flex items-center gap-2 border-t sm:border-t-0 sm:border-l ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'} pt-3 sm:pt-0 sm:pl-3 mt-2 sm:mt-0 w-full sm:w-auto`}>
           <button type="button" onClick={(e) => { e.preventDefault(); setShowModal(true); }} className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] md:text-xs font-black transition-colors shadow-sm ${theme === 'light' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' : 'bg-indigo-900/30 text-indigo-400 hover:bg-indigo-900/50'}`}>
              <FileSearch size={14} /> 引用已結案附件
           </button>
-          {value && !isUploading && (
+          {value && (
             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(id, null); }} className="flex items-center justify-center p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors shadow-sm shrink-0" title="移除附件">
               <Trash size={16} />
             </button>
@@ -2036,7 +2024,7 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
                 
                 let displayVal = val || '(未填寫)';
                 if (field.type === 'file' || field.type === 'file_with_reference') {
-                  displayVal = val?.name ? `📎 ${val.name}` : '(未上傳)';
+                  displayVal = val?.name ? `📎 ${val.name}` : '(未選擇)';
                 } else if (field.type === 'switch') {
                   displayVal = val ? '✅ 是 (公開)' : '❌ 否 (不公開)';
                 } else if (field.type === 'multi_select_staff') {
