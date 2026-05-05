@@ -3219,7 +3219,7 @@ const App = () => {
                   <div className="absolute right-[-20px] top-[-20px] md:right-[-30px] md:top-[-30px] opacity-10 rotate-12"><Layers size={180} className="md:w-[240px] md:h-[240px]"/></div>
                   <div className="relative z-10">
                     <h2 className="text-2xl md:text-3xl font-black mb-2 md:mb-3 flex flex-col sm:flex-row sm:items-center gap-2" style={mingLiUStyle}>
-                      <span>早安，{currentUser.name} <span className="text-lg md:text-2xl">{currentUser.pos}</span></span>
+                      <span>您好，{currentUser.name} <span className="text-lg md:text-2xl">{currentUser.pos}</span></span>
                       {isUserAdmin && <span className="w-fit px-2 py-1 bg-white/20 text-sm rounded border border-white/30 backdrop-blur-md mt-1 sm:mt-0">系統管理員</span>}
                     </h2>
                     <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p>
