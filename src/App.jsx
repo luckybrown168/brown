@@ -1233,20 +1233,45 @@ const LeaveDurationPicker = ({ id, value, onChange, theme }) => {
 };
 
 // --- 新增: 可選擇引用歷史結案檔案的檔案上傳器 ---
-const FileWithReferencePicker = ({ id, value, onChange, completedForms, theme }) => {
+const FileWithReferencePicker = ({ id, value, onChange, completedForms, theme, schema }) => {
   const [showModal, setShowModal] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
 
-  // 過濾出包含附檔的結案表單
-  const formsWithAttachments = (completedForms || []).filter(f =>
-    Object.values(f.values || {}).some(v => v && typeof v === 'object' && v.base64)
-  );
+  // 顯示所有已結案的表單
+  const displayForms = completedForms || [];
 
   const handleSelectRef = (form) => {
     const attachmentObj = Object.values(form.values).find(v => v && typeof v === 'object' && v.base64);
     if (attachmentObj) {
       onChange(id, { ...attachmentObj, name: `(引用單號:${form.id}) ${attachmentObj.name}` });
+    } else {
+      onChange(id, { name: `(引用單號:${form.id}) 無實體附件`, type: 'reference', base64: null, refId: form.id });
     }
     setShowModal(false);
+    setExpandedId(null);
+  };
+
+  const handleViewFile = (fileObj) => {
+    if (!fileObj || !fileObj.base64) return;
+    const link = document.createElement('a');
+    link.href = fileObj.base64;
+    link.download = fileObj.name || "attachment";
+    if (fileObj.type?.match(/image|pdf/i)) {
+      const newTab = window.open();
+      if (newTab) {
+        newTab.document.write(`<iframe src="${fileObj.base64}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+        return;
+      }
+    }
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getFieldLabel = (key) => {
+    if (!schema) return key;
+    const field = schema.fields.find(f => f.id === key);
+    return field ? field.label : key;
   };
 
   return (
@@ -1268,7 +1293,7 @@ const FileWithReferencePicker = ({ id, value, onChange, completedForms, theme })
           </div>
         </div>
         <div className={`flex items-center gap-2 border-t sm:border-t-0 sm:border-l ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'} pt-3 sm:pt-0 sm:pl-3 mt-2 sm:mt-0 w-full sm:w-auto`}>
-          <button type="button" onClick={(e) => { e.preventDefault(); setShowModal(true); }} className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] md:text-xs font-black transition-colors shadow-sm ${theme === 'light' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' : 'bg-indigo-900/30 text-indigo-400 hover:bg-indigo-900/50'}`}>
+          <button type="button" onClick={(e) => { e.preventDefault(); setShowModal(true); setExpandedId(null); }} className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] md:text-xs font-black transition-colors shadow-sm ${theme === 'light' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' : 'bg-indigo-900/30 text-indigo-400 hover:bg-indigo-900/50'}`}>
              <FileSearch size={14} /> 引用已結案附件
           </button>
           {value && (
@@ -1284,23 +1309,62 @@ const FileWithReferencePicker = ({ id, value, onChange, completedForms, theme })
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowModal(false); }}></div>
           <div className={`${theme === 'light' ? 'bg-white' : 'bg-slate-900'} w-full max-w-lg rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95`}>
             <div className={`px-5 py-4 border-b flex justify-between items-center ${theme === 'light' ? 'border-slate-100 bg-slate-50' : 'border-slate-800 bg-slate-800/50'}`}>
-              <h3 className={`font-black flex items-center gap-2 text-sm ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'}`}><FileSearch size={16} className="text-indigo-600"/> 選擇要引用的結案附件</h3>
+              <h3 className={`font-black flex items-center gap-2 text-sm ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'}`}><FileSearch size={16} className="text-indigo-600"/> 選擇要引用的結案表單</h3>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
             </div>
-            <div className="p-4 max-h-[50vh] overflow-y-auto space-y-2 custom-scrollbar">
-              {formsWithAttachments.length > 0 ? formsWithAttachments.map(f => {
+            <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2 custom-scrollbar">
+              {displayForms.length > 0 ? displayForms.map(f => {
                 const attachmentObj = Object.values(f.values).find(v => v && typeof v === 'object' && v.base64);
+                const isExpanded = expandedId === f.id;
+                
                 return (
-                  <div key={f.id} onClick={() => handleSelectRef(f)} className={`p-3 border rounded-xl cursor-pointer transition-all hover:-translate-y-0.5 shadow-sm flex items-center justify-between group ${theme === 'light' ? 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 bg-white' : 'border-slate-700 hover:border-indigo-500 hover:bg-indigo-900/20 bg-slate-800/50'}`}>
-                    <div className="overflow-hidden pr-2">
-                       <p className={`text-xs font-black mb-1 truncate ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`}>{f.form_subject || f.values?.form_subject}</p>
-                       <p className="text-[10px] text-slate-500 font-bold truncate">單號: {f.id} | 檔案: {attachmentObj?.name}</p>
+                  <div key={f.id} className={`p-3 border rounded-xl transition-all shadow-sm group ${theme === 'light' ? 'border-slate-200 bg-white' : 'border-slate-700 bg-slate-800/50'} ${isExpanded ? 'ring-2 ring-indigo-300' : 'hover:-translate-y-0.5 hover:border-indigo-300'}`}>
+                    <div className="flex items-center justify-between cursor-pointer" onClick={() => handleSelectRef(f)}>
+                      <div className="overflow-hidden pr-2">
+                         <p className={`text-xs font-black mb-1 truncate ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`}>{f.form_subject || f.values?.form_subject}</p>
+                         <p className="text-[10px] text-slate-500 font-bold truncate">單號: {f.id} | 檔案: {attachmentObj?.name || '無附件'}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          type="button" 
+                          onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : f.id); }}
+                          className={`p-1.5 rounded-lg transition-colors ${isExpanded ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:bg-slate-100 hover:text-indigo-500'}`}
+                          title="查看表單內容"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <CheckCircle size={18} className="text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </div>
                     </div>
-                    <CheckCircle size={18} className="text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    {isExpanded && (
+                      <div className={`mt-3 p-3 rounded-lg border text-[11px] md:text-xs cursor-default space-y-2 ${theme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-slate-900 border-slate-700 text-slate-300'}`} onClick={(e) => e.stopPropagation()}>
+                        <div className={`font-black pb-1 mb-2 border-b ${theme === 'light' ? 'text-slate-800 border-slate-200' : 'text-slate-100 border-slate-700'}`}>表單詳細內容</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {Object.entries(f.values || {}).map(([key, val]) => {
+                            if (!val || key === 'workflowPath' || key === 'currentStep' || typeof val === 'object') return null;
+                            return (
+                              <div key={key} className="flex flex-col">
+                                <span className={theme === 'light' ? 'text-slate-400' : 'text-slate-500'}>{getFieldLabel(key)}:</span>
+                                <span className="font-bold truncate" title={String(val)}>{String(val)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className={`pt-2 mt-2 border-t flex justify-end ${theme === 'light' ? 'border-slate-200' : 'border-slate-700'}`}>
+                           {attachmentObj ? (
+                             <button type="button" onClick={() => handleViewFile(attachmentObj)} className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-bold hover:underline">
+                               <Eye size={14} /> 預覽此附件
+                             </button>
+                           ) : (
+                             <span className="text-slate-400 italic text-[10px] md:text-xs">此單據無附件</span>
+                           )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               }) : (
-                <div className="py-8 text-center text-slate-400 text-xs font-bold">目前沒有包含附件的已結案單據。</div>
+                <div className="py-8 text-center text-slate-400 text-xs font-bold">目前沒有已結案的單據。</div>
               )}
             </div>
           </div>
@@ -1824,6 +1888,7 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                     onChange={onInputChange} 
                     completedForms={completedForms} 
                     theme={theme} 
+                    schema={schema}
                   />
                 )}
 
@@ -2482,7 +2547,7 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                          {canEditThisStep && (
                            <div className={`flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity self-end sm:self-auto sm:ml-2 ${theme === 'light' ? 'bg-white border-slate-100' : 'bg-slate-800 border-slate-700'} p-1 rounded-lg shadow-sm border transition-colors mt-2 sm:mt-0`}>
                              <button type="button" onClick={() => handleMoveStep(i, -1)} disabled={i === currentStepIndex + 1} className="p-1 md:p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronUp size={14} className="md:w-4 md:h-4"/></button>
-                             <button type="button" onClick={() => handleMoveStep(i, 1)} disabled={i === editableWorkflow.length - 1} className="p-1 md:p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronDown size={14} className="md:w-4 md:h-4"/></button>
+                             <button type="button" onClick={() => handleMoveStep(i, 1)} disabled={i === editableWorkflow.length - 1} className="p-1 md:p-1.5 text-slate-400 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronDown size={14} className="md:w-4 md:h-4"/></button>
                              <div className={`w-px h-3 md:h-4 ${theme === 'light' ? 'bg-slate-200' : 'bg-slate-700'} mx-1`}></div>
                              <button type="button" onClick={() => handleRemoveStep(i)} className="p-1 md:p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded transition-all"><X size={14} className="md:w-4 md:h-4"/></button>
                            </div>
@@ -2858,12 +2923,9 @@ const App = () => {
   const handleInputChange = (id, value) => {
     setFormValues(prev => {
       const nextValues = { ...prev, [id]: value };
-      
-      // 當大分類切換時，自動清空原先選擇的子分類，避免狀態殘留
       if (id === 'category' && prev.category !== value) {
         delete nextValues.form_kind;
       }
-
       const cleanupChildren = (parentId) => {
         myFormSchema.fields.forEach(field => {
           if (field.dependsOn === parentId) {
@@ -2879,21 +2941,14 @@ const App = () => {
 
   const generateSequentialId = (currentForms) => {
     const now = new Date();
-    const dateStr = now.getFullYear().toString() + 
-                    (now.getMonth() + 1).toString().padStart(2, '0') + 
-                    now.getDate().toString().padStart(2, '0');
+    const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
     const prefix = `F${dateStr}-${currentUser.staffId}-`;
-    const todaySerials = currentForms
-      .filter(f => f.id && f.id.startsWith(prefix))
-      .map(f => {
+    const todaySerials = currentForms.filter(f => f.id && f.id.startsWith(prefix)).map(f => {
         const parts = f.id.split('-');
-        const serialStr = parts[parts.length - 1];
-        const serial = parseInt(serialStr, 10);
+        const serial = parseInt(parts[parts.length - 1], 10);
         return isNaN(serial) ? 0 : serial;
       });
-    const maxSerial = todaySerials.length > 0 ? Math.max(...todaySerials) : 0;
-    const nextSerial = (maxSerial + 1).toString().padStart(3, '0');
-    return `${prefix}${nextSerial}`;
+    return `${prefix}${(todaySerials.length > 0 ? Math.max(...todaySerials) + 1 : 1).toString().padStart(3, '0')}`;
   };
 
   const handleFinalSubmit = async (approvalFlow) => {
@@ -2907,50 +2962,23 @@ const App = () => {
         docId = generateSequentialId(list);
         isNew = true;
       }
-      const submissionData = { 
-        id: docId, 
-        staffId: currentUser.staffId, 
-        form_subject: formValues.form_subject || '未命名表單', 
-        values: { ...formValues, ...approvalFlow, currentStep: 0 }, 
-        status: 'Pending' 
-      };
+      const submissionData = { id: docId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單', values: { ...formValues, ...approvalFlow, currentStep: 0 }, status: 'Pending' };
       if (isMockMode) {
-        if (isNew) {
-          setSubmittedForms([...submittedForms, { ...submissionData, submitDate: new Date().toISOString() }]);
-        } else {
-          setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...submissionData } : f));
-        }
+        if (isNew) { setSubmittedForms([...submittedForms, { ...submissionData, submitDate: new Date().toISOString() }]); }
+        else { setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...submissionData } : f)); }
       } 
       else {
         if (isNew) {
-          const response = await apiFetch(`${API_URL_ROOT}/api/forms`, { 
-            method: 'POST', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify(submissionData) 
-          });
-          if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(`提交失敗: ${errData.details || response.statusText}`);
-          }
+          const response = await apiFetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(submissionData) });
+          if (!response.ok) throw new Error("提交失敗");
         } else {
-          const response = await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-            method: 'PUT', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify({
-              status: submissionData.status,
-              values: submissionData.values
-            }) 
-          });
+          const response = await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify({ status: submissionData.status, values: submissionData.values }) });
           if (!response.ok) throw new Error("伺服器更新失敗");
         }
         await fetchMyForms(currentUser.staffId);
       }
       setCurrentDocId(docId); setIsPreviewing(false); setIsSubmitted(true);
-    } catch (err) { 
-      alert(err.message); 
-    } finally {
-      setIsProcessing(false);
-    }
+    } catch (err) { alert(err.message); } finally { setIsProcessing(false); }
   };
 
   const handleSaveDraft = async (approvalFlow) => {
@@ -2964,44 +2992,18 @@ const App = () => {
         docId = generateSequentialId(list);
         isNew = true;
       }
-      const draftData = { 
-        id: docId, 
-        staffId: currentUser.staffId, 
-        form_subject: formValues.form_subject || '未命名表單(草稿)', 
-        values: { ...formValues, ...approvalFlow, currentStep: 0 }, 
-        status: 'Draft' 
-      };
+      const draftData = { id: docId, staffId: currentUser.staffId, form_subject: formValues.form_subject || '未命名表單(草稿)', values: { ...formValues, ...approvalFlow, currentStep: 0 }, status: 'Draft' };
       if (isMockMode) {
-        if (isNew) {
-          setSubmittedForms([...submittedForms, { ...draftData, submitDate: new Date().toISOString() }]);
-        } else {
-          setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...draftData } : f));
-        }
+        if (isNew) { setSubmittedForms([...submittedForms, { ...draftData, submitDate: new Date().toISOString() }]); }
+        else { setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, ...draftData } : f)); }
       } else {
-        if (isNew) {
-          await apiFetch(`${API_URL_ROOT}/api/forms`, { 
-            method: 'POST', 
-            headers: getRequestHeaders(), 
-            body: JSON.stringify(draftData) 
-          });
-        }
-        await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-          method: 'PUT', 
-          headers: getRequestHeaders(), 
-          body: JSON.stringify({ status: 'Draft', values: draftData.values }) 
-        });
+        if (isNew) { await apiFetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(draftData) }); }
+        await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify({ status: 'Draft', values: draftData.values }) });
         await fetchMyForms(currentUser.staffId);
       }
       alert('已成功儲存至草稿匣！');
-      setFormValues({});
-      setCurrentDocId('');
-      setIsPreviewing(false);
-      setActiveTab('draft_list');
-    } catch (err) { 
-      alert(err.message); 
-    } finally {
-      setIsProcessing(false);
-    }
+      setFormValues({}); setCurrentDocId(''); setIsPreviewing(false); setActiveTab('draft_list');
+    } catch (err) { alert(err.message); } finally { setIsProcessing(false); }
   };
 
   const handleProcessForm = async (docId, action, comment, optionalNewWorkflow = null, targetRejectId = null) => {
@@ -3054,9 +3056,7 @@ const App = () => {
       } 
       else {
         const response = await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
-          method: 'PUT', 
-          headers: getRequestHeaders(), 
-          body: JSON.stringify({ status: newStatus, values: updatedValues }) 
+          method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify({ status: newStatus, values: updatedValues }) 
         });
         if (!response.ok) throw new Error("伺服器更新失敗");
         await fetchMyForms(currentUser.staffId);
@@ -3082,21 +3082,16 @@ const App = () => {
                   const isDeducting = formKind === '請假單'; 
                   if (leaveType === '特休') {
                     const currentAnnual = parseFloat(updatedApplicant.annualLeave) || 0;
-                    updatedApplicant.annualLeave = isDeducting 
-                      ? Math.max(0, parseFloat((currentAnnual - totalProcessHours).toFixed(1)))
-                      : parseFloat((currentAnnual + totalProcessHours).toFixed(1));
+                    updatedApplicant.annualLeave = isDeducting ? Math.max(0, parseFloat((currentAnnual - totalProcessHours).toFixed(1))) : parseFloat((currentAnnual + totalProcessHours).toFixed(1));
                   } else if (leaveType === '補休') {
                     const currentComp = parseFloat(updatedApplicant.compLeave) || 0;
-                    updatedApplicant.compLeave = isDeducting
-                      ? Math.max(0, parseFloat((currentComp - totalProcessHours).toFixed(1)))
-                      : parseFloat((currentComp + totalProcessHours).toFixed(1));
+                    updatedApplicant.compLeave = isDeducting ? Math.max(0, parseFloat((currentComp - totalProcessHours).toFixed(1))) : parseFloat((currentComp + totalProcessHours).toFixed(1));
                   }
                   hasBalanceChange = true;
                 }
               }
             }
-          } 
-          else if (formKind === '加班單' && updatedValues.ot_compensation === '換補休') {
+          } else if (formKind === '加班單' && updatedValues.ot_compensation === '換補休') {
             const totalOTHoursToAdd = calculateCompensatoryLeave(updatedValues.ot_duration);
             if (totalOTHoursToAdd > 0) {
               const currentComp = parseFloat(updatedApplicant.compLeave) || 0;
@@ -3110,11 +3105,7 @@ const App = () => {
               setStaffList(prev => prev.map(s => s.staffId === updatedApplicant.staffId ? updatedApplicant : s));
               if (currentUser.staffId === updatedApplicant.staffId) setCurrentUser(updatedApplicant);
             } else {
-              await apiFetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, {
-                method: 'PUT',
-                headers: getRequestHeaders(),
-                body: JSON.stringify(updatedApplicant)
-              });
+              await apiFetch(`${API_URL_ROOT}/api/personnel/${updatedApplicant.staffId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(updatedApplicant) });
               await fetchPersonnel();
               if (currentUser.staffId === updatedApplicant.staffId) {
                 setCurrentUser(prev => ({...prev, annualLeave: updatedApplicant.annualLeave, compLeave: updatedApplicant.compLeave}));
@@ -3123,56 +3114,36 @@ const App = () => {
           }
         }
       }
-
       alert(action === 'withdraw' ? '表單已成功抽回！' : action === 'approve' ? '已核准表單！' : action === 'reject_to_step' ? '已退回至指定人員重審！' : '已退回申請！');
       setViewingForm(null);
-    } catch (err) { 
-      alert(`操作失敗：${err.message}`); 
-    } finally {
-      setIsProcessing(false);
-    }
+    } catch (err) { alert(`操作失敗：${err.message}`); } finally { setIsProcessing(false); }
   };
 
   const handleDeleteForm = async (formItem) => {
     const isAlreadyInTrash = formItem.status === 'Deleted';
-    const confirmMsg = isAlreadyInTrash 
-      ? `確定要永久刪除單據 [${formItem.id}] 嗎？此操作不可還原。` 
-      : `確定要將單據 [${formItem.id}] 移至垃圾桶嗎？`;
+    const confirmMsg = isAlreadyInTrash ? `確定要永久刪除單據 [${formItem.id}] 嗎？此操作不可還原。` : `確定要將單據 [${formItem.id}] 移至垃圾桶嗎？`;
     if (!window.confirm(confirmMsg)) return;
     setIsProcessing(true);
     try {
       if (isAlreadyInTrash) {
-        if (isMockMode) {
-          setSubmittedForms(prev => prev.filter(f => f.id !== formItem.id));
-        } else {
-          const response = await apiFetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
-            method: 'DELETE',
-            headers: getRequestHeaders()
-          });
+        if (isMockMode) { setSubmittedForms(prev => prev.filter(f => f.id !== formItem.id)); } 
+        else {
+          const response = await apiFetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, { method: 'DELETE', headers: getRequestHeaders() });
           if (!response.ok) throw new Error("資料庫刪除失敗");
           await fetchMyForms(currentUser.staffId);
         }
         alert('單據已永久刪除');
       } else {
         const updatedItem = { ...formItem, status: 'Deleted' };
-        if (isMockMode) {
-          setSubmittedForms(prev => prev.map(f => f.id === formItem.id ? updatedItem : f));
-        } else {
-          const response = await apiFetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, {
-            method: 'PUT',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({ status: 'Deleted', values: formItem.values })
-          });
+        if (isMockMode) { setSubmittedForms(prev => prev.map(f => f.id === formItem.id ? updatedItem : f)); } 
+        else {
+          const response = await apiFetch(`${API_URL_ROOT}/api/forms/${formItem.id}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify({ status: 'Deleted', values: formItem.values }) });
           if (!response.ok) throw new Error("移至垃圾桶失敗");
           await fetchMyForms(currentUser.staffId);
         }
         alert('單據已移至垃圾桶');
       }
-    } catch (err) { 
-      alert(`操作失敗：${err.message}`); 
-    } finally {
-      setIsProcessing(false);
-    }
+    } catch (err) { alert(`操作失敗：${err.message}`); } finally { setIsProcessing(false); }
   };
 
   const handleEditDraft = (draft) => {
@@ -3187,33 +3158,16 @@ const App = () => {
   const handleCloneToDraft = (docId) => {
     const formToClone = submittedForms.find(f => f.id === docId);
     if (!formToClone) return;
-
     if (!window.confirm("確定要將此單據內容複製為一份新草稿並重新編輯嗎？\n(系統將為您帶入原內容，並產生全新的文件單號)")) return;
-
     const clonedValues = { ...formToClone.values };
-    delete clonedValues.workflowPath; 
-    delete clonedValues.currentStep;  
-
-    setFormValues(clonedValues);
-    setCurrentDocId(''); 
-    setIsSubmitted(false);
-    setIsPreviewing(false);
-    setViewingForm(null);
-    setActiveTab('inbox');
+    delete clonedValues.workflowPath; delete clonedValues.currentStep;  
+    setFormValues(clonedValues); setCurrentDocId(''); setIsSubmitted(false); setIsPreviewing(false); setViewingForm(null); setActiveTab('inbox');
   };
 
   if (!currentUser) return <LoginView onLoginSuccess={handleLoginSuccess} isMockMode={isMockMode} theme={theme} />;
 
-  const myPendingList = submittedForms.filter(f => 
-    (f.staffId === currentUser?.staffId || (f.values?.shared_with || []).includes(currentUser?.staffId)) && 
-    f.status === 'Pending'
-  );
-  
-  const myCompletedList = submittedForms.filter(f => 
-    (f.staffId === currentUser?.staffId || (f.values?.shared_with || []).includes(currentUser?.staffId)) && 
-    f.status === 'Completed'
-  );
-
+  const myPendingList = submittedForms.filter(f => (f.staffId === currentUser?.staffId || (f.values?.shared_with || []).includes(currentUser?.staffId)) && f.status === 'Pending');
+  const myCompletedList = submittedForms.filter(f => (f.staffId === currentUser?.staffId || (f.values?.shared_with || []).includes(currentUser?.staffId)) && f.status === 'Completed');
   const draftList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Draft');
   const trashList = submittedForms.filter(f => f.staffId === currentUser?.staffId && f.status === 'Deleted');
   
@@ -3300,11 +3254,9 @@ const App = () => {
         );
       case 'team_leave_calendar':
         return <AttendanceCalendar staffList={staffList} submittedForms={submittedForms} currentUser={currentUser} theme={theme} />;
-      
       case 'leave_balance_lookup':
         const lookupUserRank = getPositionRank(currentUser.pos);
         const lookupIsAtLeastSeniorManager = lookupUserRank >= 80;
-        
         const lookupDeptMembers = staffList.filter(s => {
           if (s.staffId === currentUser.staffId) return false;
           const targetRank = getPositionRank(s.pos);
@@ -3329,28 +3281,18 @@ const App = () => {
                       </span>
                     </div>
                     <p className="text-xs text-slate-400 font-bold" style={mingLiUStyle}>
-                      {lookupIsAtLeastSeniorManager 
-                        ? `檢視 ${currentUser.dept} 全體成員 (僅限職級低於本人者)` 
-                        : `檢視 ${currentUser.team} 組員 (僅限職級低於本人者)`
-                      }
+                      {lookupIsAtLeastSeniorManager ? `檢視 ${currentUser.dept} 全體成員 (僅限職級低於本人者)` : `檢視 ${currentUser.team} 組員 (僅限職級低於本人者)`}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-slate-300 text-[11px] font-bold">
-                  <AlertCircle size={14} />
-                  <span>依系統安全規則：僅能調閱職級較低之成員資料</span>
-                </div>
+                <div className="flex items-center gap-2 text-slate-300 text-[11px] font-bold"><AlertCircle size={14} /><span>依系統安全規則：僅能調閱職級較低之成員資料</span></div>
               </div>
               
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50/10">
-                      <th className="px-4 py-3">姓名 / 職稱</th>
-                      <th className="px-4 py-3">員工編號 / 組別</th>
-                      <th className="px-4 py-3">特休餘額 (hr)</th>
-                      <th className="px-4 py-3">補休餘額 (hr)</th>
-                      <th className="px-4 py-3 text-right">進假日</th>
+                      <th className="px-4 py-3">姓名 / 職稱</th><th className="px-4 py-3">員工編號 / 組別</th><th className="px-4 py-3">特休餘額 (hr)</th><th className="px-4 py-3">補休餘額 (hr)</th><th className="px-4 py-3 text-right">進假日</th>
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${theme === 'light' ? 'divide-slate-50' : 'divide-slate-800'}`}>
@@ -3361,41 +3303,25 @@ const App = () => {
                             <div className={`${theme === 'light' ? 'bg-slate-100 border-white' : 'bg-slate-800 border-slate-700'} w-8 h-8 rounded-full overflow-hidden border shadow-sm`}>
                               <img src={`https://robohash.org/${encodeURIComponent(member.name)}?set=set4`} alt="avatar" />
                             </div>
-                            <div>
-                              <p className={`text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`} style={mingLiUStyle}>{member.name}</p>
-                              <p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{member.pos}</p>
-                            </div>
+                            <div><p className={`text-sm font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`} style={mingLiUStyle}>{member.name}</p><p className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>{member.pos}</p></div>
                           </div>
                         </td>
-                        <td className="px-4 py-4">
-                          <p className="text-xs font-bold text-slate-500" style={mingLiUStyle}>{member.staffId}</p>
-                          <p className="text-[10px] text-indigo-400 font-bold" style={mingLiUStyle}>{member.team}</p>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-black text-blue-600" style={mingLiUStyle}>{member.annualLeave || 0}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-black text-emerald-600" style={mingLiUStyle}>{member.compLeave || 0}</span>
-                        </td>
+                        <td className="px-4 py-4"><p className="text-xs font-bold text-slate-500" style={mingLiUStyle}>{member.staffId}</p><p className="text-[10px] text-indigo-400 font-bold" style={mingLiUStyle}>{member.team}</p></td>
+                        <td className="px-4 py-4"><span className="text-sm font-black text-blue-600" style={mingLiUStyle}>{member.annualLeave || 0}</span></td>
+                        <td className="px-4 py-4"><span className="text-sm font-black text-emerald-600" style={mingLiUStyle}>{member.compLeave || 0}</span></td>
                         <td className="px-4 py-4 text-right">
                           {(() => {
                             const info = getNextCreditInfo(member.hireDate);
                             return (
                               <div className="flex flex-col items-end">
-                                <span className={`text-[13px] font-black ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`} style={mingLiUStyle}>
-                                  倒數 <span className="text-base">{info.days}</span> 天
-                                </span>
+                                <span className={`text-[13px] font-black ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`} style={mingLiUStyle}>倒數 <span className="text-base">{info.days}</span> 天</span>
                                 <span className="text-[10px] text-slate-400 font-bold" style={mingLiUStyle}>預計 {info.date}</span>
                               </div>
                             );
                           })()}
                         </td>
                       </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan="5" className="px-4 py-10 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>目前沒有符合權限可調閱的成員資料</td>
-                      </tr>
-                    )}
+                    )) : <tr><td colSpan="5" className="px-4 py-10 text-center text-slate-300 italic text-sm" style={mingLiUStyle}>目前沒有符合權限可調閱的成員資料</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -3403,10 +3329,8 @@ const App = () => {
           </div>
         );
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} theme={theme} />;
-      case 'workflow_settings': 
-        return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} teamOptions={TEAM_OPTIONS} theme={theme} />;
-      case 'audit_log': 
-        return <AuditLogView isMockMode={isMockMode} theme={theme} />;
+      case 'workflow_settings': return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} teamOptions={TEAM_OPTIONS} theme={theme} />;
+      case 'audit_log': return <AuditLogView isMockMode={isMockMode} theme={theme} />;
       case 'inbox':
         return (
           <div className="h-full flex justify-center animate-in fade-in duration-500"><div className={`w-full max-w-4xl ${theme === 'light' ? 'bg-[#F8FAFC] border-gray-200 shadow-inner' : 'bg-slate-900 border-slate-800 shadow-2xl'} rounded-[3rem] border p-12 overflow-y-auto relative transition-colors duration-500`}>
@@ -3450,9 +3374,7 @@ const App = () => {
         setCurrentUser(updatedUser);
       } else {
         const res = await apiFetch(`${API_URL_ROOT}/api/personnel/${updatedUser.staffId}`, {
-          method: 'PUT',
-          headers: getRequestHeaders(),
-          body: JSON.stringify(updatedUser)
+          method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify(updatedUser)
         });
         if (!res.ok) throw new Error("儲存失敗");
         setCurrentUser(updatedUser);
@@ -3460,21 +3382,12 @@ const App = () => {
       }
       alert("職務代理設定已更新！");
       setIsDelegateModalOpen(false);
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      setIsProcessing(false);
-    }
+    } catch (error) { alert(error.message); } finally { setIsProcessing(false); }
   };
 
   return (
     <div className={`flex h-screen overflow-hidden ${theme === 'light' ? 'bg-[#F0F2F5]' : 'bg-slate-950'} transition-colors duration-500 text-[#262626]`} style={mingLiUStyle}>
-      {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[120] lg:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
-      )}
-
-      {/* Sidebar */}
+      {isMobileMenuOpen && (<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[120] lg:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>)}
       <aside className={`fixed lg:static inset-y-0 left-0 z-[130] ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-slate-900 border-slate-800'} border-r flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} print:hidden shadow-2xl lg:shadow-none`}>
         <div className="p-6 md:p-8 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
@@ -3488,37 +3401,23 @@ const App = () => {
           <div className={`pt-6 md:pt-8 mt-6 md:mt-8 border-t ${theme === 'light' ? 'border-slate-100' : 'border-slate-800'}`}><button onClick={handleLogout} className={`w-full flex items-center px-4 md:px-5 py-3 md:py-3.5 rounded-xl md:rounded-2xl text-red-400 hover:bg-red-50/10 hover:text-red-600 transition-all font-black text-[13px] md:text-sm ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`} style={mingLiUStyle}><LogOut size={18} className="md:w-5 md:h-5" />{!isSidebarCollapsed && <span style={mingLiUStyle}>登出系統</span>}</button></div>
         </nav>
       </aside>
-
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <header className={`${theme === 'light' ? 'bg-white/80 border-gray-100' : 'bg-slate-900/80 border-slate-800'} h-16 md:h-20 backdrop-blur-md border-b flex items-center justify-between px-4 md:px-10 z-10 print:hidden transition-colors duration-500`}>
           <div className="flex items-center gap-3">
-            <button className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg" onClick={() => setIsMobileMenuOpen(true)}>
-              <Menu size={24} />
-            </button>
+            <button className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg" onClick={() => setIsMobileMenuOpen(true)}><Menu size={24} /></button>
             <div className={`${theme === 'light' ? 'text-slate-800' : 'text-slate-100'} font-black text-base md:text-lg`} style={mingLiUStyle}>
-              {activeTab === 'dashboard' ? '數位儀表板' : 
-               activeTab === 'team_leave_calendar' ? '組內同仁休假表' :
-               activeTab === 'leave_balance_lookup' ? '同仁時數調閱' :
-               activeTab === 'personnel_management' ? '人員管理中心' : 
-               activeTab === 'workflow_settings' ? '簽核流程配置' : 
-               activeTab === 'audit_log' ? '稽核日誌檢視' : '智慧管理系統'}
+              {activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'team_leave_calendar' ? '組內同仁休假表' : activeTab === 'leave_balance_lookup' ? '同仁時數調閱' : activeTab === 'personnel_management' ? '人員管理中心' : activeTab === 'workflow_settings' ? '簽核流程配置' : activeTab === 'audit_log' ? '稽核日誌檢視' : '智慧管理系統'}
             </div>
           </div>
           <div className="flex items-center gap-3 md:gap-6">
-            <button 
-              onClick={toggleTheme} 
-              className={`p-2 md:p-2.5 rounded-lg md:rounded-xl border transition-all duration-300 flex items-center gap-2 group ${theme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700'}`}
-              title={theme === 'light' ? '切換深色模式' : '切換淺色模式'}
-            >
+            <button onClick={toggleTheme} className={`p-2 md:p-2.5 rounded-lg md:rounded-xl border transition-all duration-300 flex items-center gap-2 group ${theme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700'}`} title={theme === 'light' ? '切換深色模式' : '切換淺色模式'}>
               {theme === 'light' ? <Moon size={16} className="md:w-5 md:h-5" /> : <Sun size={16} className="md:w-5 md:h-5 animate-pulse" />}
               <span className="text-[10px] md:text-xs font-black uppercase hidden sm:inline-block tracking-widest">{theme === 'light' ? 'Dark' : 'Light'} Mode</span>
             </button>
-
             <div className={`flex items-center gap-3 md:gap-4 border-l ${theme === 'light' ? 'border-gray-100' : 'border-slate-800'} pl-3 md:pl-6`}>
               <div className="text-right hidden sm:block">
                 <p className={`text-[13px] md:text-[14px] font-black ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'} leading-tight flex items-center justify-end gap-1.5`} style={mingLiUStyle}>
-                  {currentUser.name} 
-                  {isUserAdmin && <ShieldCheck size={14} className="text-indigo-600" />}
+                  {currentUser.name} {isUserAdmin && <ShieldCheck size={14} className="text-indigo-600" />}
                 </p>
                 <p className="text-[11px] md:text-[14px] text-slate-400 font-black uppercase" style={mingLiUStyle}>{currentUser.pos}</p>
               </div>
@@ -3532,14 +3431,7 @@ const App = () => {
           {renderMainContent()}
         </div>
       </main>
-      <DelegateSettingsModal 
-        isOpen={isDelegateModalOpen} 
-        onClose={() => setIsDelegateModalOpen(false)} 
-        onSave={handleSaveDelegateSettings} 
-        currentUser={currentUser} 
-        staffList={staffList} 
-        theme={theme}
-      />
+      <DelegateSettingsModal isOpen={isDelegateModalOpen} onClose={() => setIsDelegateModalOpen(false)} onSave={handleSaveDelegateSettings} currentUser={currentUser} staffList={staffList} theme={theme} />
     </div>
   );
 };
