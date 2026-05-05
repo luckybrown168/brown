@@ -1207,7 +1207,7 @@ const DateTimePicker = ({ id, label, value, onChange, theme }) => {
 
 const DurationPicker = ({ id, value, onChange, theme }) => {
   const [d, setD] = useState('0'); const [h, setH] = useState('0'); const [m, setM] = useState('00');
-  useEffect(() => { if (value) { const match = value.match(/(\d+)\s*日\s*(\d+)\s*時\s*(\d+)\s*分/); if (match) { setD(match[1]); setH(match[2]); setM(match[3]); } } }, [value]);
+  useEffect(() => { if (value) { const match = value.match(/(\d+)\s*日\s*(\d+)\s*时\s*(\d+)\s*分/); if (match) { setD(match[1]); setH(match[2]); setM(match[3]); } } }, [value]);
   const updateDuration = (newD, newH, newM) => onChange(id, `${newD} 日 ${newH} 時 ${newM} 分`);
   return (
     <div className={`flex flex-wrap sm:flex-nowrap items-center gap-2 md:gap-4 ${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700'} p-3 md:p-4 border rounded-xl transition-colors`} style={mingLiUStyle}>
@@ -2697,7 +2697,11 @@ const App = () => {
   const [isMockMode, setIsMockMode] = useState(true); 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDelegateModalOpen, setIsDelegateModalOpen] = useState(false);
-  const [theme, setTheme] = useState('light'); // 預設淺色主題
+  
+  // 初始化主題時讀取 localStorage
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('app_theme') || 'light';
+  });
 
   const [submittedForms, setSubmittedForms] = useState([]);
   const [currentDocId, setCurrentDocId] = useState('');
@@ -2706,9 +2710,13 @@ const App = () => {
   const [staffList, setStaffList] = useState([]);
   const [workflowRules, setWorkflowRules] = useState([]);
 
-  // --- 切換主題輔助函數 ---
+  // --- 切換主題輔助函數並儲存到 localStorage ---
   const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    setTheme(prev => {
+      const nextTheme = prev === 'light' ? 'dark' : 'light';
+      localStorage.setItem('app_theme', nextTheme);
+      return nextTheme;
+    });
   };
 
   // --- 全域攔截登出事件監聽 ---
@@ -2970,7 +2978,10 @@ const App = () => {
       else {
         if (isNew) {
           const response = await apiFetch(`${API_URL_ROOT}/api/forms`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(submissionData) });
-          if (!response.ok) throw new Error("提交失敗");
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(`提交失敗: ${errData.details || response.statusText}`);
+          }
         } else {
           const response = await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify({ status: submissionData.status, values: submissionData.values }) });
           if (!response.ok) throw new Error("伺服器更新失敗");
