@@ -3222,7 +3222,7 @@ const App = () => {
                       <span>您好，{currentUser.name} <span className="text-lg md:text-2xl">{currentUser.pos}</span></span>
                       {isUserAdmin && <span className="w-fit px-2 py-1 bg-white/20 text-sm rounded border border-white/30 backdrop-blur-md mt-1 sm:mt-0">系統管理員</span>}
                     </h2>
-                    <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p>
+                    <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。根據星象顯示，現在是建單的最佳吉時！系統能量穩定且磁場極佳，快點擊下方按鈕順應天命，保您的假單通通核准！</p>
                     <button onClick={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setIsPreviewing(false); setActiveTab('inbox'); }} className={`${theme === 'light' ? 'bg-white text-blue-700' : 'bg-indigo-600 text-white'} w-full sm:w-auto px-5 md:px-6 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-black text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg mt-6 md:mt-8`} style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button>
                   </div>
                 </div>
