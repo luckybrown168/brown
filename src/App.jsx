@@ -1732,6 +1732,7 @@ const PersonnelManagementView = ({ isMockMode, theme }) => {
 // --- 組件：智慧渲染引擎 ---
 const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProcessing, staffList, completedForms = [], theme }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [noticeModal, setNoticeModal] = useState(null);
 
   const handleFileChange = async (fieldId, e) => {
     const file = e.target.files[0];
@@ -1892,9 +1893,24 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
                   />
                 )}
 
-                {field.type === "notice" && <LeaveNoticeBlock theme={theme} />}
-                {field.type === "ot_notice" && <OvertimeNoticeBlock theme={theme} />}
-                {field.type === "anomaly_notice" && <AnomalyNoticeBlock theme={theme} />}
+                {field.type === "notice" && (
+                  <button type="button" onClick={() => setNoticeModal('leave')} className={`w-full flex items-center justify-between p-3 md:p-4 rounded-xl border ${theme === 'light' ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' : 'bg-amber-900/20 border-amber-900 text-amber-400 hover:bg-amber-900/40'} transition-colors font-bold text-sm mt-2`} style={mingLiUStyle}>
+                    <span className="flex items-center gap-2"><Info size={16}/> 點擊查看請假規章與簽核流程說明</span>
+                    <span className="flex items-center gap-1 text-xs underline underline-offset-2">查看詳情 <ChevronRight size={14} /></span>
+                  </button>
+                )}
+                {field.type === "ot_notice" && (
+                  <button type="button" onClick={() => setNoticeModal('ot')} className={`w-full flex items-center justify-between p-3 md:p-4 rounded-xl border ${theme === 'light' ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100' : 'bg-blue-900/20 border-blue-900 text-blue-400 hover:bg-blue-900/40'} transition-colors font-bold text-sm mt-2`} style={mingLiUStyle}>
+                    <span className="flex items-center gap-2"><Info size={16}/> 點擊查看加班申請規則與備註</span>
+                    <span className="flex items-center gap-1 text-xs underline underline-offset-2">查看詳情 <ChevronRight size={14} /></span>
+                  </button>
+                )}
+                {field.type === "anomaly_notice" && (
+                  <button type="button" onClick={() => setNoticeModal('anomaly')} className={`w-full flex items-center justify-between p-3 md:p-4 rounded-xl border ${theme === 'light' ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100' : 'bg-red-900/20 border-red-900 text-red-400 hover:bg-red-900/40'} transition-colors font-bold text-sm mt-2`} style={mingLiUStyle}>
+                    <span className="flex items-center gap-2"><Info size={16}/> 點擊查看出勤異常單備註</span>
+                    <span className="flex items-center gap-1 text-xs underline underline-offset-2">查看詳情 <ChevronRight size={14} /></span>
+                  </button>
+                )}
                 
                 {field.type === "ot_calc_display" && (
                   <div className={`${theme === 'light' ? 'bg-indigo-50/60 border-indigo-200' : 'bg-indigo-900/20 border-indigo-800'} border-2 rounded-xl md:rounded-2xl p-4 md:p-6 mt-2 shadow-sm animate-in zoom-in-95 duration-300`}>
@@ -1944,6 +1960,28 @@ const SmartFormEngine = ({ schema, formValues, onInputChange, onPreview, isProce
             );
           })}
         </div>
+
+        {/* --- 規章說明彈出視窗 --- */}
+        {noticeModal && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setNoticeModal(null)}></div>
+            <div className={`${theme === 'light' ? 'bg-white' : 'bg-slate-900'} w-full max-w-2xl rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95`}>
+              <div className={`px-5 py-4 border-b flex justify-between items-center ${theme === 'light' ? 'border-slate-100 bg-slate-50' : 'border-slate-800 bg-slate-800/50'}`}>
+                <h3 className={`font-black flex items-center gap-2 text-base ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'}`} style={mingLiUStyle}><Info size={18} className="text-indigo-600"/> 規章與備註說明</h3>
+                <button onClick={() => setNoticeModal(null)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+              </div>
+              <div className="p-2 md:p-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                {noticeModal === 'leave' && <LeaveNoticeBlock theme={theme} />}
+                {noticeModal === 'ot' && <OvertimeNoticeBlock theme={theme} />}
+                {noticeModal === 'anomaly' && <AnomalyNoticeBlock theme={theme} />}
+              </div>
+              <div className={`p-4 border-t flex justify-end ${theme === 'light' ? 'border-slate-100 bg-slate-50' : 'border-slate-800 bg-slate-800/50'}`}>
+                <button onClick={() => setNoticeModal(null)} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-black hover:bg-indigo-700 shadow-md active:scale-95 transition-all" style={mingLiUStyle}>我知道了</button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -3219,10 +3257,10 @@ const App = () => {
                   <div className="absolute right-[-20px] top-[-20px] md:right-[-30px] md:top-[-30px] opacity-10 rotate-12"><Layers size={180} className="md:w-[240px] md:h-[240px]"/></div>
                   <div className="relative z-10">
                     <h2 className="text-2xl md:text-3xl font-black mb-2 md:mb-3 flex flex-col sm:flex-row sm:items-center gap-2" style={mingLiUStyle}>
-                      <span>您好，{currentUser.name} <span className="text-lg md:text-2xl">{currentUser.pos}</span></span>
+                      <span>早安，{currentUser.name} <span className="text-lg md:text-2xl">{currentUser.pos}</span></span>
                       {isUserAdmin && <span className="w-fit px-2 py-1 bg-white/20 text-sm rounded border border-white/30 backdrop-blur-md mt-1 sm:mt-0">系統管理員</span>}
                     </h2>
-                    <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。根據星象顯示，現在是呈假單的最佳吉時！系統能量穩定且磁場極佳，快點擊下方按鈕順應天命，保您的假單通通核准！</p>
+                    <p className="text-blue-100 text-sm max-w-md leading-relaxed" style={mingLiUStyle}>您的員編為 {currentUser.staffId}，隸屬 {currentUser.dept}。目前系統運作正常，您可以點擊下方按鈕開始建單。</p>
                     <button onClick={() => { setFormValues({}); setCurrentDocId(''); setIsSubmitted(false); setIsPreviewing(false); setActiveTab('inbox'); }} className={`${theme === 'light' ? 'bg-white text-blue-700' : 'bg-indigo-600 text-white'} w-full sm:w-auto px-5 md:px-6 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-black text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg mt-6 md:mt-8`} style={mingLiUStyle}><Plus size={18} /> 開始建立表單</button>
                   </div>
                 </div>
