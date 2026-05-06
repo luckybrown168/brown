@@ -150,7 +150,7 @@ const getExpirationStatus = (submitDateStr) => {
 
 // --- 進假日倒數計算輔助函數 (修正時區偏移導致多一天的問題) ---
 const getNextCreditInfo = (hireDateStr) => {
-  if (!hireDateStr) return { date: '-', days: '-' };
+  if (!hireDateStr) return { date: '-', days: '-', upcomingHours: 0 };
   
   const parts = hireDateStr.split('-');
   const hy = parseInt(parts[0], 10);
@@ -161,13 +161,16 @@ const getNextCreditInfo = (hireDateStr) => {
   today.setHours(0, 0, 0, 0);
 
   let nextPoint = new Date(hy, hm - 1 + 6, hd);
+  let yos = 0.5; // Years of Service (年資)
   
   if (nextPoint < today) {
     let yearsOfService = today.getFullYear() - hy;
     nextPoint = new Date(hy + yearsOfService, hm - 1, hd);
+    yos = yearsOfService;
     
     if (nextPoint < today) {
       nextPoint = new Date(hy + yearsOfService + 1, hm - 1, hd);
+      yos = yearsOfService + 1;
     }
   }
 
@@ -176,9 +179,19 @@ const getNextCreditInfo = (hireDateStr) => {
   const diffTime = nextPoint.getTime() - today.getTime();
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
+  // 計算本次將進假的時數 (依據勞基法)
+  let upcomingDays = 0;
+  if (yos === 0.5) upcomingDays = 3;
+  else if (yos === 1) upcomingDays = 7;
+  else if (yos === 2) upcomingDays = 10;
+  else if (yos >= 3 && yos < 5) upcomingDays = 14;
+  else if (yos >= 5 && yos < 10) upcomingDays = 15;
+  else if (yos >= 10) upcomingDays = Math.min(30, 15 + Math.floor(yos) - 9);
+
   return { 
     date: nextPoint.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }), 
-    days: diffDays < 0 ? 0 : diffDays 
+    days: diffDays < 0 ? 0 : diffDays,
+    upcomingHours: upcomingDays * 8
   };
 };
 
@@ -3263,10 +3276,29 @@ const App = () => {
       return null;
     }
 
+    const nextCredit = getNextCreditInfo(currentUser?.hireDate);
+    const willExceed = (currentUser?.annualLeave || 0) + (nextCredit.upcomingHours || 0) > 240;
+    const showReminder = willExceed && nextCredit.days !== '-' && nextCredit.days <= 90;
+
     switch (activeTab) {
       case 'dashboard':
         return (
           <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500" style={mingLiUStyle}>
+            {showReminder && (
+              <div className="bg-red-50 border border-red-200 rounded-[1.5rem] p-4 md:p-6 flex flex-col sm:flex-row items-start gap-3 md:gap-4 shadow-sm animate-in slide-in-from-top-4">
+                <div className="bg-red-500 p-2 md:p-2.5 rounded-xl md:rounded-2xl text-white shrink-0">
+                  <AlertCircle size={20} className="md:w-6 md:h-6"/>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-red-800 font-black text-sm" style={mingLiUStyle}>特休結轉超限提醒</h4>
+                  <p className="text-red-600 text-sm mt-1 leading-relaxed" style={mingLiUStyle}>
+                    系統偵測到您將於 <strong>{nextCredit.date}</strong>（倒數 {nextCredit.days} 天）進假 {nextCredit.upcomingHours} 小時特休。<br/>
+                    屆時您的特休總餘額預計將達 <strong>{(currentUser?.annualLeave || 0) + nextCredit.upcomingHours} 小時</strong>，超過 240 小時 (30天) 上限！<br/>
+                    請提早安排休假計畫，以免影響您的權益。
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
                 <div className={`lg:w-2/3 ${theme === 'light' ? 'bg-gradient-to-r from-blue-700 to-indigo-800' : 'bg-gradient-to-r from-indigo-900 to-slate-900'} rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10 text-white relative overflow-hidden shadow-2xl transition-all duration-500`}>
                   <div className="absolute right-[-20px] top-[-20px] md:right-[-30px] md:top-[-30px] opacity-10 rotate-12"><Layers size={180} className="md:w-[240px] md:h-[240px]"/></div>
