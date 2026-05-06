@@ -3277,8 +3277,10 @@ const App = () => {
     }
 
     const nextCredit = getNextCreditInfo(currentUser?.hireDate);
-    const willExceed = (currentUser?.annualLeave || 0) + (nextCredit.upcomingHours || 0) > 240;
-    const showReminder = true;
+    const currentAnnualLeave = parseFloat(currentUser?.annualLeave) || 0;
+    const upcomingHours = nextCredit.upcomingHours || 0;
+    const willExceed = currentAnnualLeave + upcomingHours > 240;
+    const showReminder = willExceed && nextCredit.days !== '-' && nextCredit.days <= 90;
 
     switch (activeTab) {
       case 'dashboard':
@@ -3292,8 +3294,8 @@ const App = () => {
                 <div className="flex-1">
                   <h4 className="text-red-800 font-black text-sm" style={mingLiUStyle}>特休結轉超限提醒</h4>
                   <p className="text-red-600 text-sm mt-1 leading-relaxed" style={mingLiUStyle}>
-                    系統偵測到您將於 <strong>{nextCredit.date}</strong>（倒數 {nextCredit.days} 天）進假 {nextCredit.upcomingHours} 小時特休。<br/>
-                    屆時您的特休總餘額預計將達 <strong>{(currentUser?.annualLeave || 0) + nextCredit.upcomingHours} 小時</strong>，超過 240 小時 (30天) 上限！<br/>
+                    系統偵測到您將於 <strong>{nextCredit.date}</strong>（倒數 {nextCredit.days} 天）進假 {upcomingHours} 小時特休。<br/>
+                    屆時您的特休總餘額預計將達 <strong>{currentAnnualLeave + upcomingHours} 小時</strong>，超過 240 小時 (30天) 上限！<br/>
                     請提早安排休假計畫，以免影響您的權益。
                   </p>
                 </div>
@@ -3314,8 +3316,8 @@ const App = () => {
                 <div className={`lg:w-1/3 ${theme === 'light' ? 'bg-white border-slate-100' : 'bg-slate-900 border-slate-800'} rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-8 border shadow-sm flex flex-col justify-between transition-colors duration-500`}>
                   <div className="flex items-center justify-between mb-4 md:mb-6"><h4 className={`text-base md:text-lg font-black ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} flex items-center gap-2`} style={mingLiUStyle}><Clock size={18} className="md:w-5 md:h-5 text-blue-600" /> 休假剩餘時數</h4><span className="text-sm font-bold text-slate-400 tracking-widest uppercase" style={mingLiUStyle}>Balance</span></div>
                   <div className="space-y-4 md:space-y-6">
-                    <div className={`${theme === 'light' ? 'bg-blue-50/50 border-blue-100/50' : 'bg-blue-900/10 border-blue-900/30'} p-3 md:p-4 rounded-xl md:rounded-2xl border transition-colors`}><div className="flex justify-between items-end mb-1.5 md:mb-2"><span className={`text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`} style={mingLiUStyle}>特休 (Annual)</span><span className="text-lg md:text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-sm text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-1.5 md:h-2 bg-blue-100/30 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.annualLeave || 0) / 240) * 100, 100)}%` }}></div></div></div>
-                    <div className={`${theme === 'light' ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-emerald-900/10 border-emerald-900/30'} p-3 md:p-4 rounded-xl md:rounded-2xl border transition-colors`}><div className="flex justify-between items-end mb-1.5 md:mb-2"><span className={`text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`} style={mingLiUStyle}>補休 (Comp.)</span><span className="text-lg md:text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-sm text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-1.5 md:h-2 bg-emerald-100/30 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((currentUser?.compLeave || 0) / 80) * 100, 100)}%` }}></div></div></div>
+                    <div className={`${theme === 'light' ? 'bg-blue-50/50 border-blue-100/50' : 'bg-blue-900/10 border-blue-900/30'} p-3 md:p-4 rounded-xl md:rounded-2xl border transition-colors`}><div className="flex justify-between items-end mb-1.5 md:mb-2"><span className={`text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`} style={mingLiUStyle}>特休 (Annual)</span><span className="text-lg md:text-xl font-black text-blue-600" style={mingLiUStyle}>{currentUser?.annualLeave || 0} <small className="text-sm text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-1.5 md:h-2 bg-blue-100/30 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((parseFloat(currentUser?.annualLeave) || 0) / 240) * 100, 100)}%` }}></div></div></div>
+                    <div className={`${theme === 'light' ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-emerald-900/10 border-emerald-900/30'} p-3 md:p-4 rounded-xl md:rounded-2xl border transition-colors`}><div className="flex justify-between items-end mb-1.5 md:mb-2"><span className={`text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`} style={mingLiUStyle}>補休 (Comp.)</span><span className="text-lg md:text-xl font-black text-emerald-600" style={mingLiUStyle}>{currentUser?.compLeave || 0} <small className="text-sm text-slate-400" style={mingLiUStyle}>hr</small></span></div><div className="w-full h-1.5 md:h-2 bg-emerald-100/30 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((parseFloat(currentUser?.compLeave) || 0) / 80) * 100, 100)}%` }}></div></div></div>
                     
                     <div className={`${theme === 'light' ? 'bg-purple-50/50 border-purple-100/50' : 'bg-purple-900/10 border-purple-900/30'} p-3 md:p-4 rounded-xl md:rounded-2xl border flex flex-col gap-3 transition-colors`}>
                       <div className="flex justify-between items-center">
