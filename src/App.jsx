@@ -3278,7 +3278,7 @@ const App = () => {
 
     const nextCredit = getNextCreditInfo(currentUser?.hireDate);
     const willExceed = (currentUser?.annualLeave || 0) + (nextCredit.upcomingHours || 0) > 240;
-    const showReminder = willExceed && nextCredit.days !== '-' && nextCredit.days <= 90;
+    const showReminder = true;
 
     switch (activeTab) {
       case 'dashboard':
