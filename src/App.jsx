@@ -1017,6 +1017,163 @@ const WorkflowSettingsView = ({ staffList, rules, onSaveRule, onDeleteRule, team
   );
 };
 
+// --- 組件：薪資結算報表 ---
+const PayrollReportView = ({ staffList, submittedForms, theme }) => {
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toLocaleDateString('en-CA');
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toLocaleDateString('en-CA');
+
+  const [startDate, setStartDate] = useState(firstDay);
+  const [endDate, setEndDate] = useState(lastDay);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const getReportData = () => {
+    const completedForms = submittedForms.filter(f => f.status === 'Completed');
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const reportMap = {};
+    staffList.forEach(s => {
+      reportMap[s.staffId] = {
+        ...s,
+        otPayHours: 0,
+        otCompHours: 0,
+        sickLeaveHours: 0,
+        personalLeaveHours: 0,
+        otherLeaveHours: 0
+      };
+    });
+
+    completedForms.forEach(form => {
+      let formDateStr = form.submitDate;
+      if (form.values?.form_kind === '請假單') formDateStr = form.values.leave_start_time?.split(' ')[0]?.replace(/\//g, '-');
+      else if (form.values?.form_kind === '加班單') formDateStr = form.values.ot_start_time?.split(' ')[0]?.replace(/\//g, '-');
+      
+      if (!formDateStr) return;
+      const targetDate = new Date(formDateStr);
+      if (targetDate < start || targetDate > end) return;
+
+      const staffId = form.staffId;
+      if (!reportMap[staffId]) return;
+
+      if (form.values?.form_kind === '加班單') {
+        const otType = form.values.ot_compensation;
+        const match = (form.values.ot_duration || "").match(/(\d+)\s*日\s*(\d+)\s*時\s*(\d+)\s*分/);
+        if (match) {
+          const hours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10) + (parseInt(match[3], 10) / 60);
+          if (otType === '計薪') reportMap[staffId].otPayHours += hours;
+          else reportMap[staffId].otCompHours += hours;
+        }
+      } else if (form.values?.form_kind === '請假單') {
+        const leaveType = form.values.leave_type;
+        const match = (form.values.leave_total || "").match(/(\d+)\s*日\s*(\d+)\s*時/);
+        if (match) {
+          const hours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
+          if (leaveType === '病假') reportMap[staffId].sickLeaveHours += hours;
+          else if (leaveType === '事假') reportMap[staffId].personalLeaveHours += hours;
+          else reportMap[staffId].otherLeaveHours += hours;
+        }
+      }
+    });
+
+    return Object.values(reportMap).filter(r => 
+      r.name.includes(searchTerm) || r.staffId.includes(searchTerm) || (r.dept || '').includes(searchTerm)
+    );
+  };
+
+  const reportData = getReportData();
+
+  const handleExportCSV = () => {
+    let csvContent = "員工編號,姓名,部門,職稱,加班(計薪)小時,加班(換補休)小時,病假小時,事假小時,其他假小時\n";
+    reportData.forEach(row => {
+      csvContent += `${row.staffId},${row.name},${row.dept},${row.pos},${row.otPayHours.toFixed(1)},${row.otCompHours.toFixed(1)},${row.sickLeaveHours.toFixed(1)},${row.personalLeaveHours.toFixed(1)},${row.otherLeaveHours.toFixed(1)}\n`;
+    });
+    
+    // 使用 \uFEFF 加上 BOM 避免 Excel 中文亂碼
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `薪資結算報表_${startDate}_${endDate}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500" style={mingLiUStyle}>
+      <div className={`${theme === 'light' ? 'bg-white border-slate-100' : 'bg-slate-900 border-slate-800'} flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border shadow-sm transition-colors`}>
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className={`w-12 h-12 md:w-14 md:h-14 ${theme === 'light' ? 'bg-emerald-600' : 'bg-emerald-700'} rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg text-white shrink-0`}>
+            <FileSpreadsheet size={24} className="md:w-7 md:h-7" />
+          </div>
+          <div>
+            <h2 className={`text-xl md:text-2xl font-black ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'}`} style={mingLiUStyle}>薪資結算報表</h2>
+            <p className="text-sm text-slate-400 font-bold" style={mingLiUStyle}>自動統計區間內已結案的加班與請假時數，供計薪作業使用</p>
+          </div>
+        </div>
+        <button onClick={handleExportCSV} className="flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-emerald-600 text-white rounded-xl md:rounded-2xl font-black text-sm hover:bg-emerald-700 transition-all shadow-lg active:scale-95 whitespace-nowrap" style={mingLiUStyle}>
+          <DownloadCloud size={16} /> 匯出 CSV
+        </button>
+      </div>
+
+      <div className={`${theme === 'light' ? 'bg-white border-slate-100' : 'bg-slate-900 border-slate-800'} p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border shadow-sm transition-colors`}>
+         <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex items-center gap-2">
+               <label className={`text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>區間：</label>
+               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={`border rounded-lg px-3 py-2 text-sm ${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'} outline-none focus:border-emerald-500`} />
+               <span className="text-slate-400">~</span>
+               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={`border rounded-lg px-3 py-2 text-sm ${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'} outline-none focus:border-emerald-500`} />
+            </div>
+            <div className="flex-1">
+               <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type="text" placeholder="搜尋姓名、員編或部門..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`w-full border rounded-lg pl-9 pr-3 py-2 text-sm ${theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-800 border-slate-700 text-white'} outline-none focus:border-emerald-500`} />
+               </div>
+            </div>
+         </div>
+
+         <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[900px] text-left">
+            <thead className={theme === 'light' ? 'bg-slate-50/50' : 'bg-slate-800/50'}>
+              <tr className="text-sm font-black text-slate-400 tracking-widest border-b border-slate-100 dark:border-slate-800">
+                <th className="px-4 py-3">員工資訊</th>
+                <th className="px-4 py-3 text-right text-blue-500">加班(計薪)</th>
+                <th className="px-4 py-3 text-right text-emerald-500">加班(換補休)</th>
+                <th className="px-4 py-3 text-right text-amber-500">病假(半薪)</th>
+                <th className="px-4 py-3 text-right text-red-500">事假(不給薪)</th>
+                <th className="px-4 py-3 text-right text-slate-500">其他假別</th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y ${theme === 'light' ? 'divide-slate-50' : 'divide-slate-800'}`}>
+              {reportData.map((row, idx) => (
+                <tr key={row.staffId || idx} className={`${theme === 'light' ? 'hover:bg-slate-50/50' : 'hover:bg-slate-800/30'} transition-colors`}>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col">
+                       <span className={`font-bold ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'}`}>{row.name} <span className="text-xs text-slate-400 ml-1">({row.staffId})</span></span>
+                       <span className="text-xs text-slate-500 mt-0.5">{row.dept} - {row.pos}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right font-black text-blue-600">{row.otPayHours > 0 ? row.otPayHours.toFixed(1) + ' hr' : '-'}</td>
+                  <td className="px-4 py-3 text-right font-black text-emerald-600">{row.otCompHours > 0 ? row.otCompHours.toFixed(1) + ' hr' : '-'}</td>
+                  <td className="px-4 py-3 text-right font-black text-amber-600">{row.sickLeaveHours > 0 ? row.sickLeaveHours.toFixed(1) + ' hr' : '-'}</td>
+                  <td className="px-4 py-3 text-right font-black text-red-600">{row.personalLeaveHours > 0 ? row.personalLeaveHours.toFixed(1) + ' hr' : '-'}</td>
+                  <td className="px-4 py-3 text-right font-black text-slate-500">{row.otherLeaveHours > 0 ? row.otherLeaveHours.toFixed(1) + ' hr' : '-'}</td>
+                </tr>
+              ))}
+              {reportData.length === 0 && (
+                <tr><td colSpan="6" className="px-4 py-8 text-center text-slate-400 italic">查無資料</td></tr>
+              )}
+            </tbody>
+          </table>
+         </div>
+      </div>
+    </div>
+  );
+};
+
 // --- 組件：稽核日誌視圖 ---
 const AuditLogView = ({ isMockMode, theme }) => {
   const [logs, setLogs] = useState([]);
@@ -3255,6 +3412,7 @@ const App = () => {
   });
 
   const isUserAdmin = currentUser?.isAdmin || currentUser?.staffId === '0338' || currentUser?.staffId === 'ADMIN-01';
+  const canViewPayroll = currentUser?.dept?.includes('財務行政') || currentUser?.dept?.includes('總經理');
 
   const renderMainContent = () => {
     if (viewingForm) { 
@@ -3272,6 +3430,11 @@ const App = () => {
     }
 
     if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings' || activeTab === 'audit_log') && !isUserAdmin) {
+      setActiveTab('dashboard');
+      return null;
+    }
+
+    if (activeTab === 'payroll_report' && !canViewPayroll) {
       setActiveTab('dashboard');
       return null;
     }
@@ -3428,6 +3591,7 @@ const App = () => {
         );
       case 'personnel_management': return <PersonnelManagementView isMockMode={isMockMode} theme={theme} />;
       case 'workflow_settings': return <WorkflowSettingsView staffList={staffList} rules={workflowRules} onSaveRule={handleSaveRule} onDeleteRule={handleDeleteRule} teamOptions={TEAM_OPTIONS} theme={theme} />;
+      case 'payroll_report': return <PayrollReportView staffList={staffList} submittedForms={submittedForms} theme={theme} />;
       case 'audit_log': return <AuditLogView isMockMode={isMockMode} theme={theme} />;
       case 'inbox':
         return (
@@ -3461,6 +3625,10 @@ const App = () => {
     navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users });
     navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); 
     navItems.push({ id: 'audit_log', label: '稽核日誌', icon: History }); 
+  }
+
+  if (canViewPayroll) {
+    navItems.push({ id: 'payroll_report', label: '薪資結算', icon: FileSpreadsheet }); 
   }
 
   const handleSaveDelegateSettings = async (settingsData) => {
@@ -3504,7 +3672,7 @@ const App = () => {
           <div className="flex items-center gap-3">
             <button className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg" onClick={() => setIsMobileMenuOpen(true)}><Menu size={24} /></button>
             <div className={`${theme === 'light' ? 'text-slate-800' : 'text-slate-100'} font-black text-base md:text-lg`} style={mingLiUStyle}>
-              {activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'team_leave_calendar' ? '組內同仁休假表' : activeTab === 'leave_balance_lookup' ? '同仁時數調閱' : activeTab === 'personnel_management' ? '人員管理中心' : activeTab === 'workflow_settings' ? '簽核流程配置' : activeTab === 'audit_log' ? '稽核日誌檢視' : '智慧管理系統'}
+              {activeTab === 'dashboard' ? '數位儀表板' : activeTab === 'team_leave_calendar' ? '組內同仁休假表' : activeTab === 'leave_balance_lookup' ? '同仁時數調閱' : activeTab === 'personnel_management' ? '人員管理中心' : activeTab === 'workflow_settings' ? '簽核流程配置' : activeTab === 'payroll_report' ? '薪資結算報表' : activeTab === 'audit_log' ? '稽核日誌檢視' : '智慧管理系統'}
             </div>
           </div>
           <div className="flex items-center gap-3 md:gap-6">
