@@ -430,10 +430,12 @@ const AttendanceCalendar = ({ staffList, submittedForms, currentUser, theme }) =
     const applicant = staffList.find(s => s.staffId === f.staffId);
     if (!applicant) return false;
 
+    const isSharedWithMe = Array.isArray(f.values?.shared_with) && f.values.shared_with.includes(currentUser.staffId);
+
     if (isSeniorManager) {
-      return applicant.dept === currentUser.dept;
+      return applicant.dept === currentUser.dept || isSharedWithMe;
     } else {
-      return applicant.dept === currentUser.dept && applicant.team === currentUser.team;
+      return (applicant.dept === currentUser.dept && applicant.team === currentUser.team) || isSharedWithMe;
     }
   });
 
@@ -1142,7 +1144,7 @@ const PayrollReportView = ({ staffList, submittedForms, theme }) => {
                 <th className="px-4 py-3">員工資訊</th>
                 <th className="px-4 py-3 text-right text-blue-500">加班(計薪)</th>
                 <th className="px-4 py-3 text-right text-emerald-500">加班(換補休)</th>
-                <th className="px-4 py-3 text-right text-amber-500">病假(半薪)</th>
+                <th className="px-4 py-3 text-right text-amber-500">病假</th>
                 <th className="px-4 py-3 text-right text-red-500">事假(不給薪)</th>
                 <th className="px-4 py-3 text-right text-slate-500">其他假別</th>
               </tr>
@@ -3428,7 +3430,14 @@ const App = () => {
       ); 
     }
 
-    if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings' || activeTab === 'audit_log' || activeTab === 'payroll_report') && !isUserAdmin) {
+    const canViewPayroll = currentUser?.dept === '財務行政部' || currentUser?.dept?.includes('總經理');
+
+    if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings' || activeTab === 'audit_log') && !isUserAdmin) {
+      setActiveTab('dashboard');
+      return null;
+    }
+
+    if (activeTab === 'payroll_report' && !canViewPayroll) {
       setActiveTab('dashboard');
       return null;
     }
@@ -3615,11 +3624,16 @@ const App = () => {
     navItems.push({ id: 'leave_balance_lookup', label: '調閱特休', icon: Search });
   }
 
+  const canViewPayroll = currentUser?.dept === '財務行政部' || currentUser?.dept?.includes('總經理');
+
   if (isUserAdmin) {
     navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users });
     navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); 
-    navItems.push({ id: 'payroll_report', label: '薪資結算', icon: FileSpreadsheet }); 
     navItems.push({ id: 'audit_log', label: '稽核日誌', icon: History }); 
+  }
+
+  if (canViewPayroll) {
+    navItems.push({ id: 'payroll_report', label: '薪資結算', icon: FileSpreadsheet }); 
   }
 
   const handleSaveDelegateSettings = async (settingsData) => {
