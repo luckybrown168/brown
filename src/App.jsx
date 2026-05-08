@@ -2508,25 +2508,36 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
   };
 
   const safeValues = values || {};
-  const currentStepIndex = safeValues.currentStep || 0;
-  const currentRole = editableWorkflow[currentStepIndex]?.role;
+  const baseStepIndex = safeValues.currentStep || 0;
+
+  let myActiveStepIndex = baseStepIndex;
+  if (editableWorkflow[baseStepIndex]?.role === '交辦' && editableWorkflow[baseStepIndex]?.staffId !== currentUser?.staffId) {
+      for (let i = baseStepIndex + 1; i < editableWorkflow.length; i++) {
+          if (editableWorkflow[i].role !== '交辦') break;
+          if (editableWorkflow[i].staffId === currentUser?.staffId && !editableWorkflow[i].processedDate) {
+              myActiveStepIndex = i;
+              break;
+          }
+      }
+  }
+  const currentRole = editableWorkflow[myActiveStepIndex]?.role;
   const isAssignee = currentRole === "交辦";
 
   const previousApprovers = editableWorkflow
-    .slice(0, currentStepIndex)
+    .slice(0, myActiveStepIndex)
     .filter((v,i,a) => a.findIndex(t => (t.staffId === v.staffId)) === i);
 
   const handleMoveStep = (index, direction) => {
-    if (index <= currentStepIndex) return;
+    if (index <= myActiveStepIndex) return;
     const targetIndex = index + direction;
-    if (targetIndex <= currentStepIndex || targetIndex >= editableWorkflow.length) return;
+    if (targetIndex <= myActiveStepIndex || targetIndex >= editableWorkflow.length) return;
     const newFlow = [...editableWorkflow];
     [newFlow[index], newFlow[targetIndex]] = [newFlow[targetIndex], newFlow[index]];
     setEditableWorkflow(newFlow);
   };
 
   const handleRemoveStep = (index) => {
-    if (index <= currentStepIndex) return;
+    if (index <= myActiveStepIndex) return;
     const newFlow = [...editableWorkflow];
     newFlow.splice(index, 1);
     setEditableWorkflow(newFlow);
@@ -2760,14 +2771,30 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
               </div>
               <div className="space-y-3 md:space-y-4">
                 {editableWorkflow.map((step, i) => {
-                  const isCurrentStep = currentStepIndex === i;
-                  const isProcessed = currentStepIndex > i || status === 'Completed' || (status === 'Rejected' && step.comment);
-                  const canEditThisStep = canApprove && status === 'Pending' && i > currentStepIndex;
+                  const isProcessed = !!step.processedDate || status === 'Completed' || (status === 'Rejected' && step.comment);
+                  
+                  let isActiveStep = false;
+                  if (status === 'Pending' && !step.processedDate) {
+                      if (i === baseStepIndex) {
+                          isActiveStep = true;
+                      } else if (i > baseStepIndex) {
+                          let allAssign = true;
+                          for (let j = baseStepIndex; j <= i; j++) {
+                              if (editableWorkflow[j].role !== '交辦') {
+                                  allAssign = false;
+                                  break;
+                              }
+                          }
+                          if (allAssign) isActiveStep = true;
+                      }
+                  }
+
+                  const canEditThisStep = canApprove && status === 'Pending' && i > myActiveStepIndex;
 
                   return (
-                    <div key={step.staffId || i} className={`flex flex-col sm:flex-row gap-3 md:gap-4 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all group ${isCurrentStep ? (theme === 'light' ? 'bg-indigo-50 border-indigo-200 ring-2 md:ring-4 ring-indigo-50' : 'bg-indigo-900/20 border-indigo-800 ring-2 md:ring-4 ring-indigo-900/10') : isProcessed ? (theme === 'light' ? 'bg-slate-50/50 border-slate-100' : 'bg-slate-800/30 border-slate-700') : 'bg-transparent border-dashed border-slate-200 opacity-70 md:opacity-50 hover:opacity-100 hover:border-indigo-300 hover:bg-white/5'}`}>
+                    <div key={step.staffId || i} className={`flex flex-col sm:flex-row gap-3 md:gap-4 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all group ${isActiveStep ? (theme === 'light' ? 'bg-indigo-50 border-indigo-200 ring-2 md:ring-4 ring-indigo-50' : 'bg-indigo-900/20 border-indigo-800 ring-2 md:ring-4 ring-indigo-900/10') : isProcessed ? (theme === 'light' ? 'bg-slate-50/50 border-slate-100' : 'bg-slate-800/30 border-slate-700') : 'bg-transparent border-dashed border-slate-200 opacity-70 md:opacity-50 hover:opacity-100 hover:border-indigo-300 hover:bg-white/5'}`}>
                       <div className="flex items-center sm:items-start gap-3 sm:gap-0 shrink-0 border-b sm:border-b-0 border-slate-200 dark:border-slate-700 pb-2 sm:pb-0 mb-2 sm:mb-0">
-                        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white ${isProcessed ? 'bg-green-500' : isCurrentStep ? 'bg-indigo-600 animate-pulse' : 'bg-slate-300'}`}>{isProcessed ? <Check size={16} className="md:w-5 md:h-5" /> : <User size={16} className="md:w-5 md:h-5"/>}</div>
+                        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white ${isProcessed ? 'bg-green-500' : isActiveStep ? 'bg-indigo-600 animate-pulse' : 'bg-slate-300'}`}>{isProcessed ? <Check size={16} className="md:w-5 md:h-5" /> : <User size={16} className="md:w-5 md:h-5"/>}</div>
                         <div className="sm:hidden flex-1">
                            <span className={`text-sm font-black ${theme === 'light' ? 'text-slate-800' : 'text-slate-200'}`} style={mingLiUStyle}>
                              {step.name} <small className="text-slate-400 font-normal">({step.pos})</small>
@@ -2787,11 +2814,11 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
                              </div>
                            </div>
                            {step.processedDate && <p className="text-sm text-slate-400 font-bold mb-1.5 md:mb-2" style={mingLiUStyle}>處理時間：{new Date(step.processedDate).toLocaleString()}</p>}
-                           {step.comment ? (<div className={`${theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} p-2.5 md:p-3 rounded-lg md:rounded-xl border relative mt-1 md:mt-2 w-full max-w-lg shadow-sm transition-colors`}><div className={`absolute -top-2 left-3 md:left-4 px-1 ${theme === 'light' ? 'bg-white' : 'bg-slate-900'} text-sm font-black text-slate-400 flex items-center gap-1`}><MessageSquare size={10} /> 簽核意見</div><p className={`text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'} italic pt-1`} style={mingLiUStyle}>「 {step.comment} 」</p></div>) : isProcessed ? <p className="text-sm text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isCurrentStep ? <p className="text-sm text-indigo-600 font-black animate-pulse" style={mingLiUStyle}>等待簽核中...</p> : null}
+                           {step.comment ? (<div className={`${theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} p-2.5 md:p-3 rounded-lg md:rounded-xl border relative mt-1 md:mt-2 w-full max-w-lg shadow-sm transition-colors`}><div className={`absolute -top-2 left-3 md:left-4 px-1 ${theme === 'light' ? 'bg-white' : 'bg-slate-900'} text-sm font-black text-slate-400 flex items-center gap-1`}><MessageSquare size={10} /> 簽核意見</div><p className={`text-sm font-bold ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'} italic pt-1`} style={mingLiUStyle}>「 {step.comment} 」</p></div>) : isProcessed ? <p className="text-sm text-slate-400 italic" style={mingLiUStyle}>無填寫意見</p> : isActiveStep ? <p className="text-sm text-indigo-600 font-black animate-pulse" style={mingLiUStyle}>等待簽核中...</p> : null}
                          </div>
                          {canEditThisStep && (
                            <div className={`flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity self-end sm:self-auto sm:ml-2 ${theme === 'light' ? 'bg-white border-slate-100' : 'bg-slate-800 border-slate-700'} p-1 rounded-lg shadow-sm border transition-colors mt-2 sm:mt-0`}>
-                             <button type="button" onClick={() => handleMoveStep(i, -1)} disabled={i === currentStepIndex + 1} className="p-1 md:p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronUp size={14} className="md:w-4 md:h-4"/></button>
+                             <button type="button" onClick={() => handleMoveStep(i, -1)} disabled={i === myActiveStepIndex + 1} className="p-1 md:p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronUp size={14} className="md:w-4 md:h-4"/></button>
                              <button type="button" onClick={() => handleMoveStep(i, 1)} disabled={i === editableWorkflow.length - 1} className="p-1 md:p-1.5 text-slate-400 hover:text-indigo-600 rounded disabled:opacity-20 transition-all"><ChevronDown size={14} className="md:w-4 md:h-4"/></button>
                              <div className={`w-px h-3 md:h-4 ${theme === 'light' ? 'bg-slate-200' : 'bg-slate-700'} mx-1`}></div>
                              <button type="button" onClick={() => handleRemoveStep(i)} className="p-1 md:p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded transition-all"><X size={14} className="md:w-4 md:h-4"/></button>
@@ -3331,30 +3358,45 @@ const App = () => {
     if (!formToProcess) return;
 
     let newStatus = formToProcess.status;
-    let newStepIndex = formToProcess.values.currentStep || 0;
+    let baseStepIndex = formToProcess.values.currentStep || 0;
     const workflow = optionalNewWorkflow ? [...optionalNewWorkflow] : [...(formToProcess.values.workflowPath || [])];
 
     setIsProcessing(true);
     try {
-      if (workflow[newStepIndex] && action !== 'withdraw' && action !== 'reject_to_step') {
-        workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
+      let processingStepIndex = baseStepIndex;
+      if (workflow[baseStepIndex]?.role === '交辦' && workflow[baseStepIndex]?.staffId !== currentUser?.staffId) {
+          for (let i = baseStepIndex + 1; i < workflow.length; i++) {
+              if (workflow[i].role !== '交辦') break;
+              if (workflow[i].staffId === currentUser?.staffId && !workflow[i].processedDate) {
+                  processingStepIndex = i;
+                  break;
+              }
+          }
+      }
+
+      if (workflow[processingStepIndex] && action !== 'withdraw' && action !== 'reject_to_step') {
+        workflow[processingStepIndex] = { ...workflow[processingStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
       }
 
       if (action === 'approve') {
-        if (newStepIndex < workflow.length - 1) newStepIndex += 1;
-        else newStatus = 'Completed';
+        while (baseStepIndex < workflow.length && workflow[baseStepIndex].processedDate) {
+          baseStepIndex++;
+        }
+        if (baseStepIndex >= workflow.length) {
+          newStatus = 'Completed';
+        }
       } else if (action === 'reject') { 
         newStatus = 'Rejected'; 
       } else if (action === 'reject_to_step') {
-        if (workflow[newStepIndex]) {
-          workflow[newStepIndex] = { ...workflow[newStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
+        if (workflow[processingStepIndex]) {
+          workflow[processingStepIndex] = { ...workflow[processingStepIndex], comment: comment || "", processedDate: new Date().toISOString() };
         }
         const targetIndex = workflow.findIndex(step => step.staffId === targetRejectId);
         if (targetIndex !== -1) {
-          newStepIndex = targetIndex;
+          baseStepIndex = targetIndex;
           newStatus = 'Pending';
           for (let i = targetIndex; i < workflow.length; i++) {
-            if (i !== formToProcess.values.currentStep) {
+            if (i !== processingStepIndex) {
               workflow[i].comment = "";
               workflow[i].processedDate = null;
             }
@@ -3364,12 +3406,12 @@ const App = () => {
         }
       } else if (action === 'withdraw') {
         newStatus = 'Rejected';
-        if (workflow[newStepIndex]) {
-          workflow[newStepIndex] = { ...workflow[newStepIndex], comment: "申請人自行撤回 (抽單)", processedDate: new Date().toISOString() };
+        if (workflow[processingStepIndex]) {
+          workflow[processingStepIndex] = { ...workflow[processingStepIndex], comment: "申請人自行撤回 (抽單)", processedDate: new Date().toISOString() };
         }
       }
 
-      const updatedValues = { ...formToProcess.values, workflowPath: workflow, currentStep: newStepIndex };
+      const updatedValues = { ...formToProcess.values, workflowPath: workflow, currentStep: baseStepIndex };
 
       if (isMockMode) { 
         setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, status: newStatus, values: updatedValues } : f)); 
@@ -3516,8 +3558,21 @@ const App = () => {
   
   const inboxList = submittedForms.filter(f => {
     if (f.status !== 'Pending') return false; 
-    const step = f.values?.currentStep || 0;
-    return f.values?.workflowPath?.[step]?.staffId === currentUser?.staffId;
+    const stepIndex = f.values?.currentStep || 0;
+    const workflow = f.values?.workflowPath || [];
+    if (!workflow[stepIndex]) return false;
+
+    if (workflow[stepIndex].staffId === currentUser?.staffId && !workflow[stepIndex].processedDate) return true;
+
+    if (workflow[stepIndex].role === '交辦') {
+      for (let i = stepIndex + 1; i < workflow.length; i++) {
+        if (workflow[i].role !== '交辦') break;
+        if (workflow[i].staffId === currentUser?.staffId && !workflow[i].processedDate) {
+          return true;
+        }
+      }
+    }
+    return false;
   });
 
   const isUserAdmin = currentUser?.isAdmin || currentUser?.staffId === '0338' || currentUser?.staffId === 'ADMIN-01';
@@ -3525,7 +3580,23 @@ const App = () => {
   const renderMainContent = () => {
     if (viewingForm) { 
       const step = viewingForm.values?.currentStep || 0;
-      const canApprove = viewingForm.status === 'Pending' && viewingForm.values?.workflowPath?.[step]?.staffId === currentUser?.staffId;
+      const workflow = viewingForm.values?.workflowPath || [];
+      
+      let canApprove = false;
+      if (viewingForm.status === 'Pending') {
+        if (workflow[step] && workflow[step].staffId === currentUser?.staffId && !workflow[step].processedDate) {
+          canApprove = true;
+        } else if (workflow[step] && workflow[step].role === '交辦') {
+          for (let i = step + 1; i < workflow.length; i++) {
+            if (workflow[i].role !== '交辦') break;
+            if (workflow[i].staffId === currentUser?.staffId && !workflow[i].processedDate) {
+              canApprove = true;
+              break;
+            }
+          }
+        }
+      }
+      
       const canWithdraw = viewingForm.staffId === currentUser?.staffId && viewingForm.status === 'Pending';
       return (
         <SubmissionSummary 
