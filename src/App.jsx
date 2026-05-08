@@ -1147,7 +1147,7 @@ const PayrollReportView = ({ staffList, submittedForms, theme }) => {
                 <th className="px-4 py-3 text-right text-yellow-500">特休</th>
                 <th className="px-4 py-3 text-right text-emerald-500">補休</th>
                 <th className="px-4 py-3 text-right text-blue-500">加班(計薪)</th>
-                <th className="px-4 py-3 text-right text-Brown-500">加班(換補休)</th>
+                <th className="px-4 py-3 text-right text-[#8B4513]">加班(換補休)</th>
                 <th className="px-4 py-3 text-right text-red-500">家庭照顧假</th>
                 <th className="px-4 py-3 text-right text-slate-500">其他假別</th>
               </tr>
@@ -1164,7 +1164,7 @@ const PayrollReportView = ({ staffList, submittedForms, theme }) => {
                   <td className="px-4 py-3 text-right font-black text-yellow-600">{row.annualLeaveHours > 0 ? row.annualLeaveHours.toFixed(1) + ' hr' : '-'}</td>
                   <td className="px-4 py-3 text-right font-black text-emerald-600">{row.compLeaveHours > 0 ? row.compLeaveHours.toFixed(1) + ' hr' : '-'}</td>
                   <td className="px-4 py-3 text-right font-black text-blue-600">{row.otPayHours > 0 ? row.otPayHours.toFixed(1) + ' hr' : '-'}</td>
-                  <td className="px-4 py-3 text-right font-black text-Brown-600">{row.otCompHours > 0 ? row.otCompHours.toFixed(1) + ' hr' : '-'}</td>
+                  <td className="px-4 py-3 text-right font-black text-[#8B4513]">{row.otCompHours > 0 ? row.otCompHours.toFixed(1) + ' hr' : '-'}</td>
                   <td className="px-4 py-3 text-right font-black text-red-600">{row.familyCareLeaveHours > 0 ? row.familyCareLeaveHours.toFixed(1) + ' hr' : '-'}</td>
                   <td className="px-4 py-3 text-right font-black text-slate-500">{row.otherLeaveHours > 0 ? row.otherLeaveHours.toFixed(1) + ' hr' : '-'}</td>
                 </tr>
