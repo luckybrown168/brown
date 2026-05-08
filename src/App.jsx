@@ -3154,9 +3154,19 @@ const App = () => {
   const fetchMyForms = async (userId) => {
     if (isMockMode || !userId) return;
     try {
-      let res = await apiFetch(`${API_URL_ROOT}/api/forms/${userId}`, { headers: getRequestHeaders() });
+      const canViewPayroll = currentUser?.dept === '財務行政部' || currentUser?.dept?.includes('總經理');
+      let url = canViewPayroll ? `${API_URL_ROOT}/api/forms/all` : `${API_URL_ROOT}/api/forms/${userId}`;
+      
+      let res = await apiFetch(url, { headers: getRequestHeaders() });
+      
+      // 若後端不支援 /api/forms/all 則退回嘗試標準 RESTful 路由 /api/forms
+      if (canViewPayroll && res.status === 404) {
+        res = await apiFetch(`${API_URL_ROOT}/api/forms`, { headers: getRequestHeaders() });
+      }
+
       const contentType = res.headers.get("content-type");
       if (!res.ok || !contentType || !contentType.includes("application/json")) return;
+      
       const data = await res.json();
       setSubmittedForms(data.map(item => ({
         ...item,
