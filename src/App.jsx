@@ -1041,8 +1041,9 @@ const PayrollReportView = ({ staffList, submittedForms, theme }) => {
         ...s,
         otPayHours: 0,
         otCompHours: 0,
-        sickLeaveHours: 0,
-        personalLeaveHours: 0,
+        annualLeaveHours: 0,
+        compLeaveHours: 0,
+        familyCareLeaveHours: 0,
         otherLeaveHours: 0
       };
     });
@@ -1072,8 +1073,9 @@ const PayrollReportView = ({ staffList, submittedForms, theme }) => {
         const match = (form.values.leave_total || "").match(/(\d+)\s*日\s*(\d+)\s*時/);
         if (match) {
           const hours = (parseInt(match[1], 10) * 8) + parseInt(match[2], 10);
-          if (leaveType === '病假') reportMap[staffId].sickLeaveHours += hours;
-          else if (leaveType === '事假') reportMap[staffId].personalLeaveHours += hours;
+          if (leaveType === '特休') reportMap[staffId].annualLeaveHours += hours;
+          else if (leaveType === '補休') reportMap[staffId].compLeaveHours += hours;
+          else if (leaveType === '家庭照顧假') reportMap[staffId].familyCareLeaveHours += hours;
           else reportMap[staffId].otherLeaveHours += hours;
         }
       }
@@ -1087,9 +1089,9 @@ const PayrollReportView = ({ staffList, submittedForms, theme }) => {
   const reportData = getReportData();
 
   const handleExportCSV = () => {
-    let csvContent = "員工編號,姓名,部門,職稱,加班(計薪)小時,加班(換補休)小時,病假小時,事假小時,其他假小時\n";
+    let csvContent = "員工編號,姓名,部門,職稱,特休小時,補休小時,加班(計薪)小時,加班(換補休)小時,家庭照顧假小時,其他假別小時\n";
     reportData.forEach(row => {
-      csvContent += `${row.staffId},${row.name},${row.dept},${row.pos},${row.otPayHours.toFixed(1)},${row.otCompHours.toFixed(1)},${row.sickLeaveHours.toFixed(1)},${row.personalLeaveHours.toFixed(1)},${row.otherLeaveHours.toFixed(1)}\n`;
+      csvContent += `${row.staffId},${row.name},${row.dept},${row.pos},${row.annualLeaveHours.toFixed(1)},${row.compLeaveHours.toFixed(1)},${row.otPayHours.toFixed(1)},${row.otCompHours.toFixed(1)},${row.familyCareLeaveHours.toFixed(1)},${row.otherLeaveHours.toFixed(1)}\n`;
     });
     
     // 使用 \uFEFF 加上 BOM 避免 Excel 中文亂碼
@@ -1142,10 +1144,11 @@ const PayrollReportView = ({ staffList, submittedForms, theme }) => {
             <thead className={theme === 'light' ? 'bg-slate-50/50' : 'bg-slate-800/50'}>
               <tr className="text-sm font-black text-slate-400 tracking-widest border-b border-slate-100 dark:border-slate-800">
                 <th className="px-4 py-3">員工資訊</th>
+                <th className="px-4 py-3 text-right text-yellow-500">特休</th>
+                <th className="px-4 py-3 text-right text-emerald-500">補休</th>
                 <th className="px-4 py-3 text-right text-blue-500">加班(計薪)</th>
-                <th className="px-4 py-3 text-right text-emerald-500">加班(換補休)</th>
-                <th className="px-4 py-3 text-right text-amber-500">病假</th>
-                <th className="px-4 py-3 text-right text-red-500">事假(不給薪)</th>
+                <th className="px-4 py-3 text-right text-Brown-500">加班(換補休)</th>
+                <th className="px-4 py-3 text-right text-red-500">家庭照顧假</th>
                 <th className="px-4 py-3 text-right text-slate-500">其他假別</th>
               </tr>
             </thead>
@@ -1158,10 +1161,11 @@ const PayrollReportView = ({ staffList, submittedForms, theme }) => {
                        <span className="text-xs text-slate-500 mt-0.5">{row.dept} - {row.pos}</span>
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-right font-black text-yellow-600">{row.annualLeaveHours > 0 ? row.annualLeaveHours.toFixed(1) + ' hr' : '-'}</td>
+                  <td className="px-4 py-3 text-right font-black text-emerald-600">{row.compLeaveHours > 0 ? row.compLeaveHours.toFixed(1) + ' hr' : '-'}</td>
                   <td className="px-4 py-3 text-right font-black text-blue-600">{row.otPayHours > 0 ? row.otPayHours.toFixed(1) + ' hr' : '-'}</td>
-                  <td className="px-4 py-3 text-right font-black text-emerald-600">{row.otCompHours > 0 ? row.otCompHours.toFixed(1) + ' hr' : '-'}</td>
-                  <td className="px-4 py-3 text-right font-black text-amber-600">{row.sickLeaveHours > 0 ? row.sickLeaveHours.toFixed(1) + ' hr' : '-'}</td>
-                  <td className="px-4 py-3 text-right font-black text-red-600">{row.personalLeaveHours > 0 ? row.personalLeaveHours.toFixed(1) + ' hr' : '-'}</td>
+                  <td className="px-4 py-3 text-right font-black text-Brown-600">{row.otCompHours > 0 ? row.otCompHours.toFixed(1) + ' hr' : '-'}</td>
+                  <td className="px-4 py-3 text-right font-black text-red-600">{row.familyCareLeaveHours > 0 ? row.familyCareLeaveHours.toFixed(1) + ' hr' : '-'}</td>
                   <td className="px-4 py-3 text-right font-black text-slate-500">{row.otherLeaveHours > 0 ? row.otherLeaveHours.toFixed(1) + ' hr' : '-'}</td>
                 </tr>
               ))}
