@@ -3412,7 +3412,6 @@ const App = () => {
   });
 
   const isUserAdmin = currentUser?.isAdmin || currentUser?.staffId === '0338' || currentUser?.staffId === 'ADMIN-01';
-  const canViewPayroll = currentUser?.dept?.includes('財務行政') || currentUser?.dept?.includes('總經理');
 
   const renderMainContent = () => {
     if (viewingForm) { 
@@ -3429,12 +3428,7 @@ const App = () => {
       ); 
     }
 
-    if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings' || activeTab === 'audit_log') && !isUserAdmin) {
-      setActiveTab('dashboard');
-      return null;
-    }
-
-    if (activeTab === 'payroll_report' && !canViewPayroll) {
+    if ((activeTab === 'personnel_management' || activeTab === 'workflow_settings' || activeTab === 'audit_log' || activeTab === 'payroll_report') && !isUserAdmin) {
       setActiveTab('dashboard');
       return null;
     }
@@ -3624,11 +3618,8 @@ const App = () => {
   if (isUserAdmin) {
     navItems.push({ id: 'personnel_management', label: '人員管理', icon: Users });
     navItems.push({ id: 'workflow_settings', label: '流程設定', icon: Sliders }); 
-    navItems.push({ id: 'audit_log', label: '稽核日誌', icon: History }); 
-  }
-
-  if (canViewPayroll) {
     navItems.push({ id: 'payroll_report', label: '薪資結算', icon: FileSpreadsheet }); 
+    navItems.push({ id: 'audit_log', label: '稽核日誌', icon: History }); 
   }
 
   const handleSaveDelegateSettings = async (settingsData) => {
