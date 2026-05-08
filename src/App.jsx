@@ -2461,13 +2461,18 @@ const SubmissionPreview = ({ schema, values, onEdit, onSubmit, onSaveDraft, staf
 };
 
 // --- 組件：提交後的存根 ---
-const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, applicantId, canApprove, onApprove, onReject, canWithdraw, onWithdraw, onCloneToDraft, isProcessing, staffList, submitDate, theme }) => {
+const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isViewOnly, onBack, currentUser, applicantId, canApprove, onApprove, onReject, canWithdraw, onWithdraw, onCloneToDraft, onShare, isProcessing, staffList, submitDate, theme }) => {
   const [comment, setComment] = useState("");
   const [approvalAction, setApprovalAction] = useState('approve');
   const [rejectTarget, setRejectTarget] = useState("");
   const [editableWorkflow, setEditableWorkflow] = useState([]);
   const [newStaffId, setNewStaffId] = useState("");
   const [newRole, setNewRole] = useState("簽核");
+
+  // 分享功能狀態
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [editSharedWith, setEditSharedWith] = useState([]);
+  const [shareSelectId, setShareSelectId] = useState("");
 
   useEffect(() => {
     if (values && values.workflowPath) {
@@ -2576,6 +2581,17 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
     } else {
       onReject(currentDocId, finalComment);
     }
+  };
+
+  const openShareModal = () => {
+    setEditSharedWith([...(values.shared_with || [])]);
+    setShareSelectId("");
+    setShowShareModal(true);
+  };
+
+  const handleSaveShare = () => {
+    if (onShare) onShare(currentDocId, editSharedWith);
+    setShowShareModal(false);
   };
 
   const statusConfig = {
@@ -2906,11 +2922,75 @@ const SubmissionSummary = ({ schema, values, status, onReset, currentDocId, isVi
 
         {!canApprove && (
           <div className={`mt-8 md:mt-10 pt-5 md:pt-6 border-t ${theme === 'light' ? 'border-slate-100' : 'border-slate-800'} flex flex-col sm:flex-row justify-end gap-3 items-center print:hidden`}>
+            {status === 'Completed' && applicantId === currentUser?.staffId && onShare && (
+              <button type="button" onClick={openShareModal} className={`w-full sm:w-auto px-6 py-2.5 md:py-2 ${theme === 'light' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' : 'bg-indigo-900/30 text-indigo-400 hover:bg-indigo-900/50'} rounded-xl md:rounded-lg text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors`} style={mingLiUStyle}>
+                <Users size={14} className="md:w-4 md:h-4"/> 分享 / 公開單據
+              </button>
+            )}
             <button type="button" onClick={handlePrint} className={`w-full sm:w-auto px-6 py-2.5 md:py-2 ${theme === 'light' ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-400'} rounded-xl md:rounded-lg text-sm font-bold hover:bg-black/5 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors`} style={mingLiUStyle}><Printer size={14} className="md:w-4 md:h-4"/> 列印存根</button>
             <button type="button" onClick={onBack || onReset} className="w-full sm:w-auto px-8 py-2.5 md:py-2 bg-[#1677FF] text-white rounded-xl md:rounded-lg text-sm font-black shadow-md hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors" style={mingLiUStyle}>{isViewOnly ? <ArrowLeft size={14} className="md:w-4 md:h-4" /> : null} {isViewOnly ? "返回列表" : "完成返回"}</button>
           </div>
         )}
       </div>
+
+      {showShareModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowShareModal(false)}></div>
+          <div className={`${theme === 'light' ? 'bg-white' : 'bg-slate-900'} w-full max-w-lg rounded-[2rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95`} style={mingLiUStyle}>
+            <div className={`px-5 py-4 border-b flex justify-between items-center ${theme === 'light' ? 'border-slate-100 bg-slate-50' : 'border-slate-800 bg-slate-800/50'}`}>
+              <h3 className={`font-black flex items-center gap-2 text-base ${theme === 'light' ? 'text-slate-800' : 'text-slate-100'}`}><Users size={18} className="text-indigo-600"/> 管理表單公開對象</h3>
+              <button onClick={() => setShowShareModal(false)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+            </div>
+            <div className="p-5 md:p-6 space-y-4">
+              <div>
+                <label className={`text-sm font-black ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} block mb-2`}>已分享對象</label>
+                <div className="flex flex-wrap gap-2">
+                  {editSharedWith.length > 0 ? editSharedWith.map(id => {
+                    const s = staffList.find(staff => staff.staffId === id);
+                    return (
+                      <span key={id} className={`px-2.5 py-1.5 ${theme === 'light' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-900/40 text-indigo-300'} text-sm font-black rounded-lg flex items-center gap-1.5`}>
+                        <User size={14} /> {s?.name || id}
+                        <button type="button" onClick={() => setEditSharedWith(prev => prev.filter(item => item !== id))} className="hover:text-red-500 hover:bg-white/20 rounded-full p-0.5"><X size={14}/></button>
+                      </span>
+                    )
+                  }) : <span className="text-sm text-slate-400 italic">目前尚未分享給任何人</span>}
+                </div>
+              </div>
+              <div className={`pt-4 border-t ${theme === 'light' ? 'border-slate-100' : 'border-slate-800'}`}>
+                <label className={`text-sm font-black ${theme === 'light' ? 'text-slate-700' : 'text-slate-200'} block mb-2`}>新增分享對象</label>
+                <div className="flex gap-2">
+                  <select 
+                    value={shareSelectId} 
+                    onChange={e => setShareSelectId(e.target.value)} 
+                    className={`flex-1 p-2.5 border ${theme === 'light' ? 'border-slate-300 bg-white text-slate-800' : 'border-slate-700 bg-slate-900 text-slate-100'} rounded-xl text-sm font-bold outline-none focus:border-indigo-500`}
+                  >
+                    <option value="">-- 選取指定人員 --</option>
+                    {renderStaffOptions(staffList, s => s.staffId !== currentUser.staffId && !editSharedWith.includes(s.staffId))}
+                  </select>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (shareSelectId && !editSharedWith.includes(shareSelectId)) {
+                        setEditSharedWith([...editSharedWith, shareSelectId]);
+                        setShareSelectId("");
+                      }
+                    }} 
+                    className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-black hover:bg-indigo-700 transition-colors shrink-0"
+                  >
+                    加入
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className={`p-4 border-t flex justify-end gap-3 ${theme === 'light' ? 'border-slate-100 bg-slate-50' : 'border-slate-800 bg-slate-800/50'}`}>
+              <button onClick={() => setShowShareModal(false)} className={`px-4 py-2 border rounded-xl text-sm font-bold ${theme === 'light' ? 'text-slate-500 border-slate-300' : 'text-slate-400 border-slate-700'}`}>取消</button>
+              <button onClick={handleSaveShare} disabled={isProcessing} className="px-6 py-2 bg-[#1677FF] text-white rounded-xl text-sm font-black hover:bg-blue-700 shadow-md active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2">
+                {isProcessing ? <RotateCcw size={16} className="animate-spin" /> : <Save size={16} />} 儲存分享設定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -3404,6 +3484,29 @@ const App = () => {
     setFormValues(clonedValues); setCurrentDocId(''); setIsSubmitted(false); setIsPreviewing(false); setViewingForm(null); setActiveTab('inbox');
   };
 
+  const handleShareForm = async (docId, newSharedWith) => {
+    const formToProcess = submittedForms.find(f => f.id === docId);
+    if (!formToProcess) return;
+
+    setIsProcessing(true);
+    try {
+      const updatedValues = { ...formToProcess.values, shared_with: newSharedWith };
+
+      if (isMockMode) { 
+        setSubmittedForms(prev => prev.map(f => f.id === docId ? { ...f, values: updatedValues } : f)); 
+      } 
+      else {
+        const response = await apiFetch(`${API_URL_ROOT}/api/forms/${docId}`, { 
+          method: 'PUT', headers: getRequestHeaders(), body: JSON.stringify({ status: formToProcess.status, values: updatedValues }) 
+        });
+        if (!response.ok) throw new Error("伺服器更新失敗");
+        await fetchMyForms(currentUser.staffId);
+      }
+      alert('已成功更新表單分享對象！');
+      setViewingForm(prev => prev && prev.id === docId ? { ...prev, values: updatedValues } : prev);
+    } catch (err) { alert(`操作失敗：${err.message}`); } finally { setIsProcessing(false); }
+  };
+
   if (!currentUser) return <LoginView onLoginSuccess={handleLoginSuccess} isMockMode={isMockMode} theme={theme} />;
 
   const myPendingList = submittedForms.filter(f => (f.staffId === currentUser?.staffId || (f.values?.shared_with || []).includes(currentUser?.staffId)) && f.status === 'Pending');
@@ -3429,6 +3532,7 @@ const App = () => {
           schema={myFormSchema} values={viewingForm.values} status={viewingForm.status} currentDocId={viewingForm.id} isViewOnly={true} onBack={() => setViewingForm(null)} onReset={() => setViewingForm(null)} currentUser={currentUser} applicantId={viewingForm.staffId} canApprove={canApprove}
           onApprove={(id, comm, newFlow) => handleProcessForm(id, 'approve', comm, newFlow)} onReject={(id, comm, targetId) => handleProcessForm(id, targetId ? 'reject_to_step' : 'reject', comm, null, targetId)} canWithdraw={canWithdraw} onWithdraw={(id) => handleProcessForm(id, 'withdraw')}
           onCloneToDraft={handleCloneToDraft}
+          onShare={handleShareForm}
           isProcessing={isProcessing} staffList={staffList} submitDate={viewingForm.submitDate} theme={theme}
         />
       ); 
